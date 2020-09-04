@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.util.StringUtil;
+import org.pentaho.platform.web.http.CORSConfiguration;
 import org.pentaho.platform.web.servlet.messages.Messages;
 
 import javax.servlet.ServletException;
@@ -59,7 +60,8 @@ public class GetImage extends ServletBase {
     throws ServletException, IOException {
     try {
       PentahoSystem.systemEntryPoint();
-
+      // Setting CORS headers
+      CORSConfiguration.getInstance().applyCORSHeaders( request, response );
       final String image = request.getParameter( "image" ); //$NON-NLS-1$
       if ( image != null && !"".equals( image ) ) {
         if ( ServletBase.debug ) {

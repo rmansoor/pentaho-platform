@@ -40,6 +40,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.core.system.objfac.spring.PentahoBeanScopeValidatorPostProcessor;
+import org.pentaho.platform.web.http.CORSConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.FileSystemResource;
@@ -105,6 +106,8 @@ public class JAXRSServlet extends SpringServlet {
       logger.debug( "servicing request for resource " + request.getPathInfo() ); //$NON-NLS-1$
     }
 
+    // Setting CORS headers
+    CORSConfiguration.getInstance().applyCORSHeaders( request, response );
     if ( request.getMethod().equals( GET ) ) {
       // Extension to allow accept type override from mime-type query param
       final String mimeType = request.getParameter( MIME_TYPE );

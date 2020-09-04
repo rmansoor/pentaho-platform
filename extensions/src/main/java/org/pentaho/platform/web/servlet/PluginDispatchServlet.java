@@ -28,6 +28,7 @@ import org.pentaho.platform.api.engine.IPluginManager;
 import org.pentaho.platform.api.engine.IPluginManagerListener;
 import org.pentaho.platform.api.websocket.IWebsocketEndpointConfig;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
+import org.pentaho.platform.web.http.CORSConfiguration;
 import org.springframework.beans.factory.BeanFactoryUtils;
 import org.springframework.beans.factory.ListableBeanFactory;
 
@@ -87,9 +88,12 @@ public class PluginDispatchServlet implements Servlet {
       throw new IllegalArgumentException( PluginDispatchServlet.class.getSimpleName()
         + " cannot handle non HTTP requests" ); //$NON-NLS-1$
     }
-
     HttpServletRequest request = (HttpServletRequest) req;
     HttpServletResponse response = (HttpServletResponse) res;
+
+    // Setting CORS headers
+    CORSConfiguration.getInstance().applyCORSHeaders( request, response );
+
 
     Servlet pluginServlet = getTargetServlet( request, response );
 

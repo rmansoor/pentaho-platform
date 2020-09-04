@@ -39,6 +39,7 @@ import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.util.messages.LocaleHelper;
 import org.pentaho.platform.util.web.MimeHelper;
 import org.pentaho.platform.util.web.SimpleUrlFactory;
+import org.pentaho.platform.web.http.CORSConfiguration;
 import org.pentaho.platform.web.http.HttpOutputHandler;
 import org.pentaho.platform.web.http.MessageFormatUtils;
 import org.pentaho.platform.web.http.request.HttpRequestParameterProvider;
@@ -115,7 +116,7 @@ public class GenericServlet extends ServletBase {
     }
 
     PentahoSystem.systemEntryPoint();
-
+    CORSConfiguration.getInstance().applyCORSHeaders( request, response );
     IOutputHandler outputHandler = null;
     // BISERVER-2767 - grabbing the current class loader so we can replace it at the end
     ClassLoader origContextClassloader = Thread.currentThread().getContextClassLoader();

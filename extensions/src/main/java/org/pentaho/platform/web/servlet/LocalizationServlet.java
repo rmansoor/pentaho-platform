@@ -27,6 +27,7 @@ import org.json.JSONObject;
 import org.pentaho.platform.api.engine.IPluginManager;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.util.messages.LocaleHelper;
+import org.pentaho.platform.web.http.CORSConfiguration;
 import org.pentaho.platform.web.servlet.messages.Messages;
 
 import javax.servlet.ServletException;
@@ -58,6 +59,9 @@ public class LocalizationServlet extends ServletBase {
 
   @Override
   public void doPost( HttpServletRequest req, HttpServletResponse resp ) throws ServletException, IOException {
+    // Setting CORS headers
+    CORSConfiguration.getInstance().applyCORSHeaders( req, resp );
+
     String pluginId = req.getParameter( "plugin" ); //$NON-NLS-1$
     String name = req.getParameter( "name" ); //$NON-NLS-1$
 

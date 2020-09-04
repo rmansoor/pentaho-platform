@@ -26,6 +26,7 @@ import com.sun.jersey.spi.container.servlet.WebConfig;
 import com.sun.jersey.spi.spring.container.servlet.SpringServlet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.pentaho.platform.web.http.CORSConfiguration;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -79,7 +80,8 @@ public class JAXRSPluginServlet extends SpringServlet implements ApplicationCont
   @Override
   public void service( HttpServletRequest request, HttpServletResponse response ) throws ServletException, IOException {
     logger.debug( "servicing request for resource " + request.getPathInfo() ); //$NON-NLS-1$
-
+    // Setting CORS headers
+    CORSConfiguration.getInstance().applyCORSHeaders( request, response );
     // Jersey's Servlet only responds to 'application.wadl', Plugin requests always have 'plugin/PLUGIN_NAME/api' as a
     // predicate i.e. /plugin/data-access/api/application.wadl.
     //

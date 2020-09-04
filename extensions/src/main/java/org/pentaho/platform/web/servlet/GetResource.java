@@ -30,6 +30,7 @@ import org.pentaho.platform.engine.security.SecurityHelper;
 import org.pentaho.platform.engine.services.actionsequence.ActionSequenceResource;
 import org.pentaho.platform.util.StringUtil;
 import org.pentaho.platform.util.messages.LocaleHelper;
+import org.pentaho.platform.web.http.CORSConfiguration;
 import org.pentaho.platform.web.servlet.messages.Messages;
 
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -64,6 +65,9 @@ public class GetResource extends ServletBase {
     // TODO support caching
     PentahoSystem.systemEntryPoint();
     try {
+      // Setting CORS headers
+      CORSConfiguration.getInstance().applyCORSHeaders( request, response );
+
       IPentahoSession session = getPentahoSession( request );
       String resource = request.getParameter( "resource" ); //$NON-NLS-1$
 
