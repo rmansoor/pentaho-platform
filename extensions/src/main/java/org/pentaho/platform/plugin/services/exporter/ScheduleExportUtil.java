@@ -21,16 +21,10 @@
 package org.pentaho.platform.plugin.services.exporter;
 
 import java.io.Serializable;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.commons.lang.ArrayUtils;
-import org.pentaho.platform.api.scheduler2.ComplexJobTrigger;
-import org.pentaho.platform.api.scheduler2.CronJobTrigger;
-import org.pentaho.platform.api.scheduler2.IBlockoutManager;
-import org.pentaho.platform.api.scheduler2.Job;
-import org.pentaho.platform.api.scheduler2.SimpleJobTrigger;
+import org.pentaho.platform.api.scheduler2.*;
 import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.repository.RepositoryFilenameUtils;
 import org.pentaho.platform.scheduler2.quartz.QuartzScheduler;
@@ -145,10 +139,12 @@ public class ScheduleExportUtil {
       cron.setUiPassParam( jobTrigger.getUiPassParam() );
       schedule.setCronJobTrigger( cron );
 
-    } else if ( job.getJobTrigger() instanceof CronJobTrigger ) {
-      CronJobTrigger jobTrigger = (CronJobTrigger) job.getJobTrigger();
-      schedule.setCronJobTrigger( jobTrigger );
-
+    } else if ( job.getJobTrigger() instanceof CronLikeJobTrigger) {
+        CronLikeJobTrigger jobTrigger = (CronLikeJobTrigger) job.getJobTrigger();
+        schedule.setCronLikeJobTrigger(jobTrigger);
+    }  else if ( job.getJobTrigger() instanceof CronJobTrigger ) {
+          CronJobTrigger jobTrigger = (CronJobTrigger) job.getJobTrigger();
+          schedule.setCronJobTrigger( jobTrigger );
     } else {
       // don't know what this is, can't export it
       throw new IllegalArgumentException( Messages.getInstance().getString(

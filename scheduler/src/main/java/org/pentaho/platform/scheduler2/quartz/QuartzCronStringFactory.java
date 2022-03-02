@@ -144,9 +144,9 @@ public class QuartzCronStringFactory {
   private static String getRecurrenceString( IncrementalRecurrence incrementalRecurrence ) {
     String aString = ""; //$NON-NLS-1$
     if ( ( incrementalRecurrence.getStartingValue() != null ) && ( incrementalRecurrence.getIncrement() != null ) ) {
-      aString = incrementalRecurrence.getStartingValue().toString() + "/" + incrementalRecurrence.getIncrement(); //$NON-NLS-1$
+      aString = incrementalRecurrence.getStartingValue() + "/" + incrementalRecurrence.getIncrement(); //$NON-NLS-1$
     } else if ( incrementalRecurrence.getStartingValue() != null ) {
-      aString = incrementalRecurrence.getStartingValue().toString();
+      aString = incrementalRecurrence.getStartingValue();
     }
     return aString;
   }

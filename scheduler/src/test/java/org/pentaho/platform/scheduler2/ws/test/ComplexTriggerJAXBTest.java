@@ -39,7 +39,7 @@ public class ComplexTriggerJAXBTest {
 
   ComplexJobTrigger trigger;
 
-  IncrementalRecurrence inc = new IncrementalRecurrence( 2010, 5 );
+  IncrementalRecurrence inc = new IncrementalRecurrence( "2010", 5 );
 
   SequentialRecurrence seq = new SequentialRecurrence( 5, 12 );
 

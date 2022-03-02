@@ -20,17 +20,18 @@
 
 package org.pentaho.platform.web.http.api.resources;
 
+import com.cronutils.builder.CronBuilder;
+import com.cronutils.model.Cron;
+import com.cronutils.model.CronType;
+import com.cronutils.model.definition.CronDefinitionBuilder;
+import com.cronutils.model.field.value.SpecialChar;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.repository2.unified.UnifiedRepositoryException;
-import org.pentaho.platform.api.scheduler2.ComplexJobTrigger;
-import org.pentaho.platform.api.scheduler2.IJobTrigger;
-import org.pentaho.platform.api.scheduler2.IScheduler;
-import org.pentaho.platform.api.scheduler2.SchedulerException;
-import org.pentaho.platform.api.scheduler2.SimpleJobTrigger;
+import org.pentaho.platform.api.scheduler2.*;
 import org.pentaho.platform.plugin.services.exporter.ScheduleExportUtil;
 import org.pentaho.platform.repository.RepositoryFilenameUtils;
 import org.pentaho.platform.scheduler2.quartz.QuartzScheduler;
@@ -46,6 +47,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TimeZone;
+
+import static com.cronutils.model.field.expression.FieldExpressionFactory.*;
 
 public class SchedulerResourceUtil {
 
@@ -132,22 +135,32 @@ public class SchedulerResourceUtil {
 
       if ( scheduler instanceof QuartzScheduler ) {
         String cronString = scheduleRequest.getCronJobTrigger().getCronString();
-
         String delims = "[ ]+"; //$NON-NLS-1$
         String[] tokens = cronString.split( delims );
         if ( tokens.length < 7 ) {
           cronString += " *";
         }
-
         ComplexJobTrigger complexJobTrigger = QuartzScheduler.createComplexTrigger( cronString );
         complexJobTrigger.setStartTime( scheduleRequest.getCronJobTrigger().getStartTime() );
         complexJobTrigger.setEndTime( scheduleRequest.getCronJobTrigger().getEndTime() );
         complexJobTrigger.setDuration( scheduleRequest.getCronJobTrigger().getDuration() );
         complexJobTrigger.setUiPassParam( scheduleRequest.getCronJobTrigger().getUiPassParam() );
         jobTrigger = complexJobTrigger;
-      } else {
+      }  else {
         throw new IllegalArgumentException();
       }
+    } else if ( scheduleRequest.getCronLikeJobTrigger() != null ) {
+      String cronString = generateCronString((int)scheduleRequest.getCronLikeJobTrigger().getRepeatInterval()/86400
+              ,scheduleRequest.getCronLikeJobTrigger().getStartTime());
+
+      ComplexJobTrigger complexJobTrigger = QuartzScheduler.createComplexTrigger( cronString );
+      complexJobTrigger.setStartTime( scheduleRequest.getCronLikeJobTrigger().getStartTime() );
+      complexJobTrigger.setEndTime( scheduleRequest.getCronLikeJobTrigger().getEndTime() );
+      complexJobTrigger.setDuration( scheduleRequest.getCronLikeJobTrigger().getDuration() );
+      complexJobTrigger.setUiPassParam( scheduleRequest.getCronLikeJobTrigger().getUiPassParam() );
+      // complexJobTrigger.setCronString(cronString);
+      jobTrigger = complexJobTrigger;
+
     }
 
     return jobTrigger;
@@ -259,5 +272,21 @@ public class SchedulerResourceUtil {
   public static String getExtension( final String filename ) {
     // unchanged logic, ported over from its original location ( SchedulerService ) into this SchedulerUtil class
     return RepositoryFilenameUtils.getExtension( filename );
+  }
+  private static String generateCronString(long interval, Date startDate) {
+    Calendar calendar = GregorianCalendar.getInstance(); // creates a new calendar instance
+    calendar.setTime(startDate);
+    int hour = calendar.get(Calendar.HOUR_OF_DAY);
+    int minute = calendar.get(Calendar.MINUTE);
+
+    Cron cron = CronBuilder.cron(CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ))
+            .withYear(always())
+            .withDoM(every((int)interval))
+            .withMonth(always())
+            .withDoW(questionMark())
+            .withHour(on(hour))
+            .withMinute(on(minute))
+            .withSecond(on(0)).instance();
+    return cron.asString();
   }
 }

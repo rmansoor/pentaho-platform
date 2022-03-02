@@ -22,11 +22,17 @@ package org.pentaho.platform.api.scheduler2;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.TreeSet;
 
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.cronutils.descriptor.CronDescriptor;
+import com.cronutils.model.CronType;
+import com.cronutils.model.definition.CronDefinition;
+import com.cronutils.model.definition.CronDefinitionBuilder;
+import com.cronutils.parser.CronParser;
 import org.pentaho.platform.api.scheduler2.recur.ITimeRecurrence;
 import org.pentaho.platform.api.scheduler2.wrappers.DayOfMonthWrapper;
 import org.pentaho.platform.api.scheduler2.wrappers.DayOfWeekWrapper;
@@ -78,6 +84,9 @@ public class ComplexJobTrigger extends JobTrigger {
   private HourlyWrapper hourlyRecurrences = new HourlyWrapper();
   private MinuteWrapper minuteRecurrences = new MinuteWrapper();
   private SecondWrapper secondRecurrences = new SecondWrapper();
+
+  private String cronDescription;
+
 
   /**
    * Creates a recurrence for the specified date/time. Specifying both a day of month and day of week is not supported.
@@ -595,4 +604,15 @@ public class ComplexJobTrigger extends JobTrigger {
     }
     return nonNullArgs;
   }
+
+  public String getCronDescription() {
+    if(getCronString() != null && !getCronString().isEmpty() && (cronDescription == null || cronDescription.isEmpty())) {
+      CronDefinition cronDefinition = CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ);
+      CronDescriptor descriptor = CronDescriptor.instance(Locale.US);
+      CronParser parser = new CronParser(cronDefinition);
+      cronDescription = descriptor.describe(parser.parse(getCronString()));
+    }
+    return cronDescription;
+  }
+
 }

@@ -120,7 +120,7 @@ public class QuartzScheduler implements IScheduler {
 
   private static final Pattern sequencePattern = Pattern.compile( "\\d+\\-\\d+" ); //$NON-NLS-1$
 
-  private static final Pattern intervalPattern = Pattern.compile( "\\d+/\\d+" ); //$NON-NLS-1$
+  private static final Pattern intervalPattern = Pattern.compile( "[\\d*]+/[\\d]+" ); //$NON-NLS-1$
 
   private static final Pattern qualifiedDayPattern = Pattern.compile( "\\d+#\\d+" ); //$NON-NLS-1$
 
@@ -746,7 +746,7 @@ public class QuartzScheduler implements IScheduler {
                   .parseInt( days[1] ) ) );
             } else if ( intervalPattern.matcher( token ).matches() ) {
               String[] days = token.split( "/" ); //$NON-NLS-1$
-              dayOfWeekRecurrence.add( new IncrementalRecurrence( Integer.parseInt( days[0] ), Integer
+              dayOfWeekRecurrence.add( new IncrementalRecurrence( days[0], Integer
                   .parseInt( days[1] ) ) );
             } else if ( qualifiedDayPattern.matcher( token ).matches() ) {
               String[] days = token.split( "#" ); //$NON-NLS-1$
@@ -810,8 +810,9 @@ public class QuartzScheduler implements IScheduler {
                       Integer.parseInt( days[ 1 ] ) ) );
             } else if ( intervalPattern.matcher( token ).matches() ) {
               String[] days = token.split( "/" ); //$NON-NLS-1$
+
               timeRecurrence
-                  .add( new IncrementalRecurrence( Integer.parseInt( days[ 0 ] ), Integer.parseInt( days[ 1 ] ) ) );
+                  .add( new IncrementalRecurrence( days[ 0 ] , Integer.parseInt( days[ 1 ] ) ) );
             } else if ( "L".equalsIgnoreCase( token ) ) {
               timeRecurrence.add( new QualifiedDayOfMonth() );
             } else {

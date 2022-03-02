@@ -109,4 +109,5 @@ public abstract class JobTrigger implements Serializable, IJobTrigger {
   public void setDuration( long duration ) {
     this.duration = duration;
   }
+
 }

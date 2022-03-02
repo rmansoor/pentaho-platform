@@ -36,6 +36,7 @@ public class ComplexJobTriggerProxy {
   Date endTime;
   String uiPassParam;
   String cronString;
+  String cronDescription;
 
   public Date getStartTime() {
     return startTime;
@@ -113,6 +114,14 @@ public class ComplexJobTriggerProxy {
 
   public void setCronString( String cronString ) {
     this.cronString = cronString;
+  }
+
+  public String getCronDescription() {
+    return cronDescription;
+  }
+
+  public void setCronDescription( String cronDescription ) {
+    this.cronDescription = cronDescription;
   }
 
 }
