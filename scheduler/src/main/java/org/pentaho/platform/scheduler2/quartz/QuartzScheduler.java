@@ -552,6 +552,14 @@ public class QuartzScheduler implements IScheduler {
       ComplexJobTrigger complexJobTrigger = createComplexTrigger( cronTrigger.getCronExpression() );
       complexJobTrigger.setUiPassParam( (String) job.getJobParams().get( RESERVEDMAPKEY_UIPASSPARAM ) );
       complexJobTrigger.setCronString( ( (CronTrigger) trigger ).getCronExpression() );
+      List<ITimeRecurrence> timeRecurrences = parseRecurrence(complexJobTrigger.getCronString(), 3);
+      if(timeRecurrences != null && timeRecurrences.size() > 0 ) {
+        ITimeRecurrence recurrence = timeRecurrences.get(0);
+        if( recurrence instanceof IncrementalRecurrence ) {
+          IncrementalRecurrence incrementalRecurrence = (IncrementalRecurrence) recurrence;
+          complexJobTrigger.setRepeatInterval(incrementalRecurrence.getIncrement() * 86400);
+        }
+      }
       job.setJobTrigger( complexJobTrigger );
       if ( trigger.getCalendarName() != null ) {
         Calendar calendar = scheduler.getCalendar( trigger.getCalendarName() );

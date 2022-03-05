@@ -37,6 +37,14 @@ public class ComplexJobTriggerProxy {
   String uiPassParam;
   String cronString;
   String cronDescription;
+  private long repeatInterval = 0;
+
+  public long getRepeatInterval() {
+    return repeatInterval;
+  }
+  public void setRepeatInterval( long repeatIntervalSeconds ) {
+    this.repeatInterval = repeatIntervalSeconds;
+  }
 
   public Date getStartTime() {
     return startTime;

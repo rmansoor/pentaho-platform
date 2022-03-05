@@ -84,6 +84,21 @@ public interface IJobTrigger {
   public void setCronString( String cronString );
 
   /**
+   * Returns the User friendly description of a Cron String
+   *
+   * @return the cronDescription
+   */
+  public String getCronDescription();
+
+  /**
+   * Sets the user friendly description of a cron String=
+   *
+   * @param cronDescription
+   *          the cronString to set
+   */
+  public void setCronDescription( String cronDescription );
+
+  /**
    * @return a long that represents in milliseconds how long this trigger should be in effect once triggered
    */
   public long getDuration();

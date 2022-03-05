@@ -84,9 +84,15 @@ public class ComplexJobTrigger extends JobTrigger {
   private HourlyWrapper hourlyRecurrences = new HourlyWrapper();
   private MinuteWrapper minuteRecurrences = new MinuteWrapper();
   private SecondWrapper secondRecurrences = new SecondWrapper();
-
+  private long repeatInterval = 0;
   private String cronDescription;
 
+  public long getRepeatInterval() {
+    return repeatInterval;
+  }
+  public void setRepeatInterval( long repeatIntervalSeconds ) {
+    this.repeatInterval = repeatIntervalSeconds;
+  }
 
   /**
    * Creates a recurrence for the specified date/time. Specifying both a day of month and day of week is not supported.
@@ -605,6 +611,13 @@ public class ComplexJobTrigger extends JobTrigger {
     return nonNullArgs;
   }
 
+  @Override
+  public void setCronString(String cronString) {
+    super.setCronString(cronString);
+    getCronDescription();
+  }
+
+  @Override
   public String getCronDescription() {
     if(getCronString() != null && !getCronString().isEmpty() && (cronDescription == null || cronDescription.isEmpty())) {
       CronDefinition cronDefinition = CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ);
