@@ -139,12 +139,6 @@ public class ScheduleExportUtil {
       cron.setUiPassParam( jobTrigger.getUiPassParam() );
       schedule.setCronJobTrigger( cron );
 
-    } else if ( job.getJobTrigger() instanceof CronLikeJobTrigger) {
-        CronLikeJobTrigger jobTrigger = (CronLikeJobTrigger) job.getJobTrigger();
-        schedule.setCronLikeJobTrigger(jobTrigger);
-    }  else if ( job.getJobTrigger() instanceof CronJobTrigger ) {
-          CronJobTrigger jobTrigger = (CronJobTrigger) job.getJobTrigger();
-          schedule.setCronJobTrigger( jobTrigger );
     } else {
       // don't know what this is, can't export it
       throw new IllegalArgumentException( Messages.getInstance().getString(

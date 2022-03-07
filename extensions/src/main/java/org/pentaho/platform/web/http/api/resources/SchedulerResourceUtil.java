@@ -24,7 +24,6 @@ import com.cronutils.builder.CronBuilder;
 import com.cronutils.model.Cron;
 import com.cronutils.model.CronType;
 import com.cronutils.model.definition.CronDefinitionBuilder;
-import com.cronutils.model.field.value.SpecialChar;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -83,51 +82,63 @@ public class SchedulerResourceUtil {
     } else if ( scheduleRequest.getComplexJobTrigger() != null ) {
 
       ComplexJobTriggerProxy proxyTrigger = scheduleRequest.getComplexJobTrigger();
-      ComplexJobTrigger complexJobTrigger = new ComplexJobTrigger();
+      String cronString = proxyTrigger.getCronString();
+      ComplexJobTrigger complexJobTrigger = null;
+      /**
+       * We will have two options. Either it is a daily scehdule to ignore DST or any other
+       * complex schedule
+       */
+      if(cronString != null && cronString.equals("TO_BE_GENERATED")) {
+        cronString = generateCronString((int)proxyTrigger.getRepeatInterval()/86400
+                ,proxyTrigger.getStartTime());
+        complexJobTrigger = QuartzScheduler.createComplexTrigger( cronString );
+      } else {
+        complexJobTrigger = new ComplexJobTrigger();
+        if ( proxyTrigger.getDaysOfWeek().length > 0 ) {
+          if ( proxyTrigger.getWeeksOfMonth().length > 0 ) {
+            for ( int dayOfWeek : proxyTrigger.getDaysOfWeek() ) {
+              for ( int weekOfMonth : proxyTrigger.getWeeksOfMonth() ) {
+
+                QualifiedDayOfWeek qualifiedDayOfWeek = new QualifiedDayOfWeek();
+                qualifiedDayOfWeek.setDayOfWeek( DayOfWeek.values()[ dayOfWeek ] );
+
+                if ( weekOfMonth == JobScheduleRequest.LAST_WEEK_OF_MONTH ) {
+                  qualifiedDayOfWeek.setQualifier( DayOfWeekQualifier.LAST );
+                } else {
+                  qualifiedDayOfWeek.setQualifier( DayOfWeekQualifier.values()[ weekOfMonth ] );
+                }
+                complexJobTrigger.addDayOfWeekRecurrence( qualifiedDayOfWeek );
+              }
+            }
+          } else {
+            for ( int dayOfWeek : proxyTrigger.getDaysOfWeek() ) {
+              complexJobTrigger.addDayOfWeekRecurrence( dayOfWeek + 1 );
+            }
+          }
+        } else if ( proxyTrigger.getDaysOfMonth().length > 0 ) {
+
+          for ( int dayOfMonth : proxyTrigger.getDaysOfMonth() ) {
+            complexJobTrigger.addDayOfMonthRecurrence( dayOfMonth );
+          }
+        }
+
+        for ( int month : proxyTrigger.getMonthsOfYear() ) {
+          complexJobTrigger.addMonthlyRecurrence( month + 1 );
+        }
+
+        for ( int year : proxyTrigger.getYears() ) {
+          complexJobTrigger.addYearlyRecurrence( year );
+        }
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime( proxyTrigger.getStartTime() );
+        complexJobTrigger.setHourlyRecurrence( calendar.get( Calendar.HOUR_OF_DAY ) );
+        complexJobTrigger.setMinuteRecurrence( calendar.get( Calendar.MINUTE ) );
+      }
+
       complexJobTrigger.setStartTime( proxyTrigger.getStartTime() );
       complexJobTrigger.setEndTime( proxyTrigger.getEndTime() );
       complexJobTrigger.setDuration( scheduleRequest.getDuration() );
-
-      if ( proxyTrigger.getDaysOfWeek().length > 0 ) {
-        if ( proxyTrigger.getWeeksOfMonth().length > 0 ) {
-          for ( int dayOfWeek : proxyTrigger.getDaysOfWeek() ) {
-            for ( int weekOfMonth : proxyTrigger.getWeeksOfMonth() ) {
-
-              QualifiedDayOfWeek qualifiedDayOfWeek = new QualifiedDayOfWeek();
-              qualifiedDayOfWeek.setDayOfWeek( DayOfWeek.values()[ dayOfWeek ] );
-
-              if ( weekOfMonth == JobScheduleRequest.LAST_WEEK_OF_MONTH ) {
-                qualifiedDayOfWeek.setQualifier( DayOfWeekQualifier.LAST );
-              } else {
-                qualifiedDayOfWeek.setQualifier( DayOfWeekQualifier.values()[ weekOfMonth ] );
-              }
-              complexJobTrigger.addDayOfWeekRecurrence( qualifiedDayOfWeek );
-            }
-          }
-        } else {
-          for ( int dayOfWeek : proxyTrigger.getDaysOfWeek() ) {
-            complexJobTrigger.addDayOfWeekRecurrence( dayOfWeek + 1 );
-          }
-        }
-      } else if ( proxyTrigger.getDaysOfMonth().length > 0 ) {
-
-        for ( int dayOfMonth : proxyTrigger.getDaysOfMonth() ) {
-          complexJobTrigger.addDayOfMonthRecurrence( dayOfMonth );
-        }
-      }
-
-      for ( int month : proxyTrigger.getMonthsOfYear() ) {
-        complexJobTrigger.addMonthlyRecurrence( month + 1 );
-      }
-
-      for ( int year : proxyTrigger.getYears() ) {
-        complexJobTrigger.addYearlyRecurrence( year );
-      }
-
-      Calendar calendar = Calendar.getInstance();
-      calendar.setTime( complexJobTrigger.getStartTime() );
-      complexJobTrigger.setHourlyRecurrence( calendar.get( Calendar.HOUR_OF_DAY ) );
-      complexJobTrigger.setMinuteRecurrence( calendar.get( Calendar.MINUTE ) );
       complexJobTrigger.setUiPassParam( scheduleRequest.getComplexJobTrigger().getUiPassParam() );
       jobTrigger = complexJobTrigger;
 
@@ -149,18 +160,6 @@ public class SchedulerResourceUtil {
       }  else {
         throw new IllegalArgumentException();
       }
-    } else if ( scheduleRequest.getCronLikeJobTrigger() != null ) {
-      String cronString = generateCronString((int)scheduleRequest.getCronLikeJobTrigger().getRepeatInterval()/86400
-              ,scheduleRequest.getCronLikeJobTrigger().getStartTime());
-
-      ComplexJobTrigger complexJobTrigger = QuartzScheduler.createComplexTrigger( cronString );
-      complexJobTrigger.setStartTime( scheduleRequest.getCronLikeJobTrigger().getStartTime() );
-      complexJobTrigger.setEndTime( scheduleRequest.getCronLikeJobTrigger().getEndTime() );
-      complexJobTrigger.setDuration( scheduleRequest.getCronLikeJobTrigger().getDuration() );
-      complexJobTrigger.setUiPassParam( scheduleRequest.getCronLikeJobTrigger().getUiPassParam() );
-      // complexJobTrigger.setCronString(cronString);
-      jobTrigger = complexJobTrigger;
-
     }
 
     return jobTrigger;
