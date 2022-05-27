@@ -31,13 +31,14 @@ public class ComplexJobTriggerProxy {
   int[] weeksOfMonth = new int[0];
   int[] monthsOfYear = new int[0];
   int[] years = new int[0];
-
+  String timeZone;
   Date startTime;
   Date endTime;
   String uiPassParam;
   String cronString;
   String cronDescription;
   private long repeatInterval = 0;
+
 
   public long getRepeatInterval() {
     return repeatInterval;
@@ -132,4 +133,11 @@ public class ComplexJobTriggerProxy {
     this.cronDescription = cronDescription;
   }
 
+  public String getTimeZone() {
+    return timeZone;
+  }
+
+  public void setTimeZone( String timeZone ) {
+    this.timeZone = timeZone;
+  }
 }

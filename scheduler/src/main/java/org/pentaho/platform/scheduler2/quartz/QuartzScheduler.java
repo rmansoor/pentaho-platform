@@ -222,8 +222,12 @@ public class QuartzScheduler implements IScheduler {
     if ( jobTrigger instanceof ComplexJobTrigger ) {
       try {
         quartzTrigger =
-            new CronTrigger( jobId.toString(), jobId.getUserName(), jobTrigger.getCronString() != null ? jobTrigger
-                .getCronString() : QuartzCronStringFactory.createCronString( (ComplexJobTrigger) jobTrigger ) );
+
+            new CronTrigger( jobId.toString(), jobId.getUserName(), jobId.toString(), jobId.getUserName()
+                    , jobTrigger.getStartTime(), jobTrigger.getEndTime(), jobTrigger
+                      .getCronString() != null ? jobTrigger.getCronString() : QuartzCronStringFactory
+                        .createCronString( (ComplexJobTrigger) jobTrigger )
+                          , TimeZone.getTimeZone(jobTrigger.getTimeZone()));
       } catch ( ParseException e ) {
         throw new SchedulerException( Messages.getInstance().getString(
             "QuartzScheduler.ERROR_0001_FAILED_TO_SCHEDULE_JOB", jobId.getJobName() ), e ); //$NON-NLS-1$
@@ -236,9 +240,28 @@ public class QuartzScheduler implements IScheduler {
       }
       int repeatCount =
           simpleTrigger.getRepeatCount() < 0 ? SimpleTrigger.REPEAT_INDEFINITELY : simpleTrigger.getRepeatCount();
+      // Create start time with timezone
+      java.util.Calendar startTimeAsCalendar = null;
+      Date startTime = simpleTrigger.getStartTime();
+      if( startTime != null ) {
+        startTimeAsCalendar = java.util.Calendar.getInstance();
+        startTimeAsCalendar.setTimeZone(TimeZone.getTimeZone(simpleTrigger.getTimeZone()));
+        startTimeAsCalendar.setTime(startTime);
+      }
+
+      // Create end time with timezone
+      java.util.Calendar endTimeAsCalendar = null;
+      Date endTime = simpleTrigger.getEndTime();
+      if( endTime != null ) {
+        endTimeAsCalendar = java.util.Calendar.getInstance();
+        endTimeAsCalendar.setTimeZone(TimeZone.getTimeZone(simpleTrigger.getTimeZone()));
+        endTimeAsCalendar.setTime(endTime);
+      }
+
       quartzTrigger =
-          new SimpleTrigger( jobId.toString(), jobId.getUserName(), simpleTrigger.getStartTime(), simpleTrigger
-              .getEndTime(), repeatCount, interval );
+          new SimpleTrigger( jobId.toString(), jobId.getUserName(),
+                  (startTimeAsCalendar != null ) ? startTimeAsCalendar.getTime(): null,
+                  (endTimeAsCalendar != null ) ? endTimeAsCalendar.getTime(): null, repeatCount, interval );
     } else {
       throw new SchedulerException( Messages.getInstance().getString( "QuartzScheduler.ERROR_0002_TRIGGER_WRONG_TYPE" ) ); //$NON-NLS-1$
     }

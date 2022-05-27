@@ -46,6 +46,8 @@ public abstract class JobTrigger implements Serializable, IJobTrigger {
 
   private Date endTime;
 
+  String timeZone;
+
   private String uiPassParam;
 
   private String cronString;
@@ -80,6 +82,16 @@ public abstract class JobTrigger implements Serializable, IJobTrigger {
   @Override
   public void setEndTime( Date endTime ) {
     this.endTime = endTime;
+  }
+
+  @Override
+  public String getTimeZone() {
+    return timeZone;
+  }
+
+  @Override
+  public void setTimeZone( String timeZone ) {
+    this.timeZone = timeZone;
   }
 
   @Override

@@ -144,6 +144,7 @@ public class SchedulerResourceUtil {
       complexJobTrigger.setEndTime( proxyTrigger.getEndTime() );
       complexJobTrigger.setDuration( scheduleRequest.getDuration() );
       complexJobTrigger.setUiPassParam( scheduleRequest.getComplexJobTrigger().getUiPassParam() );
+      complexJobTrigger.setTimeZone(proxyTrigger.getTimeZone());
       jobTrigger = complexJobTrigger;
 
     } else if ( scheduleRequest.getCronJobTrigger() != null ) {

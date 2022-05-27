@@ -69,7 +69,7 @@ import java.util.List;
  */
 @XmlAccessorType( XmlAccessType.FIELD )
 @XmlType( name = "complexJobTriggerProxy", propOrder = { "cronString", "daysOfMonth", "daysOfWeek", "endTime",
-    "monthsOfYear", "startTime", "uiPassParam", "weeksOfMonth", "years" } )
+    "monthsOfYear", "startTime", "uiPassParam", "weeksOfMonth", "years", "timeZone" } )
 public class ComplexJobTriggerProxy {
 
   protected String cronString;
@@ -88,6 +88,8 @@ public class ComplexJobTriggerProxy {
   protected List<Integer> weeksOfMonth;
   @XmlElement( nillable = true )
   protected List<Integer> years;
+  @XmlElement( nillable = true )
+  protected String timeZone;
 
   /**
    * Gets the value of the cronString property.
@@ -311,6 +313,15 @@ public class ComplexJobTriggerProxy {
       years = new ArrayList<Integer>();
     }
     return this.years;
+  }
+
+
+  public String getTimeZone() {
+    return timeZone;
+  }
+
+  public void setTimeZone( String timeZone ) {
+    this.timeZone = timeZone;
   }
 
 }

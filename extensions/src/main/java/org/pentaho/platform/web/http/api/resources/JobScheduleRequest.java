@@ -101,6 +101,8 @@ public class JobScheduleRequest implements Serializable {
 
   String timeZone;
 
+  String startDate;
+
   public String getInputFile() {
     return inputFile;
   }
@@ -205,6 +207,10 @@ public class JobScheduleRequest implements Serializable {
   public void setDuration( long duration ) {
     this.duration = duration;
   }
+
+  public void setStartDate(String startDate) { this.startDate = startDate; }
+
+  public String getStartDate() { return this.startDate; }
 
   public String getTimeZone() {
     return timeZone;

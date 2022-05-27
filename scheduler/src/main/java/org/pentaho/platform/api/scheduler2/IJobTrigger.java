@@ -54,6 +54,21 @@ public interface IJobTrigger {
   public void setEndTime( Date endTime );
 
   /**
+   * Returns the Time Zone.
+   *
+   * @return the trigger end time.
+   */
+  public String getTimeZone();
+
+  /**
+   * Sets the trigger Time Zone.
+   *
+   * @param timeZone
+   *          when to end the trigger. If null the trigger runs indefinitely
+   */
+  public void setTimeZone( String timeZone );
+
+  /**
    * @return the uiPassParam
    */
   public String getUiPassParam();
