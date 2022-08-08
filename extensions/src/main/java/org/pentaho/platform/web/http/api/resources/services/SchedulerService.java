@@ -62,11 +62,12 @@ import org.pentaho.platform.web.http.api.resources.proxies.BlockStatusProxy;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.util.*;
 
 public class SchedulerService {
 
@@ -86,6 +87,34 @@ public class SchedulerService {
 
   public Job createJob( JobScheduleRequest scheduleRequest )
     throws IOException, SchedulerException, IllegalAccessException {
+    DateTimeFormatter dtf = new DateTimeFormatterBuilder()
+            .appendPattern("E MMM d H:m:s")
+            .appendLiteral(' ')
+            .appendZoneId()
+            .appendOffset("+Hmm", "")
+            .appendLiteral(' ')
+            .appendPattern("u")
+            .toFormatter(Locale.ENGLISH);
+    DateTimeFormatter dtf1 = new DateTimeFormatterBuilder().appendPattern("E MMM d H:m:s").toFormatter(Locale.ENGLISH);
+
+    String updatedDate = null;
+    for (JobScheduleParam param: scheduleRequest.getJobParameters()) {
+      if(param.getName().equals("startDate")) {
+        try {
+          String paramValue  = (String) param.getValue();
+          OffsetDateTime odt = OffsetDateTime.parse(paramValue.substring(1, paramValue.length()-1), dtf);
+          SimpleDateFormat format = new SimpleDateFormat("dd/mm/yyyy hh:mm:ss");
+          updatedDate = format.format(odt);
+          ArrayList<String> value = new ArrayList<>();
+          value.add(String.valueOf(updatedDate.getTime()));
+          param.setStringValue(value);
+        } catch (ParseException e) {
+
+        } finally {
+          break;
+        }
+      }
+    }
 
     // Used to determine if created by a RunInBackgroundCommand
     boolean runInBackground =
