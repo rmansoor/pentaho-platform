@@ -110,10 +110,10 @@ import org.pentaho.platform.api.repository2.unified.webservices.RepositoryFileAc
 import org.pentaho.platform.api.repository2.unified.webservices.RepositoryFileDto;
 import org.pentaho.platform.api.repository2.unified.webservices.RepositoryFileTreeDto;
 import org.pentaho.platform.api.repository2.unified.webservices.StringKeyStringValueDto;
-import org.pentaho.platform.scheduler2.quartz.QuartzScheduler;
 import org.pentaho.platform.security.policy.rolebased.actions.AdministerSecurityAction;
 import org.pentaho.platform.security.policy.rolebased.actions.RepositoryCreateAction;
 import org.pentaho.platform.security.policy.rolebased.actions.RepositoryReadAction;
+import org.pentaho.platform.util.ActionUtil;
 import org.pentaho.platform.web.http.api.resources.SessionResource;
 import org.pentaho.platform.web.http.api.resources.Setting;
 import org.pentaho.platform.web.http.api.resources.StringListWrapper;
@@ -1558,7 +1558,7 @@ public class FileServiceIT {
     children.add( mockedChild );
 
     Map<String, Serializable> mockedFileMetadata = mock( Map.class );
-    doReturn( lineageId ).when( mockedFileMetadata ).get( QuartzScheduler.RESERVEDMAPKEY_LINEAGE_ID );
+    doReturn( lineageId ).when( mockedFileMetadata ).get( ActionUtil.QUARTZ_LINEAGE_ID );
     when( fileService.repository.getFileMetadata( mockedChild.getId() ) ).thenReturn( mockedFileMetadata );
 
     doReturn( pathId ).when( fileDetailsMock ).getId();
@@ -1573,7 +1573,7 @@ public class FileServiceIT {
     try {
       doReturn( fileDetailsMock ).when( fileService ).doGetProperties( pathId );
       List<RepositoryFileDto> list =
-        fileService.searchGeneratedContent( userFolder, lineageId, QuartzScheduler.RESERVEDMAPKEY_LINEAGE_ID );
+        fileService.searchGeneratedContent( userFolder, lineageId, ActionUtil.QUARTZ_LINEAGE_ID );
       assertEquals( list.size(), 1 );
     } catch ( FileNotFoundException e ) {
       e.printStackTrace();
@@ -1596,7 +1596,7 @@ public class FileServiceIT {
 
     try {
       doReturn( null ).when( fileService ).doGetProperties( pathId );
-      fileService.searchGeneratedContent( userFolder, lineageId, QuartzScheduler.RESERVEDMAPKEY_LINEAGE_ID );
+      fileService.searchGeneratedContent( userFolder, lineageId, ActionUtil.QUARTZ_LINEAGE_ID );
       fail();
     } catch ( FileNotFoundException e ) {
     }
