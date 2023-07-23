@@ -211,10 +211,12 @@ public class SystemPathXmlPluginProvider implements IPluginProvider {
   }
 
   protected void processLifecycleListeners( PlatformPlugin plugin, Document doc ) {
-    Element node = (Element) doc.selectSingleNode( "//lifecycle-listener" ); //$NON-NLS-1$
-    if ( node != null ) {
-      String classname = node.attributeValue( "class" ); //$NON-NLS-1$
-      plugin.setLifecycleListenerClassname( classname );
+    List<Node> nodes = (List<Node>) doc.selectNodes( "//lifecycle-listener" ); //$NON-NLS-1$
+    if ( nodes != null && nodes.size() > 0 ) {
+      for(Node node: nodes) {
+        String classname = ((Element) node).attributeValue( "class" ); //$NON-NLS-1$
+        plugin.addLifecycleListenerClassname( classname );
+      }
     }
   }
 
