@@ -478,6 +478,9 @@ public class SolutionBrowserPanel extends HorizontalPanel {
     } else if ( mode == FileCommand.COMMAND.SCHEDULE_NEW ) {
       createSchedule( repositoryFile );
       return;
+    } else if ( mode == FileCommand.COMMAND.BACKGROUND ) {
+      initiateRunInBackground( repositoryFile );
+      return;
     } else if ( mode == FileCommand.COMMAND.SHARE ) {
       ShareFileCommand sfc = new ShareFileCommand();
       sfc.setSolutionPath( fileNameWithPath );
@@ -835,5 +838,13 @@ public class SolutionBrowserPanel extends HorizontalPanel {
 
   private native void createSchedule( final String repositoryFileId, final String repositoryFilePath )/*-{
     $wnd.pho.createSchedule( repositoryFileId, repositoryFilePath );
+  }-*/;
+
+  private void initiateRunInBackground( final RepositoryFile repositoryFile ) {
+    initiateRunInBackground( repositoryFile.getId(), repositoryFile.getPath(), repositoryFile.getTitle() );
+  }
+
+  private native void initiateRunInBackground( final String repositoryFileId, final String repositoryFilePath, final String repositoryFileTitle )/*-{
+    $wnd.pho.initiateRunInBackground( repositoryFileId, repositoryFilePath, repositoryFileTitle );
   }-*/;
 }

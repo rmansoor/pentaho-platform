@@ -297,7 +297,7 @@ define([
     },
 
     runInBackgroundHandler: function (path, title) {
-      window.parent.executeCommand("RunInBackgroundCommand", this.buildParameter(path, title));
+      window.parent.mantle_openRepositoryFile(path, "SCHEDULE_NEW");
     },
 
     editHandler: function (path) {
