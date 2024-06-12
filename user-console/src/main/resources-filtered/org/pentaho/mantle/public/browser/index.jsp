@@ -109,7 +109,7 @@
 				success: function (response) {
 					if(response != null && response.length > 0) {
 
-						open_dir = decodeURIComponent(response);
+						open_dir = response;
 
 						var headers = {};
                         var csrfToken = csrfService.getToken(initialFolderResourceUrl);
@@ -269,7 +269,7 @@
         else if (paramJson.eventSubType == "RefreshBrowsePerspectiveEvent") {
           //Clear the Browse Perspective cache
           window.parent.mantle_isBrowseRepoDirty = true;
-          FileBrowser.update(window.parent.HOME_FOLDER, paramJson.booleanParam); // refresh folder list
+          FileBrowser.update(null, paramJson.booleanParam); // refresh folder list
         }
         else if (paramJson.eventSubType == "RefreshFolderEvent") {
           FileBrowser.updateFolder(paramJson.stringParam); // refresh specified folder
