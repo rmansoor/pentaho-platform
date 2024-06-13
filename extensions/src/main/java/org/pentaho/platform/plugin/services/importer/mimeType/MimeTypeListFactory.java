@@ -54,6 +54,10 @@ import org.xml.sax.XMLReader;
 public class MimeTypeListFactory {
   private static final Log log = LogFactory.getLog( MimeTypeListFactory.class );
 
+  public ImportHandlerMimeTypeDefinitionsDto getImportHandlerMimeTypeDefinitions() {
+    return importHandlerMimeTypeDefinitions;
+  }
+
   private ImportHandlerMimeTypeDefinitionsDto importHandlerMimeTypeDefinitions;
 
   MimeTypeListFactory( String sourceFile ) {
@@ -98,6 +102,34 @@ public class MimeTypeListFactory {
     JAXBElement<ImportHandlerMimeTypeDefinitionsDto> o = (JAXBElement) ( u.unmarshal( xmlSource ) );
     ImportHandlerMimeTypeDefinitionsDto mimeTypeDefinitions = o.getValue();
     return mimeTypeDefinitions;
+  }
+
+  /**
+   * Registers a mime type definition from a plugin
+   * @param pathToMimeTypeDefinitionFile
+   * @return
+   */
+  public List<IMimeType> registerMimeTypeDefinition( String pathToMimeTypeDefinitionFile, String importHandlerClass ) {
+    FileInputStream inputStream = null;
+    try {
+      inputStream = new FileInputStream( pathToMimeTypeDefinitionFile );
+      ImportHandlerMimeTypeDefinitionsDto pluginMimeTypeDefinitionDto = fromXml( inputStream );
+      getImportHandlerMimeTypeDefinitions().registerImportHandler( pluginMimeTypeDefinitionDto.getImportHandler() );
+      log.info( "Successfully registered mime type definition " + pathToMimeTypeDefinitionFile );
+    } catch ( FileNotFoundException e ) {
+      log.error( "ImportHandlerMimeTypeDefinition File \"" + pathToMimeTypeDefinitionFile + "\" not found", e );
+    } catch ( JAXBException e ) {
+      log.error( "Could not marshal the ImportHandlerMimeTypeDefinition file \"" + pathToMimeTypeDefinitionFile + "\"", e );
+    } finally {
+      if ( inputStream != null ) {
+        try {
+          inputStream.close();
+        } catch ( Exception e ) {
+          log.error( e );
+        }
+      }
+    }
+    return createMimeTypeList( importHandlerClass );
   }
 
   public List<IMimeType> createMimeTypeList( String handlerClass ) {

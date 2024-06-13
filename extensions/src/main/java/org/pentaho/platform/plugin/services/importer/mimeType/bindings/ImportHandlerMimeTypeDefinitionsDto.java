@@ -90,4 +90,8 @@ public class ImportHandlerMimeTypeDefinitionsDto {
     return this.importHandler;
   }
 
+  public void registerImportHandler( List<ImportHandlerDto> importHandlers ) {
+    getImportHandler().addAll( importHandler );
+  }
+
 }

@@ -184,17 +184,6 @@
 					<property name="knownExtensions" ref="extensions" />
 				</bean>
 				
-				<bean class="org.pentaho.platform.plugin.services.importer.PDIImportFileHandler">
-					<constructor-arg>
-						<bean factory-bean="MimeTypeListFactory" factory-method="createMimeTypeList" >
-							<constructor-arg value="org.pentaho.platform.plugin.services.importer.PDIImportFileHandler" />
-						</bean>
-					</constructor-arg>
-					<property name="repository" ref="unifiedRepository" />
-					<property name="defaultAclHandler" ref="defaultAclHandler" />
-					<property name="knownExtensions" ref="extensions" />
-				</bean>
-
 				<bean class="org.pentaho.platform.plugin.services.importer.MetaStoreImportHandler">
 					<constructor-arg>
 						<bean factory-bean="MimeTypeListFactory" factory-method="createMimeTypeList" >
