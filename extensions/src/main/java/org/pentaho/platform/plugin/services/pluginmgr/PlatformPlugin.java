@@ -30,6 +30,7 @@ import org.pentaho.platform.api.engine.PluginBeanDefinition;
 import org.pentaho.platform.api.engine.PluginLifecycleException;
 import org.pentaho.platform.api.engine.PluginServiceDefinition;
 import org.pentaho.platform.api.engine.perspective.pojo.IPluginPerspective;
+import org.pentaho.platform.api.engine.Lifecyclelistener;
 import org.pentaho.ui.xul.XulOverlay;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 
@@ -71,7 +72,7 @@ public class PlatformPlugin implements IPlatformPlugin, IPentahoInitializer {
   // explicitly set
   private String sourceDescription = ""; //$NON-NLS-1$
 
-  private List<String> lifecycleListenerClassnames = new ArrayList<>();
+  private List<Lifecyclelistener> lifecyclelistenerList = new ArrayList<>();
 
   private List<IPluginLifecycleListener> lifecycleListeners = new ArrayList<>();
 
@@ -93,16 +94,16 @@ public class PlatformPlugin implements IPlatformPlugin, IPentahoInitializer {
     }
   }
 
-  public void addLifecycleListenerClassname( String lifecycleListenerClassname ) {
-    this.lifecycleListenerClassnames.add( lifecycleListenerClassname );
+  public void addLifecycleListener(Lifecyclelistener lifecycleListener ) {
+    this.lifecyclelistenerList.add( lifecycleListener );
   }
 
-  public void setLifecycleListenerClassname( String lifecycleListenerClassnames ) {
-    this.lifecycleListenerClassnames.add( lifecycleListenerClassnames );
+  public void setLifecycleListeners(List<Lifecyclelistener> lifecycleListenerList ) {
+    this.lifecyclelistenerList.addAll( lifecycleListenerList );
   }
 
-  public List<String> getLifecycleListenerClassnames() {
-    return lifecycleListenerClassnames;
+  public List<Lifecyclelistener> getLifecyclelistenerList() {
+    return lifecyclelistenerList;
   }
 
   public List<IContentGeneratorInfo> getContentGenerators() {

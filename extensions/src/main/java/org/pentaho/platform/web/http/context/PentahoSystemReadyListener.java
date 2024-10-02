@@ -48,8 +48,8 @@ public class PentahoSystemReadyListener implements ServletContextListener {
       List<IPlatformPlugin> providedPlugins = pluginProvider.getPlugins( session );
       for ( IPlatformPlugin plugin : providedPlugins ) {
         try {
-          if ( plugin.getLifecycleListenerClassnames() != null ) {
-            for ( String lifecycleListener : plugin.getLifecycleListenerClassnames() ) {
+          if ( plugin.getLifecyclelistenerList() != null ) {
+            for ( String lifecycleListener : plugin.getLifecyclelistenerList() ) {
               ClassLoader loader = pluginManager.getClassLoader( plugin.getId() );
               Object listener = loader.loadClass( lifecycleListener ).getDeclaredConstructor().newInstance();
               if ( IPlatformReadyListener.class.isAssignableFrom( listener.getClass() ) ) {

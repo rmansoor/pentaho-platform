@@ -25,33 +25,7 @@ import org.apache.commons.lang.StringUtils;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
-import org.pentaho.platform.api.engine.IConfiguration;
-import org.pentaho.platform.api.engine.IContentGenerator;
-import org.pentaho.platform.api.engine.IContentGeneratorInfo;
-import org.pentaho.platform.api.engine.IContentGeneratorInvoker;
-import org.pentaho.platform.api.engine.IContentInfo;
-import org.pentaho.platform.api.engine.IObjectCreator;
-import org.pentaho.platform.api.engine.IPentahoObjectFactory;
-import org.pentaho.platform.api.engine.IPentahoObjectReference;
-import org.pentaho.platform.api.engine.IPentahoObjectRegistration;
-import org.pentaho.platform.api.engine.IPentahoRegistrableObjectFactory;
-import org.pentaho.platform.api.engine.IPentahoSession;
-import org.pentaho.platform.api.engine.IPlatformPlugin;
-import org.pentaho.platform.api.engine.IPluginLifecycleListener;
-import org.pentaho.platform.api.engine.IPluginManager;
-import org.pentaho.platform.api.engine.IPluginManagerListener;
-import org.pentaho.platform.api.engine.IPluginProvider;
-import org.pentaho.platform.api.engine.IPluginResourceLoader;
-import org.pentaho.platform.api.engine.IServiceManager;
-import org.pentaho.platform.api.engine.ISystemConfig;
-import org.pentaho.platform.api.engine.ObjectFactoryException;
-import org.pentaho.platform.api.engine.PlatformPluginRegistrationException;
-import org.pentaho.platform.api.engine.PluginBeanDefinition;
-import org.pentaho.platform.api.engine.PluginBeanException;
-import org.pentaho.platform.api.engine.PluginLifecycleException;
-import org.pentaho.platform.api.engine.PluginServiceDefinition;
-import org.pentaho.platform.api.engine.ServiceException;
-import org.pentaho.platform.api.engine.ServiceInitializationException;
+import org.pentaho.platform.api.engine.*;
 import org.pentaho.platform.api.engine.perspective.pojo.IPluginPerspective;
 import org.pentaho.platform.config.PropertiesFileConfiguration;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
@@ -81,6 +55,8 @@ import org.springframework.core.io.FileSystemResource;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -117,27 +93,40 @@ public class PentahoSystemPluginManager implements IPluginManager {
   private static void createAndRegisterLifecycleListeners( IPlatformPlugin plugin, ClassLoader loader )
     throws PlatformPluginRegistrationException {
     try {
-      if ( plugin.getLifecycleListenerClassnames() != null ) {
-        for ( String pluginLifecycleListener : plugin.getLifecycleListenerClassnames() ) {
-          Object listener = loader.loadClass( pluginLifecycleListener ).getDeclaredConstructor().newInstance();
-          if ( !IPluginLifecycleListener.class.isAssignableFrom( listener.getClass() ) ) {
+      if ( plugin.getLifecyclelistenerList() != null ) {
+        Object listener = null;
+        for (Lifecyclelistener pluginLifeCycleListener : plugin.getLifecyclelistenerList()) {
+          listener = loader.loadClass(pluginLifeCycleListener.get_class()).getDeclaredConstructor().newInstance();
+          if (!IPluginLifecycleListener.class.isAssignableFrom(listener.getClass())) {
             throw new PlatformPluginRegistrationException(
-              Messages
-                .getInstance()
-                .getErrorString(
-                  "PluginManager.ERROR_0016_PLUGIN_LIFECYCLE_LISTENER_WRONG_TYPE", plugin.getId(),
-                  plugin.getLifecycleListenerClassnames() )
+                    Messages
+                            .getInstance()
+                            .getErrorString(
+                                    "PluginManager.ERROR_0016_PLUGIN_LIFECYCLE_LISTENER_WRONG_TYPE", plugin.getId(),
+                                    plugin.getLifecyclelistenerList())
             ); //$NON-NLS-1$
           }
-          plugin.addLifecycleListener( (IPluginLifecycleListener) listener );
+          for (Property property : pluginLifeCycleListener.getProperties()) {
+            Field field = listener.getClass().getDeclaredField(property.getName());
+            field.setAccessible(true);
+            Object object = field.get(listener);
+            String setMethod = "set" + toCamelCase(property.name);
+            Method methodSetMethod = listener.getClass().getDeclaredMethod(setMethod, String.class);
+            methodSetMethod.invoke(object, property.getValue());
+          }
         }
       }
     } catch ( Throwable t ) {
       throw new PlatformPluginRegistrationException( Messages.getInstance().getErrorString(
         "PluginManager.ERROR_0017_COULD_NOT_LOAD_PLUGIN_LIFECYCLE_LISTENER", plugin.getId(), plugin
-          .getLifecycleListenerClassnames()
+          .getLifecyclelistenerList()
       ), t );
     }
+  }
+
+  private static String toCamelCase(String s) {
+    return s.substring(0, 1).toUpperCase() +
+            s.substring(1).toLowerCase();
   }
 
   @Override

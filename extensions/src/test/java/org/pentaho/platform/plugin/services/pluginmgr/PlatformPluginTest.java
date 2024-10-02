@@ -11,9 +11,9 @@ public class PlatformPluginTest {
   @Test
   public void testAddLifecycleListenerClassname() {
     PlatformPlugin platformPlugin = new PlatformPlugin();
-    platformPlugin.addLifecycleListenerClassname( "bogus1" );
-    platformPlugin.addLifecycleListenerClassname( "bogus2" );
-    List<String> classnames = platformPlugin.getLifecycleListenerClassnames();
+    platformPlugin.addLifecycleListener( "bogus1" );
+    platformPlugin.addLifecycleListener( "bogus2" );
+    List<String> classnames = platformPlugin.getLifecyclelistenerList();
     assertEquals( 2, classnames.size() );
     assertTrue( classnames.contains( "bogus1" ) );
     assertTrue( classnames.contains( "bogus2" ) );
@@ -22,9 +22,9 @@ public class PlatformPluginTest {
   @Test
   public void testSetLifecycleListenerClassname() {
     PlatformPlugin platformPlugin = new PlatformPlugin();
-    platformPlugin.setLifecycleListenerClassname( "bogus1" );
-    platformPlugin.setLifecycleListenerClassname( "bogus2" );
-    List<String> classnames = platformPlugin.getLifecycleListenerClassnames();
+    platformPlugin.setLifecycleListeners( "bogus1" );
+    platformPlugin.setLifecycleListeners( "bogus2" );
+    List<String> classnames = platformPlugin.getLifecyclelistenerList();
     assertEquals( 2, classnames.size() );
     assertTrue( classnames.contains( "bogus1" ) );
     assertTrue( classnames.contains( "bogus2" ) );

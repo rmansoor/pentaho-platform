@@ -152,7 +152,7 @@ public class SystemPathXmlPluginProvider implements IPluginProvider {
     processExternalResources( plugin, doc );
     processPerspectives( plugin, doc );
 
-    int listenerCount = plugin.getLifecycleListenerClassnames() != null ? plugin.getLifecycleListenerClassnames().size()  : 0;
+    int listenerCount = plugin.getLifecyclelistenerList() != null ? plugin.getLifecyclelistenerList().size()  : 0;
     String msg =
         Messages.getInstance().getString(
             "SystemPathXmlPluginProvider.PLUGIN_PROVIDES", //$NON-NLS-1$
@@ -215,7 +215,7 @@ public class SystemPathXmlPluginProvider implements IPluginProvider {
     if ( nodes != null && !nodes.isEmpty() ) {
       for(Node node: nodes) {
         String classname = ((Element) node).attributeValue( CLASS_PROPERRTY );
-        plugin.addLifecycleListenerClassname( classname );
+        plugin.addLifecycleListener( classname );
       }
     }
   }
