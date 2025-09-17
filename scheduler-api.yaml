@@ -1,0 +1,1115 @@
+openapi: 3.0.3
+info:
+  title: Pentaho Scheduler API
+  description: |
+    Comprehensive REST API for the Pentaho Scheduling System.
+    
+    This API provides functionality for:
+    - Creating, updating, and managing scheduled jobs
+    - Managing job triggers (Simple, Cron, Complex)
+    - Controlling scheduler state (start, pause, stop)
+    - User permission management for scheduling
+    - Job execution monitoring and history
+    - Blockout periods management
+    
+    The scheduler supports various types of content including reports, transformations, 
+    and custom actions with flexible scheduling options.
+  version: 2.0.0
+  contact:
+    name: Pentaho Support
+    url: https://support.hitachivantara.com
+    email: support@hitachivantara.com
+  license:
+    name: Hitachi Vantara Business Source License
+    url: https://hitachivantara.com/legal/licenses
+
+servers:
+  - url: https://{server}:{port}/pentaho/api/v1
+    description: Pentaho Server
+    variables:
+      server:
+        default: localhost
+        description: Pentaho server hostname
+      port:
+        default: '8080'
+        description: Pentaho server port
+
+security:
+  - basicAuth: []
+  - bearerAuth: []
+
+paths:
+  /scheduler/jobs:
+    get:
+      summary: Get all scheduled jobs
+      description: Retrieve a list of all scheduled jobs accessible to the current user
+      operationId: getAllJobs
+      tags:
+        - Jobs
+      parameters:
+        - name: state
+          in: query
+          description: Filter jobs by state
+          schema:
+            $ref: '#/components/schemas/JobState'
+        - name: user
+          in: query
+          description: Filter jobs by owner (admin only)
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of results to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: offset
+          in: query
+          description: Number of results to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of scheduled jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Job'
+                  totalCount:
+                    type: integer
+                    description: Total number of jobs matching the criteria
+                  hasMore:
+                    type: boolean
+                    description: Whether there are more results available
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      summary: Create a new scheduled job
+      description: Create a new scheduled job with specified trigger and parameters
+      operationId: createJob
+      tags:
+        - Jobs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobScheduleRequest'
+      responses:
+        '201':
+          description: Job created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+                    description: Unique identifier of the created job
+                  message:
+                    type: string
+                    description: Success message
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/jobs/{jobId}:
+    get:
+      summary: Get job details
+      description: Retrieve detailed information about a specific scheduled job
+      operationId: getJobById
+      tags:
+        - Jobs
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique identifier of the job
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    put:
+      summary: Update an existing job
+      description: Update the configuration of an existing scheduled job
+      operationId: updateJob
+      tags:
+        - Jobs
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique identifier of the job
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobScheduleRequest'
+      responses:
+        '200':
+          description: Job updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    delete:
+      summary: Delete a scheduled job
+      description: Remove a scheduled job from the system
+      operationId: deleteJob
+      tags:
+        - Jobs
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique identifier of the job
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Job deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/jobs/{jobId}/pause:
+    post:
+      summary: Pause a job
+      description: Pause a scheduled job, preventing it from executing
+      operationId: pauseJob
+      tags:
+        - Job Control
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique identifier of the job
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job paused successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Job paused successfully"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/jobs/{jobId}/resume:
+    post:
+      summary: Resume a paused job
+      description: Resume a previously paused job
+      operationId: resumeJob
+      tags:
+        - Job Control
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique identifier of the job
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job resumed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Job resumed successfully"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/jobs/{jobId}/execute:
+    post:
+      summary: Execute job immediately
+      description: Trigger immediate execution of a scheduled job
+      operationId: executeJobNow
+      tags:
+        - Job Control
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique identifier of the job
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Job execution started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  executionId:
+                    type: string
+                    description: Unique identifier for this execution
+                  message:
+                    type: string
+                    example: "Job execution started"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/jobs/{jobId}/history:
+    get:
+      summary: Get job execution history
+      description: Retrieve execution history for a specific job
+      operationId: getJobHistory
+      tags:
+        - Jobs
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique identifier of the job
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of results to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+        - name: offset
+          in: query
+          description: Number of results to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Job execution history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  executions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JobExecution'
+                  totalCount:
+                    type: integer
+                    description: Total number of executions
+                  hasMore:
+                    type: boolean
+                    description: Whether there are more results available
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/jobs/{jobId}/generated-content:
+    get:
+      summary: Get generated content
+      description: Retrieve content generated by job executions (e.g., reports, files)
+      operationId: getGeneratedContent
+      tags:
+        - Jobs
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Unique identifier of the job
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Generated content list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GeneratedContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/state:
+    get:
+      summary: Get scheduler state
+      description: Retrieve the current state of the scheduler
+      operationId: getSchedulerState
+      tags:
+        - Scheduler Control
+      responses:
+        '200':
+          description: Current scheduler state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/SchedulerState'
+                  message:
+                    type: string
+                    description: Additional state information
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    put:
+      summary: Set scheduler state
+      description: Change the state of the scheduler (start, pause, stop)
+      operationId: setSchedulerState
+      tags:
+        - Scheduler Control
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - state
+              properties:
+                state:
+                  $ref: '#/components/schemas/SchedulerState'
+                message:
+                  type: string
+                  description: Optional message for the state change
+      responses:
+        '200':
+          description: Scheduler state updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/SchedulerState'
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/permissions/can-schedule:
+    get:
+      summary: Check scheduling permissions
+      description: Check if the current user can schedule content
+      operationId: canUserSchedule
+      tags:
+        - Permissions
+      parameters:
+        - name: fileId
+          in: query
+          description: Repository file ID to check scheduling permission for
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scheduling permission status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  canSchedule:
+                    type: boolean
+                    description: Whether the user can schedule
+                  reason:
+                    type: string
+                    description: Reason if scheduling is not allowed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/permissions/can-execute:
+    get:
+      summary: Check execution permissions
+      description: Check if the current user can execute scheduled jobs
+      operationId: canUserExecute
+      tags:
+        - Permissions
+      responses:
+        '200':
+          description: Execution permission status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  canExecute:
+                    type: boolean
+                    description: Whether the user can execute schedules
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/blockouts:
+    get:
+      summary: Get blockout periods
+      description: Retrieve all defined blockout periods
+      operationId: getBlockouts
+      tags:
+        - Blockouts
+      responses:
+        '200':
+          description: List of blockout periods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BlockoutPeriod'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      summary: Create blockout period
+      description: Create a new blockout period to prevent job execution during specified times
+      operationId: createBlockout
+      tags:
+        - Blockouts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlockoutRequest'
+      responses:
+        '201':
+          description: Blockout period created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlockoutPeriod'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/blockouts/{blockoutId}:
+    delete:
+      summary: Delete blockout period
+      description: Remove a blockout period
+      operationId: deleteBlockout
+      tags:
+        - Blockouts
+      parameters:
+        - name: blockoutId
+          in: path
+          required: true
+          description: Unique identifier of the blockout period
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Blockout period deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    JobScheduleRequest:
+      type: object
+      required:
+        - jobName
+        - inputFile
+        - actionClass
+      properties:
+        jobId:
+          type: string
+          description: Unique identifier for the job (for updates)
+        jobName:
+          type: string
+          description: Human-readable name for the job
+          example: "Daily Sales Report"
+        description:
+          type: string
+          description: Optional description of the job
+        inputFile:
+          type: string
+          description: Path to the file or resource to be processed
+          example: "/public/reports/sales-report.prpt"
+        outputFile:
+          type: string
+          description: Output location for generated content
+          example: "/home/admin/reports/"
+        actionClass:
+          type: string
+          description: Java class that implements the job action
+          example: "org.pentaho.platform.scheduler2.action.EmailAction"
+        jobState:
+          $ref: '#/components/schemas/JobState'
+        jobParameters:
+          type: array
+          description: Parameters to pass to the job
+          items:
+            $ref: '#/components/schemas/JobParameter'
+        pdiParameters:
+          type: object
+          description: PDI-specific parameters for transformations/jobs
+          additionalProperties:
+            type: string
+        simpleJobTrigger:
+          $ref: '#/components/schemas/SimpleJobTrigger'
+        cronJobTrigger:
+          $ref: '#/components/schemas/CronJobTrigger'
+        complexJobTrigger:
+          $ref: '#/components/schemas/ComplexJobTrigger'
+        timeZone:
+          type: string
+          description: Time zone for the schedule
+          example: "America/New_York"
+        duration:
+          type: integer
+          format: int64
+          description: Duration in milliseconds for how long the job should run
+        runSafeMode:
+          type: boolean
+          description: Whether to run in safe mode
+          default: false
+        gatheringMetrics:
+          type: boolean
+          description: Whether to gather execution metrics
+          default: true
+        logLevel:
+          type: string
+          enum: [ERROR, WARN, INFO, DEBUG, TRACE]
+          description: Logging level for job execution
+          default: INFO
+
+    Job:
+      type: object
+      properties:
+        jobId:
+          type: string
+          description: Unique identifier of the job
+        jobName:
+          type: string
+          description: Name of the job
+        description:
+          type: string
+          description: Job description
+        userName:
+          type: string
+          description: Owner of the job
+        state:
+          $ref: '#/components/schemas/JobState'
+        nextFireTime:
+          type: string
+          format: date-time
+          description: Next scheduled execution time
+        lastFireTime:
+          type: string
+          format: date-time
+          description: Last execution time
+        createdTime:
+          type: string
+          format: date-time
+          description: When the job was created
+        modifiedTime:
+          type: string
+          format: date-time
+          description: When the job was last modified
+        inputFile:
+          type: string
+          description: Input file path
+        outputFile:
+          type: string
+          description: Output file path
+        actionClass:
+          type: string
+          description: Action class name
+        jobParameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobParameter'
+        trigger:
+          oneOf:
+            - $ref: '#/components/schemas/SimpleJobTrigger'
+            - $ref: '#/components/schemas/CronJobTrigger'
+            - $ref: '#/components/schemas/ComplexJobTrigger'
+
+    JobParameter:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          description: Parameter name
+        value:
+          type: string
+          description: Parameter value
+        type:
+          type: string
+          description: Parameter type
+          enum: [STRING, INTEGER, BOOLEAN, DATE]
+          default: STRING
+
+    SimpleJobTrigger:
+      type: object
+      description: Simple trigger for one-time or repeating executions
+      properties:
+        startTime:
+          type: string
+          format: date-time
+          description: When to start the trigger
+        endTime:
+          type: string
+          format: date-time
+          description: When to end the trigger (optional)
+        repeatCount:
+          type: integer
+          description: Number of times to repeat (-1 for infinite)
+          default: 0
+        repeatInterval:
+          type: integer
+          format: int64
+          description: Interval between repeats in seconds
+        uiPassParam:
+          type: string
+          description: UI parameter for schedule type
+          example: "RUN_ONCE"
+
+    CronJobTrigger:
+      type: object
+      description: Cron-based trigger for complex scheduling
+      properties:
+        cronString:
+          type: string
+          description: Cron expression
+          example: "0 0 9 * * ?"
+        startTime:
+          type: string
+          format: date-time
+          description: When to start the trigger
+        endTime:
+          type: string
+          format: date-time
+          description: When to end the trigger (optional)
+        timeZone:
+          type: string
+          description: Time zone for the cron expression
+          example: "America/New_York"
+        duration:
+          type: integer
+          format: int64
+          description: Duration in milliseconds
+
+    ComplexJobTrigger:
+      type: object
+      description: Complex trigger with multiple scheduling options
+      properties:
+        cronString:
+          type: string
+          description: Cron expression for complex scheduling
+        startTime:
+          type: string
+          format: date-time
+          description: When to start the trigger
+        endTime:
+          type: string
+          format: date-time
+          description: When to end the trigger (optional)
+        timeZone:
+          type: string
+          description: Time zone
+        daysOfWeek:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 7
+          description: Days of week (1=Sunday, 7=Saturday)
+        daysOfMonth:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 31
+          description: Days of month
+        weeksOfMonth:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 5
+          description: Weeks of month
+        months:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 12
+          description: Months of year
+        years:
+          type: array
+          items:
+            type: integer
+          description: Specific years
+
+    JobExecution:
+      type: object
+      properties:
+        executionId:
+          type: string
+          description: Unique identifier for this execution
+        jobId:
+          type: string
+          description: ID of the job that was executed
+        startTime:
+          type: string
+          format: date-time
+          description: When execution started
+        endTime:
+          type: string
+          format: date-time
+          description: When execution ended
+        status:
+          type: string
+          enum: [RUNNING, COMPLETED, FAILED, CANCELLED]
+          description: Execution status
+        result:
+          type: string
+          description: Execution result message
+        errorMessage:
+          type: string
+          description: Error message if execution failed
+        executionTime:
+          type: integer
+          format: int64
+          description: Execution duration in milliseconds
+        linesRead:
+          type: integer
+          format: int64
+          description: Number of lines read (for data jobs)
+        linesWritten:
+          type: integer
+          format: int64
+          description: Number of lines written (for data jobs)
+        filesGenerated:
+          type: array
+          items:
+            type: string
+          description: List of files generated by this execution
+
+    GeneratedContent:
+      type: object
+      properties:
+        fileId:
+          type: string
+          description: Unique identifier of the generated file
+        fileName:
+          type: string
+          description: Name of the generated file
+        filePath:
+          type: string
+          description: Path to the generated file
+        mimeType:
+          type: string
+          description: MIME type of the file
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes
+        createdTime:
+          type: string
+          format: date-time
+          description: When the file was created
+        downloadUrl:
+          type: string
+          description: URL to download the file
+
+    BlockoutPeriod:
+      type: object
+      properties:
+        blockoutId:
+          type: string
+          description: Unique identifier of the blockout period
+        name:
+          type: string
+          description: Name of the blockout period
+        description:
+          type: string
+          description: Description of the blockout period
+        startTime:
+          type: string
+          format: date-time
+          description: Start time of the blockout
+        endTime:
+          type: string
+          format: date-time
+          description: End time of the blockout
+        isRecurring:
+          type: boolean
+          description: Whether the blockout repeats
+        cronExpression:
+          type: string
+          description: Cron expression for recurring blockouts
+        duration:
+          type: integer
+          format: int64
+          description: Duration in milliseconds
+        createdBy:
+          type: string
+          description: User who created the blockout
+        createdTime:
+          type: string
+          format: date-time
+          description: When the blockout was created
+
+    BlockoutRequest:
+      type: object
+      required:
+        - name
+        - startTime
+        - endTime
+      properties:
+        name:
+          type: string
+          description: Name of the blockout period
+        description:
+          type: string
+          description: Description of the blockout period
+        startTime:
+          type: string
+          format: date-time
+          description: Start time of the blockout
+        endTime:
+          type: string
+          format: date-time
+          description: End time of the blockout
+        isRecurring:
+          type: boolean
+          description: Whether the blockout repeats
+          default: false
+        cronExpression:
+          type: string
+          description: Cron expression for recurring blockouts
+        duration:
+          type: integer
+          format: int64
+          description: Duration in milliseconds
+
+    JobState:
+      type: string
+      enum:
+        - NORMAL
+        - PAUSED
+        - COMPLETE
+        - ERROR
+        - BLOCKED
+      description: Current state of a scheduled job
+
+    SchedulerState:
+      type: string
+      enum:
+        - RUNNING
+        - PAUSED
+        - STOPPED
+      description: Current state of the scheduler
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: string
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "BAD_REQUEST"
+            message: "Invalid job schedule request"
+            details: "Missing required field: jobName"
+
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "UNAUTHORIZED"
+            message: "Authentication required"
+            details: "Please provide valid credentials"
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "FORBIDDEN"
+            message: "Insufficient permissions"
+            details: "User does not have scheduling permissions"
+
+    NotFound:
+      description: Not found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "NOT_FOUND"
+            message: "Job not found"
+            details: "No job found with the specified ID"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"
+            details: "Please contact support if the problem persists"
+
+tags:
+  - name: Jobs
+    description: Scheduled job management operations
+  - name: Job Control
+    description: Job execution control operations
+  - name: Scheduler Control
+    description: Overall scheduler state management
+  - name: Permissions
+    description: User permission checking operations
+  - name: Blockouts
+    description: Blockout period management operations

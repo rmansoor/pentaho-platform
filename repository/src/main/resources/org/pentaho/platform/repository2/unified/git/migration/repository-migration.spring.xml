@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans 
+           http://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/context 
+           http://www.springframework.org/schema/context/spring-context.xsd">
+
+  <!-- 
+    Spring configuration for repository migration services.
+    
+    This configuration provides:
+    - Migration service beans with different configurations
+    - Repository factory beans
+    - Migration tool configuration
+    - Example migration setups for different scenarios
+  -->
+
+  <!-- Enable annotation-based configuration -->
+  <context:annotation-config />
+  <context:component-scan base-package="org.pentaho.platform.repository2.unified.git.migration" />
+
+  <!-- Migration Configurations -->
+  
+  <!-- Default migration configuration suitable for most scenarios -->
+  <bean id="defaultMigrationConfig" 
+        class="org.pentaho.platform.repository2.unified.git.migration.MigrationConfiguration">
+    <property name="migrateAcls" value="true" />
+    <property name="migrateMetadata" value="true" />
+    <property name="migrateVersionHistory" value="true" />
+    <property name="continueOnError" value="true" />
+    <property name="validateAfterMigration" value="true" />
+    <property name="batchCommitSize" value="100" />
+    <property name="progressReportInterval" value="50" />
+    <property name="commitMessage" value="Repository migration" />
+    <property name="commitAuthor" value="Migration Service" />
+    <property name="commitEmail" value="migration@pentaho.com" />
+  </bean>
+
+  <!-- Fast migration configuration - skips non-essential data -->
+  <bean id="fastMigrationConfig" 
+        class="org.pentaho.platform.repository2.unified.git.migration.MigrationConfiguration">
+    <property name="migrateAcls" value="false" />
+    <property name="migrateMetadata" value="false" />
+    <property name="migrateVersionHistory" value="false" />
+    <property name="continueOnError" value="true" />
+    <property name="validateAfterMigration" value="false" />
+    <property name="batchCommitSize" value="200" />
+    <property name="progressReportInterval" value="100" />
+    <property name="commitMessage" value="Fast repository migration" />
+  </bean>
+
+  <!-- Production migration configuration - full validation and rollback -->
+  <bean id="productionMigrationConfig" 
+        class="org.pentaho.platform.repository2.unified.git.migration.MigrationConfiguration">
+    <property name="migrateAcls" value="true" />
+    <property name="migrateMetadata" value="true" />
+    <property name="migrateVersionHistory" value="true" />
+    <property name="continueOnError" value="false" />
+    <property name="validateAfterMigration" value="true" />
+    <property name="rollbackOnFailure" value="true" />
+    <property name="batchCommitSize" value="50" />
+    <property name="progressReportInterval" value="25" />
+    <property name="targetBranch" value="production-migration" />
+    <property name="commitMessage" value="Production repository migration" />
+    <property name="commitAuthor" value="Production Migration Service" />
+  </bean>
+
+  <!-- JCR-specific migration configuration -->
+  <bean id="jcrMigrationConfig" 
+        class="org.pentaho.platform.repository2.unified.git.migration.MigrationConfiguration">
+    <property name="migrateAcls" value="true" />
+    <property name="migrateMetadata" value="true" />
+    <property name="migrateVersionHistory" value="true" />
+    <property name="continueOnError" value="true" />
+    <property name="validateAfterMigration" value="true" />
+    <property name="batchCommitSize" value="75" />
+    <property name="progressReportInterval" value="50" />
+    <property name="targetBranch" value="jcr-migration" />
+    <property name="commitMessage" value="JCR to Git migration" />
+    <property name="commitAuthor" value="JCR Migration Service" />
+  </bean>
+
+  <!-- FileSystem-specific migration configuration -->
+  <bean id="fileSystemMigrationConfig" 
+        class="org.pentaho.platform.repository2.unified.git.migration.MigrationConfiguration">
+    <property name="migrateAcls" value="false" />
+    <property name="migrateMetadata" value="true" />
+    <property name="migrateVersionHistory" value="false" />
+    <property name="continueOnError" value="true" />
+    <property name="validateAfterMigration" value="true" />
+    <property name="batchCommitSize" value="150" />
+    <property name="progressReportInterval" value="75" />
+    <property name="targetBranch" value="filesystem-migration" />
+    <property name="commitMessage" value="FileSystem to Git migration" />
+    <property name="commitAuthor" value="FileSystem Migration Service" />
+  </bean>
+
+  <!-- Repository Factory Beans -->
+  
+  <!-- Factory for creating Git repositories -->
+  <bean id="gitRepositoryFactory" 
+        class="org.pentaho.platform.repository2.unified.git.GitRepositoryFactory">
+    <property name="defaultAuthor" value="Migration Service" />
+    <property name="defaultEmail" value="migration@pentaho.com" />
+  </bean>
+
+  <!-- Migration Service Beans -->
+  
+  <!-- Default migration service -->
+  <bean id="migrationService" 
+        class="org.pentaho.platform.repository2.unified.git.migration.UnifiedRepositoryMigrationService">
+    <constructor-arg name="sourceRepository" ref="sourceRepository" />
+    <constructor-arg name="targetRepository" ref="targetGitRepository" />
+    <constructor-arg name="config" ref="defaultMigrationConfig" />
+  </bean>
+
+  <!-- Fast migration service for development/testing -->
+  <bean id="fastMigrationService" 
+        class="org.pentaho.platform.repository2.unified.git.migration.UnifiedRepositoryMigrationService">
+    <constructor-arg name="sourceRepository" ref="sourceRepository" />
+    <constructor-arg name="targetRepository" ref="targetGitRepository" />
+    <constructor-arg name="config" ref="fastMigrationConfig" />
+  </bean>
+
+  <!-- Production migration service -->
+  <bean id="productionMigrationService" 
+        class="org.pentaho.platform.repository2.unified.git.migration.UnifiedRepositoryMigrationService">
+    <constructor-arg name="sourceRepository" ref="sourceRepository" />
+    <constructor-arg name="targetRepository" ref="targetGitRepository" />
+    <constructor-arg name="config" ref="productionMigrationConfig" />
+  </bean>
+
+  <!-- Migration service factory for creating custom migrations -->
+  <bean id="migrationServiceFactory" 
+        class="org.pentaho.platform.repository2.unified.git.migration.spring.MigrationServiceFactory">
+    <property name="gitRepositoryFactory" ref="gitRepositoryFactory" />
+  </bean>
+
+  <!-- Profiles for different migration scenarios -->
+  
+  <!-- Development profile - fast migration with minimal validation -->
+  <beans profile="development">
+    <bean id="activeMigrationService" 
+          class="org.pentaho.platform.repository2.unified.git.migration.UnifiedRepositoryMigrationService">
+      <constructor-arg name="sourceRepository" ref="sourceRepository" />
+      <constructor-arg name="targetRepository" ref="targetGitRepository" />
+      <constructor-arg name="config" ref="fastMigrationConfig" />
+    </bean>
+  </beans>
+
+  <!-- Testing profile - default migration with validation -->
+  <beans profile="testing">
+    <bean id="activeMigrationService" 
+          class="org.pentaho.platform.repository2.unified.git.migration.UnifiedRepositoryMigrationService">
+      <constructor-arg name="sourceRepository" ref="sourceRepository" />
+      <constructor-arg name="targetRepository" ref="targetGitRepository" />
+      <constructor-arg name="config" ref="defaultMigrationConfig" />
+    </bean>
+  </beans>
+
+  <!-- Production profile - full migration with rollback capability -->
+  <beans profile="production">
+    <bean id="activeMigrationService" 
+          class="org.pentaho.platform.repository2.unified.git.migration.UnifiedRepositoryMigrationService">
+      <constructor-arg name="sourceRepository" ref="sourceRepository" />
+      <constructor-arg name="targetRepository" ref="targetGitRepository" />
+      <constructor-arg name="config" ref="productionMigrationConfig" />
+    </bean>
+  </beans>
+
+  <!-- Example Configurations for Different Source Types -->
+  
+  <!-- JCR to Git migration example -->
+  <beans profile="jcr-migration">
+    <!-- Import JCR repository configuration -->
+    <import resource="classpath:repository-jcr.spring.xml" />
+    
+    <!-- Create target Git repository -->
+    <bean id="targetGitRepository" 
+          class="org.pentaho.platform.repository2.unified.git.GitUnifiedRepository">
+      <constructor-arg value="${git.repository.path}" />
+    </bean>
+    
+    <!-- JCR migration service -->
+    <bean id="jcrMigrationService" 
+          class="org.pentaho.platform.repository2.unified.git.migration.UnifiedRepositoryMigrationService">
+      <constructor-arg name="sourceRepository" ref="unifiedRepository" />
+      <constructor-arg name="targetRepository" ref="targetGitRepository" />
+      <constructor-arg name="config" ref="jcrMigrationConfig" />
+    </bean>
+  </beans>
+
+  <!-- FileSystem to Git migration example -->
+  <beans profile="filesystem-migration">
+    <!-- Import FileSystem repository configuration -->
+    <import resource="classpath:repository-filesystem.spring.xml" />
+    
+    <!-- Create target Git repository -->
+    <bean id="targetGitRepository" 
+          class="org.pentaho.platform.repository2.unified.git.GitUnifiedRepository">
+      <constructor-arg value="${git.repository.path}" />
+    </bean>
+    
+    <!-- FileSystem migration service -->
+    <bean id="fileSystemMigrationService" 
+          class="org.pentaho.platform.repository2.unified.git.migration.UnifiedRepositoryMigrationService">
+      <constructor-arg name="sourceRepository" ref="unifiedRepository" />
+      <constructor-arg name="targetRepository" ref="targetGitRepository" />
+      <constructor-arg name="config" ref="fileSystemMigrationConfig" />
+    </bean>
+  </beans>
+
+  <!-- Monitoring and Management Beans -->
+  
+  <!-- Migration statistics MBean for JMX monitoring -->
+  <bean id="migrationStatisticsMBean" 
+        class="org.pentaho.platform.repository2.unified.git.migration.monitoring.MigrationStatisticsMBean" />
+
+  <!-- Migration event publisher for integration with monitoring systems -->
+  <bean id="migrationEventPublisher" 
+        class="org.pentaho.platform.repository2.unified.git.migration.monitoring.MigrationEventPublisher" />
+
+  <!-- Property placeholder for external configuration -->
+  <context:property-placeholder location="classpath:migration.properties" ignore-resource-not-found="true" />
+
+</beans>

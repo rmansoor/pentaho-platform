@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans 
+           http://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/util 
+           http://www.springframework.org/schema/util/spring-util.xsd
+           http://www.springframework.org/schema/context
+           http://www.springframework.org/schema/context/spring-context.xsd">
+
+  <!-- 
+    Spring configuration for Git-based Pentaho Repository Implementation
+    
+    This configuration demonstrates how to wire up the Git-based repository
+    implementation as a replacement for the default JCR-based implementation.
+    
+    Key components:
+    - GitRepositoryFileDao: Git-based file operations
+    - GitRepositoryFileAclDao: Git-based ACL management  
+    - GitUnifiedRepository: Main repository interface
+    
+    Configuration properties can be externalized for different environments.
+  -->
+
+  <!-- Git Repository Configuration Properties -->
+  <util:properties id="gitRepositoryProperties">
+    <!-- Base directory for Git repository -->
+    <prop key="git.repository.path">${pentaho.repository.git.path:/opt/pentaho/repository-git}</prop>
+    
+    <!-- Git author information for system commits -->
+    <prop key="git.author.name">${pentaho.repository.git.author.name:Pentaho System}</prop>
+    <prop key="git.author.email">${pentaho.repository.git.author.email:system@pentaho.com}</prop>
+    
+    <!-- Default branch for repository operations -->
+    <prop key="git.default.branch">${pentaho.repository.git.branch:main}</prop>
+    
+    <!-- Enable/disable automatic commits for operations -->
+    <prop key="git.auto.commit">${pentaho.repository.git.autocommit:true}</prop>
+    
+    <!-- Cache settings -->
+    <prop key="git.cache.maxSize">${pentaho.repository.git.cache.maxsize:1000}</prop>
+    <prop key="git.cache.expireAfterWrite">${pentaho.repository.git.cache.expire:30}</prop>
+  </util:properties>
+
+  <!-- Git Repository File DAO -->
+  <bean id="gitRepositoryFileDao" 
+        class="org.pentaho.platform.repository2.unified.git.GitRepositoryFileDao">
+    <constructor-arg value="#{gitRepositoryProperties['git.repository.path']}" />
+  </bean>
+
+  <!-- Git Repository ACL DAO -->
+  <bean id="gitRepositoryFileAclDao" 
+        class="org.pentaho.platform.repository2.unified.git.GitRepositoryFileAclDao">
+    <constructor-arg>
+      <bean class="java.io.File">
+        <constructor-arg value="#{gitRepositoryProperties['git.repository.path']}" />
+      </bean>
+    </constructor-arg>
+    <constructor-arg ref="gitRepositoryFileDao" property="git" />
+  </bean>
+
+  <!-- Main Git Unified Repository Implementation -->
+  <bean id="gitUnifiedRepository" 
+        class="org.pentaho.platform.repository2.unified.git.GitUnifiedRepository">
+    <constructor-arg ref="gitRepositoryFileDao" />
+    <constructor-arg ref="gitRepositoryFileAclDao" />
+  </bean>
+
+  <!-- 
+    Alternative configuration using directory path constructor:
+    
+    <bean id="gitUnifiedRepositorySimple" 
+          class="org.pentaho.platform.repository2.unified.git.GitUnifiedRepository">
+      <constructor-arg value="#{gitRepositoryProperties['git.repository.path']}" />
+    </bean>
+  -->
+
+  <!-- Repository alias for transparent switching from JCR implementation -->
+  <alias name="gitUnifiedRepository" alias="unifiedRepository" />
+
+  <!-- Git-specific Utility Beans -->
+  
+  <!-- Git Repository Manager for advanced operations -->
+  <bean id="gitRepositoryManager" 
+        class="org.pentaho.platform.repository2.unified.git.GitRepositoryManager">
+    <constructor-arg ref="gitUnifiedRepository" />
+    <property name="defaultBranch" value="#{gitRepositoryProperties['git.default.branch']}" />
+    <property name="autoCommit" value="#{gitRepositoryProperties['git.auto.commit']}" />
+  </bean>
+
+  <!-- Git Branch Service for branch management -->
+  <bean id="gitBranchService" 
+        class="org.pentaho.platform.repository2.unified.git.GitBranchService">
+    <constructor-arg ref="gitUnifiedRepository" />
+  </bean>
+
+  <!-- Git Repository Validator -->
+  <bean id="gitRepositoryValidator" 
+        class="org.pentaho.platform.repository2.unified.git.GitRepositoryValidator">
+    <constructor-arg ref="gitUnifiedRepository" />
+  </bean>
+
+  <!-- Git Backup Service -->
+  <bean id="gitBackupService" 
+        class="org.pentaho.platform.repository2.unified.git.GitBackupService">
+    <constructor-arg ref="gitUnifiedRepository" />
+    <property name="backupRemoteUrl" value="${pentaho.repository.git.backup.remote:}" />
+  </bean>
+
+  <!-- Optional: Git Web Interface (for repository browsing) -->
+  <bean id="gitWebInterface" 
+        class="org.pentaho.platform.repository2.unified.git.GitWebInterface"
+        lazy-init="true">
+    <constructor-arg ref="gitUnifiedRepository" />
+    <property name="enableWebInterface" value="${pentaho.repository.git.web.enabled:false}" />
+    <property name="webPort" value="${pentaho.repository.git.web.port:8081}" />
+  </bean>
+
+  <!-- Configuration for different environments -->
+  
+  <!-- Development Profile: In-memory Git repository -->
+  <beans profile="development">
+    <bean id="devGitRepository" 
+          class="org.pentaho.platform.repository2.unified.git.GitUnifiedRepository">
+      <constructor-arg value="${java.io.tmpdir}/pentaho-git-dev" />
+    </bean>
+    <alias name="devGitRepository" alias="unifiedRepository" />
+  </beans>
+
+  <!-- Testing Profile: Temporary Git repository -->
+  <beans profile="test">
+    <bean id="testGitRepository" 
+          class="org.pentaho.platform.repository2.unified.git.GitUnifiedRepository">
+      <constructor-arg>
+        <bean class="java.io.File">
+          <constructor-arg value="${java.io.tmpdir}" />
+          <constructor-arg value="pentaho-git-test-#{T(java.lang.System).currentTimeMillis()}" />
+        </bean>
+      </constructor-arg>
+    </bean>
+    <alias name="testGitRepository" alias="unifiedRepository" />
+  </beans>
+
+  <!-- Production Profile: Persistent Git repository with backup -->
+  <beans profile="production">
+    <bean id="prodGitRepository" 
+          class="org.pentaho.platform.repository2.unified.git.GitUnifiedRepository">
+      <constructor-arg value="${pentaho.repository.git.path:/opt/pentaho/repository-git}" />
+    </bean>
+    
+    <!-- Production-specific configuration -->
+    <bean id="productionGitBackupService" 
+          class="org.pentaho.platform.repository2.unified.git.GitBackupService">
+      <constructor-arg ref="prodGitRepository" />
+      <property name="backupRemoteUrl" value="${pentaho.repository.git.backup.remote}" />
+      <property name="backupSchedule" value="${pentaho.repository.git.backup.schedule:0 0 2 * * ?}" />
+      <property name="enableAutomaticBackup" value="true" />
+    </bean>
+    
+    <alias name="prodGitRepository" alias="unifiedRepository" />
+  </beans>
+
+  <!-- Migration Tools (for transitioning from JCR to Git) -->
+  
+  <!-- JCR to Git Migration Service -->
+  <bean id="jcrToGitMigrationService" 
+        class="org.pentaho.platform.repository2.unified.git.migration.JcrToGitMigrationService"
+        lazy-init="true">
+    <constructor-arg ref="jcrUnifiedRepository" />  <!-- Existing JCR repository -->
+    <constructor-arg ref="gitUnifiedRepository" />   <!-- Target Git repository -->
+    <property name="migrationBatchSize" value="${pentaho.repository.migration.batchsize:100}" />
+    <property name="preserveHistory" value="${pentaho.repository.migration.preservehistory:true}" />
+  </bean>
+
+  <!-- File System to Git Migration Service -->
+  <bean id="fsToGitMigrationService" 
+        class="org.pentaho.platform.repository2.unified.git.migration.FileSystemToGitMigrationService"
+        lazy-init="true">
+    <constructor-arg value="${pentaho.repository.filesystem.path}" />
+    <constructor-arg ref="gitUnifiedRepository" />
+  </bean>
+
+  <!-- Git Repository Monitoring -->
+  
+  <!-- Repository Statistics Service -->
+  <bean id="gitRepositoryStatistics" 
+        class="org.pentaho.platform.repository2.unified.git.monitoring.GitRepositoryStatistics">
+    <constructor-arg ref="gitUnifiedRepository" />
+  </bean>
+
+  <!-- Repository Health Check -->
+  <bean id="gitRepositoryHealthCheck" 
+        class="org.pentaho.platform.repository2.unified.git.monitoring.GitRepositoryHealthCheck">
+    <constructor-arg ref="gitUnifiedRepository" />
+    <property name="checkInterval" value="${pentaho.repository.git.healthcheck.interval:300000}" />
+  </bean>
+
+  <!-- JMX Monitoring Beans -->
+  <bean id="gitRepositoryMBean" 
+        class="org.pentaho.platform.repository2.unified.git.jmx.GitRepositoryMBean">
+    <constructor-arg ref="gitUnifiedRepository" />
+  </bean>
+
+  <bean id="gitRepositoryMBeanExporter" 
+        class="org.springframework.jmx.export.MBeanExporter">
+    <property name="beans">
+      <map>
+        <entry key="Pentaho:type=Repository,name=GitRepository" value-ref="gitRepositoryMBean" />
+      </map>
+    </property>
+  </bean>
+
+  <!-- Transaction Management (if needed) -->
+  
+  <!-- Git Transaction Manager (custom implementation for Git operations) -->
+  <bean id="gitTransactionManager" 
+        class="org.pentaho.platform.repository2.unified.git.transaction.GitTransactionManager">
+    <constructor-arg ref="gitUnifiedRepository" />
+  </bean>
+
+  <!-- Transaction template for programmatic transaction management -->
+  <bean id="gitTransactionTemplate" 
+        class="org.springframework.transaction.support.TransactionTemplate">
+    <constructor-arg ref="gitTransactionManager" />
+  </bean>
+
+  <!-- Security Integration -->
+  
+  <!-- Git-aware security interceptor -->
+  <bean id="gitSecurityInterceptor" 
+        class="org.pentaho.platform.repository2.unified.git.security.GitSecurityInterceptor">
+    <constructor-arg ref="gitUnifiedRepository" />
+  </bean>
+
+  <!-- Event Publishing -->
+  
+  <!-- Git repository event publisher -->
+  <bean id="gitRepositoryEventPublisher" 
+        class="org.pentaho.platform.repository2.unified.git.events.GitRepositoryEventPublisher">
+    <constructor-arg ref="gitUnifiedRepository" />
+  </bean>
+
+  <!-- Conditional Bean Registration -->
+  
+  <!-- Only register Git beans if Git is enabled -->
+  <beans profile="!nogit">
+    <!-- All Git-related beans are included by default -->
+  </beans>
+
+  <!-- Fallback to JCR if Git is disabled -->
+  <beans profile="nogit">
+    <import resource="repository-jcr.spring.xml" />
+  </beans>
+
+</beans>
