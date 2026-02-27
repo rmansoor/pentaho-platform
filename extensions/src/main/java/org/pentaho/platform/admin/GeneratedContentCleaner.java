@@ -13,6 +13,11 @@
 
 package org.pentaho.platform.admin;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.action.IAction;
@@ -23,10 +28,6 @@ import org.pentaho.platform.api.scheduler2.IScheduler;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.repository2.ClientRepositoryPaths;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /*
  * This program is free software; you can redistribute it and/or modify it under the 
@@ -70,20 +71,44 @@ public class GeneratedContentCleaner implements IAction {
   private void findGeneratedContent( List<RepositoryFile> generatedContentList, RepositoryFileTree parent ) {
     RepositoryFile parentFile = parent.getFile();
     if ( !parentFile.isFolder() ) {
-      long createTime = parentFile.getCreatedDate().getTime();
-      logger.debug( "checking: " + parentFile.getPath() + "   " + createTime );
-      if ( createTime <= ( System.currentTimeMillis() - age ) ) {
-        logger.debug( "File passes age criteria" );
-        // now check metadata for RESERVEDMAPKEY_LINEAGE_ID (all generated content has)
-        Map<String, Serializable> metadata = repository.getFileMetadata( parentFile.getId() );
-        if ( metadata.containsKey( IScheduler.RESERVEDMAPKEY_LINEAGE_ID ) ) {
-          logger.debug( "File is generated content - adding to delete list" );
-          generatedContentList.add( parentFile );
+      try {
+        Date createdDate = parentFile.getCreatedDate();
+        if ( createdDate != null ) {
+          long createTime = createdDate.getTime();
+          logger.debug( "checking: " + parentFile.getPath() + "   " + createTime );
+          if ( createTime <= ( System.currentTimeMillis() - age ) ) {
+            logger.debug( "File passes age criteria" );
+            // now check metadata for RESERVEDMAPKEY_LINEAGE_ID (all generated content has)
+            try {
+              Map<String, Serializable> metadata = repository.getFileMetadata( parentFile.getId() );
+              if ( metadata.containsKey( IScheduler.RESERVEDMAPKEY_LINEAGE_ID ) ) {
+                logger.debug( "File is generated content - adding to delete list" );
+                generatedContentList.add( parentFile );
+              }
+            } catch ( Exception metadataEx ) {
+              logger.debug( "Could not retrieve metadata for file: " + parentFile.getPath(), metadataEx );
+            }
+          }
+        } else {
+          logger.debug( "Skipping file with null creation date: " + parentFile.getPath() );
         }
+      } catch ( Exception dateEx ) {
+        logger.debug( "Could not access creation date for file: " + parentFile.getPath() + " (session may be closed)", dateEx );
       }
     } else {
-      for ( RepositoryFileTree child : parent.getChildren() ) {
-        findGeneratedContent( generatedContentList, child );
+      try {
+        List<RepositoryFileTree> children = parent.getChildren();
+        if ( children != null ) {
+          for ( RepositoryFileTree child : children ) {
+            try {
+              findGeneratedContent( generatedContentList, child );
+            } catch ( Exception childEx ) {
+              logger.debug( "Error processing child in folder: " + parentFile.getPath(), childEx );
+            }
+          }
+        }
+      } catch ( Exception childrenEx ) {
+        logger.debug( "Could not retrieve children for folder: " + parentFile.getPath() + " (folder may have been deleted)", childrenEx );
       }
     }
   }
@@ -96,15 +121,24 @@ public class GeneratedContentCleaner implements IAction {
    * 
    * @see org.pentaho.platform.api.action.IAction#execute()
    */
+  @Override
   public void execute() throws Exception {
     // scan the repository for all files with a RESERVEDMAPKEY_LINEAGE_ID
     // we need to find and delete hidden generated files too (like .css and .png)
-    RepositoryFileTree tree = repository.getTree( ClientRepositoryPaths.getRootFolderPath(), -1, null, true );
-    ArrayList<RepositoryFile> generatedContentList = new ArrayList<RepositoryFile>();
-    findGeneratedContent( generatedContentList, tree );
-    for ( RepositoryFile deleteMe : generatedContentList ) {
-      repository.deleteFile( deleteMe.getId(), true, GeneratedContentCleaner.class.getName() );
-      logger.info( "GeneratedContentCleaner deleting: " + deleteMe.getPath() );
+    try {
+      RepositoryFileTree tree = repository.getTree( ClientRepositoryPaths.getRootFolderPath(), -1, null, true );
+      ArrayList<RepositoryFile> generatedContentList = new ArrayList<RepositoryFile>();
+      findGeneratedContent( generatedContentList, tree );
+      for ( RepositoryFile deleteMe : generatedContentList ) {
+        try {
+          repository.deleteFile( deleteMe.getId(), true, GeneratedContentCleaner.class.getName() );
+          logger.info( "GeneratedContentCleaner deleting: " + deleteMe.getPath() );
+        } catch ( Exception deleteEx ) {
+          logger.warn( "Could not delete file: " + deleteMe.getPath() + " (may have been deleted or is inaccessible)", deleteEx );
+        }
+      }
+    } catch ( Exception treeEx ) {
+      logger.error( "Error scanning repository tree", treeEx );
     }
   }
 

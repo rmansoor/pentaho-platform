@@ -29,6 +29,8 @@ import javax.jcr.Session;
 import javax.jcr.Value;
 import javax.jcr.version.VersionHistory;
 
+
+
 /**
  * This class provides a static method {@linkplain #gc()} for running JCR's GC routine.
  *
@@ -89,12 +91,94 @@ public class RepositoryCleaner {
 
       DataStoreGarbageCollector gc = repository.createDataStoreGarbageCollector();
       try {
-        logger.debug( "Starting marking stage" );
-        gc.setPersistenceManagerScan( false );
-        gc.mark();
+        try {
+          logger.debug( "Starting marking stage" );
+          gc.setPersistenceManagerScan( false );
+          
+          try {
+            long startTime = System.currentTimeMillis();
+            logger.info( "GC mark phase starting - scanning all nodes and properties..." );
+            
+            gc.mark();
+            
+            long duration = System.currentTimeMillis() - startTime;
+            logger.info( "GC mark phase completed successfully in " + duration + "ms - repository appears clean" );
+          } catch ( RepositoryException e ) {
+            long duration = System.currentTimeMillis() - startTime;
+            logger.warn( "GC mark phase failed after " + duration + "ms" );
+            
+            if ( e.getMessage() != null && e.getMessage().contains( "mark failed to access a property" ) ) {
+              logger.warn( "GC mark phase encountered corrupted property. Continuing with recovery...", e );
+              
+              // Try to extract node path from exception chain for better diagnostics
+              String diagnosticInfo = extractDiagnosticInfo( e );
+              logger.warn( "Corruption details: " + diagnosticInfo );
+              logger.warn( "This indicates repository corruption that should be repaired using jcrCheckUI" );
+              logger.warn( "Some orphaned data may remain. Consider running jcrCheckUI scan-properties endpoint" );
+            } else {
+              throw e;
+            }
+          }
+          
+          logger.debug( "Starting sweeping stage" );
+          long sweepStart = System.currentTimeMillis();
+          int deleted = gc.sweep();
+          long sweepDuration = System.currentTimeMillis() - sweepStart;
+          logger.info( String.format( "Garbage collecting completed in %dms. %d items were deleted", sweepDuration, deleted ) );
+              String diagnosticInfo = extractDiagnosticInfo( e );
+            logger.warn( "Corruption details: " + diagnosticInfo );
+            logger.warn( "This indicates repository corruption that should be repaired using jcrCheckUI" );
+            logger.warn( "Some orphaned data may remain. Consider running jcrCheckUI scan-properties endpoint" );
+          } else {
+            throw e;
+          }
+        }
+        
+  /**
+   * Extract diagnostic information from GC mark failure exception
+   * Attempts to determine at what depth/node the failure occurred
+   */
+  private String extractDiagnosticInfo( RepositoryException e ) {
+    StringBuilder info = new StringBuilder();
+    
+    // Add the main error message
+    if ( e.getMessage() != null ) {
+      info.append( "Error: " ).append( e.getMessage() );
+    }
+    
+    // Try to analyze stack trace depth to understand recursion level
+    StackTraceElement[] stackTrace = e.getStackTrace();
+    int recurseCount = 0;
+    for ( StackTraceElement element : stackTrace ) {
+      if ( "recurse".equals( element.getMethodName() ) && 
+           "GarbageCollector".equals( element.getClassName().substring( element.getClassName().lastIndexOf( '.' ) + 1 ) ) ) {
+        recurseCount++;
+      }
+    }
+    
+    if ( recurseCount > 0 ) {
+      info.append( " | Recursion depth: " ).append( recurseCount ).append( " (failed while traversing nested nodes)" );
+    }
+    
+    // Check for root cause
+    Throwable cause = e.getCause();
+    if ( cause != null && cause.getMessage() != null ) {
+      info.append( " | Root cause: " ).append( cause.getMessage() );
+    }
+    
+    // If no useful info, provide generic guidance
+    if ( info.length() == 0 ) {
+      info.append( "Property access failed during mark phase traversal" );
+    }
+    
+    return info.toString();
+  }
+
         logger.debug( "Starting sweeping stage" );
+        long sweepStart = System.currentTimeMillis();
         int deleted = gc.sweep();
-        logger.info( String.format( "Garbage collecting completed. %d items were deleted", deleted ) );
+        long sweepDuration = System.currentTimeMillis() - sweepStart;
+        logger.info( String.format( "Garbage collecting completed in %dms. %d items were deleted", sweepDuration, deleted ) );
       } finally {
         gc.close();
       }
@@ -102,6 +186,46 @@ public class RepositoryCleaner {
       logger.error( "Error during garbage collecting", e );
     }
 
+  }
+
+  /**
+   * Extract diagnostic information from GC mark failure exception
+   * Attempts to determine at what depth/node the failure occurred
+   */
+  private String extractDiagnosticInfo( RepositoryException e ) {
+    StringBuilder info = new StringBuilder();
+    
+    // Add the main error message
+    if ( e.getMessage() != null ) {
+      info.append( "Error: " ).append( e.getMessage() );
+    }
+    
+    // Try to analyze stack trace depth to understand recursion level
+    StackTraceElement[] stackTrace = e.getStackTrace();
+    int recurseCount = 0;
+    for ( StackTraceElement element : stackTrace ) {
+      if ( "recurse".equals( element.getMethodName() ) && 
+           "GarbageCollector".equals( element.getClassName().substring( element.getClassName().lastIndexOf( '.' ) + 1 ) ) ) {
+        recurseCount++;
+      }
+    }
+    
+    if ( recurseCount > 0 ) {
+      info.append( " | Recursion depth: " ).append( recurseCount ).append( " (failed while traversing nested nodes)" );
+    }
+    
+    // Check for root cause
+    Throwable cause = e.getCause();
+    if ( cause != null && cause.getMessage() != null ) {
+      info.append( " | Root cause: " ).append( cause.getMessage() );
+    }
+    
+    // If no useful info, provide generic guidance
+    if ( info.length() == 0 ) {
+      info.append( "Property access failed during mark phase traversal" );
+    }
+    
+    return info.toString();
   }
 
   private void findVersionNodesAndPurge( Node node, Session session ) {
