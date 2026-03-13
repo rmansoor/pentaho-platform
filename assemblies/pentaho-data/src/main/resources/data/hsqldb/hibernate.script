@@ -1,3 +1,13 @@
+-- =====================================================
+-- HSQLDB System Initialization Script for hibernate
+-- =====================================================
+-- Ensure system administrator exists with empty password for initialization
+CREATE USER SA PASSWORD '';
+GRANT DBA TO SA;
+
+-- =====================================================
+-- Application Tables and Data
+-- =====================================================
 CREATE MEMORY TABLE IF NOT EXISTS DATASOURCE(NAME VARCHAR(50) NOT NULL PRIMARY KEY,MAXACTCONN INTEGER,DRIVERCLASS VARCHAR(50) NOT NULL,IDLECONN INTEGER,USERNAME VARCHAR(50),PASSWORD VARCHAR(150),URL VARCHAR(512) NOT NULL,QUERY VARCHAR(100),WAIT INTEGER);
 CREATE USER HIBUSER PASSWORD 'PASSWORD';
 CREATE USER "hibuser" PASSWORD 'password';

@@ -25,7 +25,7 @@
   <!-- [BEGIN HSQLDB DATABASES] -->
   <context-param>
     <param-name>hsqldb-databases</param-name>
-    <param-value>sampledata@mem:sampledata,hibernate@mem:hibernate,quartz@mem:quartz</param-value>
+    <param-value>sampledata@file:./data/hsqldb/sampledata,hibernate@file:./data/hsqldb/hibernate,quartz@file:./data/hsqldb/quartz</param-value>
   </context-param>
   <!-- [END HSQLDB DATABASES] -->
   

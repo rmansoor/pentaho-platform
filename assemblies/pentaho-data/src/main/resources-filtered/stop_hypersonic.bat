@@ -31,6 +31,8 @@ REM -----------------------
 REM - Run the application -
 REM -----------------------
 :startApp
+call set-pentaho-env.bat "%~dp0..\jre"
+
 FOR %%b IN (sampledata,hibernate,quartz) DO (
   echo SHUTDOWN; | "%_PENTAHO_JAVA%" -cp "%tempclasspath%" org.hsqldb.cmdline.SqlTool --autoCommit --inlineRc=url=jdbc:hsqldb:hsql://localhost:9001/%%b,user=SA,password= > nul 2>&1
 )
