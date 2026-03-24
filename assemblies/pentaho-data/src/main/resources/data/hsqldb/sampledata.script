@@ -6,6 +6,11 @@ CREATE USER SA PASSWORD '';
 GRANT DBA TO SA;
 
 -- =====================================================
+-- Set HSQLDB Configuration for file-based persistence
+-- =====================================================
+SET WRITE_DELAY 0;
+
+-- =====================================================
 -- Application Tables and Data
 -- =====================================================
 CREATE MEMORY TABLE IF NOT EXISTS QUADRANT_ACTUALS(REGION VARCHAR(50) NOT NULL,DEPARTMENT VARCHAR(50) NOT NULL,POSITIONTITLE VARCHAR(50) NOT NULL,ACTUAL DECIMAL(18,4),BUDGET DECIMAL(18,4),VARIANCE DECIMAL(18,4));

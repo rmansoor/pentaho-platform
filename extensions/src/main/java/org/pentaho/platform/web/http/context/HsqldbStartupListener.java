@@ -43,6 +43,26 @@ public class HsqldbStartupListener implements ServletContextListener {
     Object obj = ctx.getAttribute( "hsqldb-starter-bean" ); //$NON-NLS-1$
     if ( obj != null ) {
       logger.debug( "Context listener stopping Embedded HSQLDB" ); //$NON-NLS-1$
+      
+      // Issue CHECKPOINT on all databases to flush all changes to disk before shutdown
+      Map<String, String> databases = getDatabases( ctx );
+      for ( Map.Entry<String, String> entry : databases.entrySet() ) {
+        String dbName = entry.getKey();
+        String dbUrl = entry.getValue();
+        if ( dbUrl.startsWith( "file:" ) ) { //$NON-NLS-1$
+          try {
+            String jdbcUrl = String.format( "jdbc:hsqldb:hsql://localhost:9001/%s", dbName ); //$NON-NLS-1$
+            try ( Connection conn = DriverManager.getConnection( jdbcUrl, "sa", "" ); //$NON-NLS-1$ //$NON-NLS-2$
+                  Statement stmt = conn.createStatement() ) {
+              logger.info( String.format( "HsqldbStartupListener: Issuing CHECKPOINT for database %s to flush changes to disk", dbName ) ); //$NON-NLS-1$
+              stmt.execute( "CHECKPOINT" ); //$NON-NLS-1$
+            }
+          } catch ( SQLException e ) {
+            logger.warn( String.format( "HsqldbStartupListener: Could not issue CHECKPOINT for database %s: %s", dbName, e.getMessage() ) ); //$NON-NLS-1$
+          }
+        }
+      }
+      
       HsqlDatabaseStarterBean starterBean = ( HsqlDatabaseStarterBean ) obj;
       starterBean.stop();
     }
