@@ -86,18 +86,26 @@ class GuavaCachePoolPentahoJcrSessionFactory extends NoCachePentahoJcrSessionFac
    * safely logged out on eviction. See
    * {@link PentahoJcrTemplate#execute(org.springframework.extensions.jcr.JcrCallback,
    * boolean)}
+   * <p>
+   * NOTE: Uses expireAfterWrite instead of expireAfterAccess to prevent race conditions where sessions could be
+   * closed while operations are in-flight. This is particularly important in high-concurrency environments where the
+   * expireAfterAccess policy can evict sessions that are still actively referenced by concurrent operations.
    */
   private LoadingCache<CacheKey, Session> sessionCache =
-    CacheBuilder.newBuilder()
-      .expireAfterAccess( cacheDuration, TimeUnit.SECONDS )
+    CacheBuilder.newBuilder().expireAfterWrite( cacheDuration, TimeUnit.SECONDS )
       .maximumSize( cacheSize )
       .removalListener( (RemovalListener<CacheKey, Session>) objectObjectRemovalNotification -> {
         Session session = objectObjectRemovalNotification.getValue();
         if ( sessionIsUnused( session ) ) {
-          logger.debug( "Logging out cached session after eviction " + session );
-          session.logout();
+          logger.debug( "Logging out cached session after eviction: " + session );
+          try {
+            session.logout();
+          } catch ( Exception e ) {
+            logger.warn( "Exception while logging out evicted session: " + session, e );
+          }
         } else {
-          logger.warn( "Session has expired from cache, but still marked as in use.  May be orphaned.  " + session );
+          logger.warn( "Session has expired from cache, but still marked as in use (usage_count=" 
+            + getSessionUsageCount( session ) + "). Session: " + session );
         }
       } ).recordStats()
       .build( new CacheLoader<CacheKey, Session>() {
@@ -115,6 +123,22 @@ class GuavaCachePoolPentahoJcrSessionFactory extends NoCachePentahoJcrSessionFac
   private boolean sessionIsUnused( Session session ) {
     return session.getAttribute( USAGE_COUNT ) instanceof AtomicInteger
       && ( (AtomicInteger) session.getAttribute( USAGE_COUNT ) ).get() == 0;
+  }
+
+  /**
+   * Helper method to safely extract usage count from a session for logging/debugging purposes.
+   * Returns -1 if session is already closed or attribute not found.
+   */
+  private int getSessionUsageCount( Session session ) {
+    try {
+      Object usageCount = session.getAttribute( USAGE_COUNT );
+      if ( usageCount instanceof AtomicInteger ) {
+        return ( (AtomicInteger) usageCount ).get();
+      }
+    } catch ( Exception e ) {
+      return -1;  // Indicate error retrieving count (session likely closed)
+    }
+    return 0;  // Default to 0 if attribute not found
   }
 
   @Override public Session getSession( Credentials creds ) throws RepositoryException {
