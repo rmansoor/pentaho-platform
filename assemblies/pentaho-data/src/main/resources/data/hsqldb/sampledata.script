@@ -10318,4 +10318,3 @@ INSERT INTO SALES_DATA VALUES (10384, 49, '100', 1, 6397, '2/23/2005 0:00', 'Shi
 INSERT INTO SALES_DATA VALUES (10209, 33, '88.71', 4, 2927, '1/9/2004 0:00', 'Shipped', 1, 1, 2004, 'Ships', 90, 'S700_2047', 'Men ''R'' US Retailers, Ltd.', '2155554369', '6047 Douglas Av.', NULL, 'Los Angeles', 'CA', '90174', 'USA', 'NA', 'Chandler', 'Michael', 'Small');
 INSERT INTO SALES_DATA VALUES (10209, 48, '44.69', 3, 2145, '1/9/2004 0:00', 'Shipped', 1, 1, 2004, 'Planes', 49, 'S72_1253', 'Men ''R'' US Retailers, Ltd.', '2155554369', '6047 Douglas Av.', NULL, 'Los Angeles', 'CA', '90174', 'USA', 'NA', 'Chandler', 'Michael', 'Small');
 CHECKPOINT;
-SHUTDOWN;
