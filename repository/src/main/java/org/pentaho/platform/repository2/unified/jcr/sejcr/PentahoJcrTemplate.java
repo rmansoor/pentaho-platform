@@ -86,11 +86,23 @@ public class PentahoJcrTemplate extends JcrTemplate {
   }
 
   private void useSession( Session session ) {
-    getUsageCount( session ).incrementAndGet();
+    int newCount = getUsageCount( session ).incrementAndGet();
+    if ( LOG.isDebugEnabled() ) {
+      LOG.debug( "[JCR-TEMPLATE-USE] Thread=" + Thread.currentThread().getName()
+        + " SessionId=" + System.identityHashCode( session )
+        + " RefCount=" + newCount
+        + " (template acquisition)" );
+    }
   }
 
   private void releaseSession( Session session ) {
-    getUsageCount( session ).decrementAndGet();
+    int newCount = getUsageCount( session ).decrementAndGet();
+    if ( LOG.isDebugEnabled() ) {
+      LOG.debug( "[JCR-TEMPLATE-RELEASE] Thread=" + Thread.currentThread().getName()
+        + " SessionId=" + System.identityHashCode( session )
+        + " RefCount=" + newCount
+        + " (template release)" );
+    }
   }
 
   /**
@@ -103,8 +115,17 @@ public class PentahoJcrTemplate extends JcrTemplate {
       Object usageCount = session.getAttribute( USAGE_COUNT );
       if ( usageCount instanceof AtomicInteger ) {
         int count = ( (AtomicInteger) usageCount ).decrementAndGet();
+        if ( LOG.isDebugEnabled() ) {
+          LOG.debug( "[JCR-FACTORY-RELEASE] Thread=" + Thread.currentThread().getName()
+            + " SessionId=" + System.identityHashCode( session )
+            + " RefCount=" + count
+            + " (factory protection release" + ( count == 0 ? " - SESSION SAFE FOR EVICTION" : "" ) + ")" );
+        }
         if ( count < 0 ) {
-          LOG.warn( "Usage count went negative; factory protection decrement imbalance: " + session );
+          LOG.warn( "[JCR-REFCOUNT-ERROR] Usage count went negative; factory protection decrement imbalance:"
+            + " SessionId=" + System.identityHashCode( session )
+            + " RefCount=" + count
+            + " Session=" + session );
         }
       }
     } catch ( Exception e ) {

@@ -86,59 +86,18 @@ class GuavaCachePoolPentahoJcrSessionFactory extends NoCachePentahoJcrSessionFac
    * safely logged out on eviction. See
    * {@link PentahoJcrTemplate#execute(org.springframework.extensions.jcr.JcrCallback,
    * boolean)}
-   * <p>
-   * NOTE: Uses expireAfterWrite instead of expireAfterAccess to prevent race conditions where sessions could be
-   * closed while operations are in-flight. This is particularly important in high-concurrency environments where the
-   * expireAfterAccess policy can evict sessions that are still actively referenced by concurrent operations.
-   * 
-   * RACE CONDITION FIX: Sessions with active usage count are NOT logged out during eviction.
-   * This prevents errors when concurrent requests hold references to sessions that expire from cache.
-   * Instead of forcing logout, we log a warning and defer cleanup until usage count reaches 0.
    */
   private LoadingCache<CacheKey, Session> sessionCache =
-    CacheBuilder.newBuilder().expireAfterWrite( cacheDuration, TimeUnit.SECONDS )
+    CacheBuilder.newBuilder()
+      .expireAfterAccess( cacheDuration, TimeUnit.SECONDS )
       .maximumSize( cacheSize )
       .removalListener( (RemovalListener<CacheKey, Session>) objectObjectRemovalNotification -> {
         Session session = objectObjectRemovalNotification.getValue();
-        String removalCause = objectObjectRemovalNotification.getCause().toString();
-        int usageCount = getSessionUsageCount( session );
-        
         if ( sessionIsUnused( session ) ) {
-          if ( logger.isDebugEnabled() ) {
-            logger.debug( "Logging out cached session after eviction (" + removalCause 
-              + "), usage_count=" + usageCount + ": " + session );
-          }
-          try {
-            session.logout();
-          } catch ( Exception e ) {
-            logger.warn( "Exception while logging out evicted session: " + session, e );
-          }
+          logger.debug( "Logging out cached session after eviction " + session );
+          session.logout();
         } else {
-          // RACE CONDITION FIX: Do NOT logout sessions still in use
-          // 
-          // Problem: If we logout a session here while it's still referenced by an active request,
-          // that request will fail with "This session has been closed" error.
-          //
-          // Solution: Keep the session alive if it's marked as in-use. The calling code is responsible
-          // for decrementing the usage count when done. The session will be evicted from cache but
-          // remain usable by the active request that holds a reference to it.
-          //
-          // The session will eventually be logged out when:
-          // 1. Usage count reaches 0 (via manual decrementUsageCount), OR
-          // 2. The next cache.get() attempt finds it's no longer live (session.isLive() check)
-          
-          if ( logger.isInfoEnabled() ) {
-            logger.info( "Session still has active references (usage_count=" + usageCount 
-              + ", cause=" + removalCause + "). Deferring logout to prevent race condition. "
-              + "Session reference: " + session );
-          }
-          
-          // Log more detail in debug mode to help diagnose cache issues
-          if ( logger.isDebugEnabled() ) {
-            logger.debug( "Active session details - user: " + 
-              ( (SessionImpl) session ).getUserID() + 
-              ", workspace: " + ( (SessionImpl) session ).getWorkspace().getName() );
-          }
+          logger.warn( "Session has expired from cache, but still marked as in use.  May be orphaned.  " + session );
         }
       } ).recordStats()
       .build( new CacheLoader<CacheKey, Session>() {
@@ -146,11 +105,6 @@ class GuavaCachePoolPentahoJcrSessionFactory extends NoCachePentahoJcrSessionFac
           Session session = GuavaCachePoolPentahoJcrSessionFactory.super.getSession( credKey.creds );
           if ( session instanceof SessionImpl ) {
             ( (SessionImpl) session ).setAttribute( USAGE_COUNT, new AtomicInteger( 0 ) );
-            if ( logger.isDebugEnabled() ) {
-              logger.debug( "Created new JCR session in cache: user=" + 
-                ( (SessionImpl) session ).getUserID() + 
-                ", thread=" + Thread.currentThread().getId() );
-            }
           } else {
             logger.warn( "Expected a Jackrabbit SessionImpl.  Will not be tracking usage." );
           }
@@ -163,67 +117,10 @@ class GuavaCachePoolPentahoJcrSessionFactory extends NoCachePentahoJcrSessionFac
       && ( (AtomicInteger) session.getAttribute( USAGE_COUNT ) ).get() == 0;
   }
 
-  /**
-   * Helper method to safely extract usage count from a session for logging/debugging purposes.
-   * Returns -1 if session is already closed or attribute not found.
-   */
-  private int getSessionUsageCount( Session session ) {
-    try {
-      Object usageCount = session.getAttribute( USAGE_COUNT );
-      if ( usageCount instanceof AtomicInteger ) {
-        return ( (AtomicInteger) usageCount ).get();
-      }
-    } catch ( Exception e ) {
-      // Session likely closed or attribute not accessible
-      if ( logger.isDebugEnabled() ) {
-        logger.debug( "Could not retrieve usage count from session: " + e.getMessage() );
-      }
-      return -1;  // Indicate error retrieving count (session likely closed)
-    }
-    return 0;  // Default to 0 if attribute not found
-  }
-
-  /**
-   * Increment usage count to mark session as protected from eviction.
-   * Called by factory on retrieval and by template on entry.
-   * Must be balanced with decrementUsageCount().
-   */
-  private void incrementUsageCount( Session session ) {
-    try {
-      Object usageCount = session.getAttribute( USAGE_COUNT );
-      if ( usageCount instanceof AtomicInteger ) {
-        ( (AtomicInteger) usageCount ).incrementAndGet();
-      }
-    } catch ( Exception e ) {
-      if ( logger.isDebugEnabled() ) {
-        logger.debug( "Could not increment usage count: " + e.getMessage() );
-      }
-    }
-  }
-
-  /**
-   * Decrement usage count when done using the session.
-   * When count reaches 0, the session is eligible for logout during cache eviction.
-   * Must correspond to incrementUsageCount() calls.
-   */
-  private void decrementUsageCount( Session session ) {
-    try {
-      Object usageCount = session.getAttribute( USAGE_COUNT );
-      if ( usageCount instanceof AtomicInteger ) {
-        int remaining = ( (AtomicInteger) usageCount ).decrementAndGet();
-        if ( remaining < 0 ) {
-          logger.warn( "Usage count went negative for session: " + session );
-        }
-      }
-    } catch ( Exception e ) {
-      if ( logger.isDebugEnabled() ) {
-        logger.debug( "Could not decrement usage count: " + e.getMessage() );
-      }
-    }
-  }
-
   @Override public Session getSession( Credentials creds ) throws RepositoryException {
 
+
+    // Aquire from cache
     Session session;
 
     if ( transactionManager == null || !transactionManager.isCreatingTransaction() ) {
@@ -256,11 +153,19 @@ class GuavaCachePoolPentahoJcrSessionFactory extends NoCachePentahoJcrSessionFac
 
         session.refresh( false );
         
-        // RACE CONDITION FIX: Increment usage count to prevent eviction during retrieval/transfer
-        // The factory increments to protect the session from being evicted while in transit.
-        // PentahoJcrTemplate will increment again on entry and decrement on exit,
-        // creating a balanced pair that allows proper cleanup.
-        incrementUsageCount( session );
+        // Increment usage count to track factory retrieval
+        // This must be decremented by PentahoJcrTemplate.decrementFactoryProtection()
+        // to maintain balanced reference counting and prevent premature cache eviction
+        Object usageCount = session.getAttribute( USAGE_COUNT );
+        if ( usageCount instanceof AtomicInteger ) {
+          int newCount = ( (AtomicInteger) usageCount ).incrementAndGet();
+          if ( logger.isDebugEnabled() ) {
+            logger.debug( "[JCR-FACTORY-RETRIEVE] Thread=" + Thread.currentThread().getName()
+              + " SessionId=" + System.identityHashCode( session )
+              + " RefCount=" + newCount
+              + " User=" + ( (SimpleCredentials) creds ).getUserID() );
+          }
+        }
 
       } catch ( Exception e ) {
         logger.error( "Error obtaining session from cache. Creating one directly instead: " + creds, e );
