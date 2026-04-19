@@ -79,6 +79,9 @@ public class PentahoJcrTemplate extends JcrTemplate {
       throw pentahoConvertJcrAccessException( ex );
     } finally {
       releaseSession( session );
+      if ( session != null ) {
+        decrementFactoryProtection( session );
+      }
     }
   }
 
@@ -88,6 +91,27 @@ public class PentahoJcrTemplate extends JcrTemplate {
 
   private void releaseSession( Session session ) {
     getUsageCount( session ).decrementAndGet();
+  }
+
+  /**
+   * Decrement the factory's protection increment that was applied during session retrieval.
+   * The factory increments the usage count to protect the session from eviction while it's
+   * being transferred; this method releases that protection once the session is returned to cache.
+   */
+  private void decrementFactoryProtection( Session session ) {
+    try {
+      Object usageCount = session.getAttribute( USAGE_COUNT );
+      if ( usageCount instanceof AtomicInteger ) {
+        int count = ( (AtomicInteger) usageCount ).decrementAndGet();
+        if ( count < 0 ) {
+          LOG.warn( "Usage count went negative; factory protection decrement imbalance: " + session );
+        }
+      }
+    } catch ( Exception e ) {
+      if ( LOG.isDebugEnabled() ) {
+        LOG.debug( "Could not decrement factory protection: " + e.getMessage() );
+      }
+    }
   }
 
   /**
