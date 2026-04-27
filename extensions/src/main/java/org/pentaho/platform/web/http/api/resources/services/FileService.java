@@ -54,6 +54,7 @@ import org.pentaho.platform.plugin.services.importexport.DefaultExportHandler;
 import org.pentaho.platform.plugin.services.importexport.RepositoryTextLayout;
 import org.pentaho.platform.plugin.services.importexport.ExportHandler;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
 import org.pentaho.platform.plugin.services.importexport.IRepositoryImportLogger;
 import org.pentaho.platform.plugin.services.importexport.ImportSession;
 import org.pentaho.platform.plugin.services.importexport.SimpleExportProcessor;
@@ -2162,12 +2163,21 @@ public class FileService {
   }
 
   protected String decode( String folder ) {
+    if ( folder == null ) {
+      return folder;
+    }
+    
     String decodeName = folder;
     try {
-      decodeName = URLDecoder.decode( folder, "UTF-8" );
+      // Use ExportFileNameEncoder for consistent decoding with export side
+      // This handles malformed encoding more gracefully than raw URLDecoder
+      decodeName = ExportFileNameEncoder.decodeZipFileName( folder );
     } catch ( Exception ex ) {
-      logger.error( ex );
+      logger.debug( "Could not decode file name: " + folder + " - " + ex.getMessage() );
+      // Return original if decoding fails
+      decodeName = folder;
     }
+    
     return decodeName;
   }
 

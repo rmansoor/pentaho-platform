@@ -247,6 +247,11 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
     zos.close();
 
+    // Update inventory with file/folder statistics before logging
+    if ( backupInventory != null ) {
+      backupInventory.setExportFileStats( exportedFileCount, exportedFolderCount );
+    }
+
     // Log final inventory report
     if ( inventoryLogger != null ) {
       inventoryLogger.logOperationComplete();

@@ -51,6 +51,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.net.CookieManager;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -194,6 +195,10 @@ public class CommandLineProcessor {
   private static final String INFO_OPTION_BACKUP_MONDRIAN_NAME = "backup-mondrian";
   private static final String INFO_OPTION_BACKUP_PROFILE_KEY = "bp";
   private static final String INFO_OPTION_BACKUP_PROFILE_NAME = "backup-profile";
+  
+  // Streaming logs option
+  private static final String INFO_OPTION_STREAM_LOGS_KEY = "sl";
+  private static final String INFO_OPTION_STREAM_LOGS_NAME = "stream-logs";
 
   public enum RequestType {
     HELP, IMPORT, EXPORT, REST, BACKUP, RESTORE
@@ -329,6 +334,9 @@ public class CommandLineProcessor {
     
     options.addOption( INFO_OPTION_BACKUP_PROFILE_KEY, INFO_OPTION_BACKUP_PROFILE_NAME, true, Messages.getInstance()
         .getString( "CommandLineProcessor.INFO_OPTION_BACKUP_PROFILE_DESCRIPTION" ) );
+    
+    options.addOption( INFO_OPTION_STREAM_LOGS_KEY, INFO_OPTION_STREAM_LOGS_NAME, true, 
+        "Stream backup logs to console in real-time (true/false, default: false)" );
   }
 
   /**
@@ -866,6 +874,7 @@ public class CommandLineProcessor {
     String contextURL = getOptionValue( INFO_OPTION_URL_NAME, true, false );
     String logFile = getOptionValue( INFO_OPTION_LOGFILE_NAME, false, true );
     String logLevel = getOptionValue( INFO_OPTION_LOGLEVEL_NAME, false, true );
+    String streamLogs = getOptionValue( INFO_OPTION_STREAM_LOGS_NAME, false, true );
     // Output file is validated before executing
     String outputFile = getOptionValue( INFO_OPTION_FILEPATH_NAME, true, false );
 
@@ -881,8 +890,15 @@ public class CommandLineProcessor {
       return;
     }
 
-    // Perform full system backup
-    performFullBackup( contextURL, logFile, logLevel, outputFile );
+    // Check if streaming logs is enabled
+    boolean enableStreamingLogs = "true".equalsIgnoreCase( streamLogs );
+    
+    if ( enableStreamingLogs && logFile != null && !logFile.isEmpty() ) {
+      performBackupWithStreaming( contextURL, logFile, logLevel, outputFile );
+    } else {
+      // Perform full system backup without streaming
+      performFullBackup( contextURL, logFile, logLevel, outputFile );
+    }
   }
 
   /**
@@ -915,6 +931,104 @@ public class CommandLineProcessor {
       System.out.println( Messages.getInstance().getErrorString( "CommandLineProcessor.ERROR_0009_INVALID_LOG_FILE_PATH", logFile ) );
     } else {
       System.out.println( Messages.getInstance().getErrorString( "CommandLineProcessor.ERROR_0002_INVALID_RESPONSE" ) );
+    }
+  }
+
+  /**
+   * Perform backup with real-time log streaming to console
+   * Executes backup in background and streams log file to stdout
+   */
+  private void performBackupWithStreaming( String contextURL, String logFile, String logLevel, String outputFile )
+      throws ParseException, KettleException, URISyntaxException {
+    
+    System.out.println( "Starting backup with log streaming..." );
+    System.out.println( "Backup log file: " + logFile );
+    System.out.println( "Backup output file: " + outputFile );
+    System.out.println( "Log level: " + (logLevel != null && logLevel.length() > 0 ? logLevel : DEFAULT_LOG_LEVEL) );
+    System.out.println( "" );
+    System.out.println( "========== LOG STREAM START ==========" );
+    System.out.println( "" );
+
+    // Start backup in a background thread
+    Thread backupThread = new Thread( () -> {
+      try {
+        performFullBackup( contextURL, logFile, logLevel, outputFile );
+      } catch ( Exception e ) {
+        System.err.println( "Error during backup: " + e.getMessage() );
+        log.error( "Error during backup", e );
+      }
+    }, "BackupExecutor" );
+    
+    backupThread.setDaemon( false );
+    backupThread.start();
+
+    // Stream the log file to console
+    try {
+      streamLogFile( logFile, backupThread );
+    } catch ( IOException | InterruptedException e ) {
+      System.err.println( "Error streaming logs: " + e.getMessage() );
+      log.error( "Error streaming logs", e );
+    }
+
+    System.out.println( "" );
+    System.out.println( "========== LOG STREAM END ==========" );
+  }
+
+  /**
+   * Stream log file contents to console in real-time
+   * Continuously reads the log file and prints new lines as they appear
+   */
+  private void streamLogFile( String logFilePath, Thread backupThread ) throws IOException, InterruptedException {
+    File logFile = new File( logFilePath );
+    
+    // Wait for log file to be created (max 30 seconds)
+    int waitCount = 0;
+    while ( !logFile.exists() && waitCount < 300 ) {
+      try {
+        Thread.sleep( 100 );
+        waitCount++;
+      } catch ( InterruptedException e ) {
+        Thread.currentThread().interrupt();
+        break;
+      }
+    }
+
+    if ( !logFile.exists() ) {
+      System.err.println( "Warning: Log file was not created at " + logFilePath );
+      return;
+    }
+
+    // Tail the log file
+    try ( RandomAccessFile reader = new RandomAccessFile( logFile, "r" ) ) {
+      long lastPosition = 0;
+      
+      while ( backupThread.isAlive() || reader.length() > lastPosition ) {
+        String line;
+        
+        // Read all available lines
+        while ( (line = reader.readLine()) != null ) {
+          System.out.println( line );
+          lastPosition = reader.getFilePointer();
+        }
+        
+        // Short sleep to avoid busy waiting
+        if ( backupThread.isAlive() ) {
+          try {
+            Thread.sleep( 250 );
+          } catch ( InterruptedException e ) {
+            Thread.currentThread().interrupt();
+            break;
+          }
+        } else {
+          // Process is done, read any remaining lines
+          reader.seek( lastPosition );
+          while ( (line = reader.readLine()) != null ) {
+            System.out.println( line );
+            lastPosition = reader.getFilePointer();
+          }
+          break;
+        }
+      }
     }
   }
 

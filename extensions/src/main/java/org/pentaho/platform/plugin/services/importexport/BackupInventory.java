@@ -39,6 +39,10 @@ public class BackupInventory implements Serializable {
   private int totalObjectsFailed = 0;
   private int totalObjectsSkipped = 0;
 
+  // File/Folder statistics (for export operations)
+  private int totalFilesExported = 0;
+  private int totalFoldersExported = 0;
+
   // Constructor
   public BackupInventory(String operationType) {
     this.operationType = operationType;
@@ -103,6 +107,35 @@ public class BackupInventory implements Serializable {
   }
 
   /**
+   * Set file and folder export counts (called from PentahoPlatformExporter)
+   */
+  public void setExportFileStats(int filesExported, int foldersExported) {
+    this.totalFilesExported = filesExported;
+    this.totalFoldersExported = foldersExported;
+  }
+
+  /**
+   * Get total files exported
+   */
+  public int getTotalFilesExported() {
+    return totalFilesExported;
+  }
+
+  /**
+   * Get total folders exported
+   */
+  public int getTotalFoldersExported() {
+    return totalFoldersExported;
+  }
+
+  /**
+   * Get total items exported (files + folders)
+   */
+  public int getTotalItemsExported() {
+    return totalFilesExported + totalFoldersExported;
+  }
+
+  /**
    * Get detailed inventory report as formatted string
    */
   public String getDetailedReport() {
@@ -125,7 +158,16 @@ public class BackupInventory implements Serializable {
         totalObjectsFailed,
         totalObjectsProcessed > 0 ? (100.0 * totalObjectsFailed / totalObjectsProcessed) : 0));
     sb.append(String.format("  Total Objects Skipped:      %d\n", totalObjectsSkipped));
-    sb.append(String.format("  Operation Duration:         %d ms\n", 
+    
+    // File/Folder statistics (if this is an export operation)
+    if (totalFilesExported > 0 || totalFoldersExported > 0) {
+      sb.append("\nFILE/FOLDER STATISTICS:\n");
+      sb.append(String.format("  Total Files Exported:        %d\n", totalFilesExported));
+      sb.append(String.format("  Total Folders Exported:      %d\n", totalFoldersExported));
+      sb.append(String.format("  Total Items Exported:        %d\n", getTotalItemsExported()));
+    }
+    
+    sb.append(String.format("\n  Operation Duration:         %d ms\n", 
         operationEndTime - operationStartTime));
     sb.append("\n");
 
@@ -149,7 +191,7 @@ public class BackupInventory implements Serializable {
    * Get summary line for logging
    */
   public String getSummaryLine() {
-    return String.format(
+    String baseSummary = String.format(
         "Backup Summary: Total=%d, Successful=%d, Failed=%d, Skipped=%d, Duration=%dms",
         totalObjectsProcessed,
         totalObjectsSuccessful,
@@ -157,6 +199,14 @@ public class BackupInventory implements Serializable {
         totalObjectsSkipped,
         operationEndTime - operationStartTime
     );
+    
+    // Add file statistics for export operations
+    if (totalFilesExported > 0 || totalFoldersExported > 0) {
+      baseSummary += String.format(", FilesExported=%d, FoldersExported=%d, TotalItems=%d",
+          totalFilesExported, totalFoldersExported, getTotalItemsExported());
+    }
+    
+    return baseSummary;
   }
 
   // Getters
