@@ -102,6 +102,8 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   private BackupComponentConfig componentConfig;
   private BackupInventory backupInventory;
   private InventoryLogger inventoryLogger;
+  private int exportedFileCount = 0;  // Track total files exported
+  private int exportedFolderCount = 0;  // Track total folders exported
 
   private List<IExportHelper> exportHelpers = new ArrayList<>();
 
@@ -142,6 +144,20 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   public void runExportHelpers() {
     for ( IExportHelper helper : exportHelpers ) {
       try {
+        // Filter helpers based on component configuration
+        String helperName = helper.getName();
+        
+        if ( "Scheduler".equals( helperName ) && !componentConfig.isIncludeSchedules() ) {
+          getRepositoryExportLogger().debug( "Skipping " + helperName + " export (not included in backup configuration)" );
+          continue;
+        }
+        
+        if ( "EmailsGroups".equals( helperName ) && !componentConfig.isIncludeUserSettings() ) {
+          getRepositoryExportLogger().debug( "Skipping " + helperName + " export (not included in backup configuration)" );
+          continue;
+        }
+        
+        getRepositoryExportLogger().info( "Running export helper: " + helperName );
         helper.doExport( this );
       } catch ( ExportException exportException ) {
         getRepositoryExportLogger().error( "Error performing backup of component [ " + helper.getName() + " ] Cause [ " + exportException.getLocalizedMessage() + " ]" );
@@ -161,6 +177,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     if ( componentConfig == null ) {
       componentConfig = BackupComponentConfig.fullSystem();
     }
+
+    // Reset export counters
+    resetExportCounters();
 
     // Initialize backup inventory tracking
     backupInventory = new BackupInventory("BACKUP");
@@ -195,8 +214,13 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     if ( componentConfig.isIncludeMondrian() ) {
       exportMondrianSchemas();
     }
-    exportMetadataModels();
-    runExportHelpers();
+    if ( componentConfig.isIncludeDatasources() ) {
+      exportMetadataModels();
+    }
+    // Only run export helpers if any user-related settings are enabled
+    if ( componentConfig.isIncludeSchedules() || componentConfig.isIncludeUserSettings() ) {
+      runExportHelpers();
+    }
     if ( componentConfig.isIncludeUsers() ) {
       exportUsersAndRoles();
     }
@@ -208,6 +232,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       // write manifest to zip output stream
       ZipEntry entry = new ZipEntry( EXPORT_MANIFEST_FILENAME );
       zos.putNextEntry( entry );
+      trackFileAdded( EXPORT_MANIFEST_FILENAME );
 
       // pass output stream to manifest class for writing
       try {
@@ -226,6 +251,14 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     if ( inventoryLogger != null ) {
       inventoryLogger.logOperationComplete();
     }
+
+    // Log file count statistics
+    getRepositoryExportLogger().info( "======================================" );
+    getRepositoryExportLogger().info( "Export Summary Statistics:" );
+    getRepositoryExportLogger().info( "  Total Files Exported: " + exportedFileCount );
+    getRepositoryExportLogger().info( "  Total Folders Exported: " + exportedFolderCount );
+    getRepositoryExportLogger().info( "  Total Items Exported: " + getTotalExportedCount() );
+    getRepositoryExportLogger().info( "======================================" );
 
     // clean up
     initManifest();
@@ -326,6 +359,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
         try {
           zos.putNextEntry( zipEntry );
+          trackFileAdded( metadataZipEntryName );
           IOUtils.copy( inputStream, zos );
 
           // add the info to the exportManifest
@@ -410,6 +444,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
         try {
           zos.putNextEntry( zipEntry );
+          trackFileAdded( path );
           IOUtils.copy( inputStream, zos );
         } catch ( IOException e ) {
           getRepositoryExportLogger().error( Messages.getInstance().getString( "PentahoPlatformExporter.ERROR_MONDRIAN_DATASOURCE_EXPORT" ) );
@@ -557,6 +592,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       ZipEntry metastoreZipFileZipEntry = new ZipEntry( zipFileLocation );
       getRepositoryExportLogger().debug( "Starting to add the metastore zip to the bundle" );
       zos.putNextEntry( metastoreZipFileZipEntry );
+      trackFileAdded( zipFileLocation );
       try {
         IOUtils.copy( zis, zos );
         getRepositoryExportLogger().debug( "Finished adding the metastore zip to the bundle" );
@@ -616,6 +652,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
           FileInputStream fis = null;
           try {
             zos.putNextEntry( entry );
+            trackFileAdded( path );
             fis = new FileInputStream( listFile );
             IOUtils.copy( fis, zos );
           } catch ( IOException e ) {
@@ -655,7 +692,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       // don't zip root folder without name
       if ( !ClientRepositoryPaths.getRootFolderPath().equals( exportRepositoryFile.getPath() ) ) {
         getRepositoryExportLogger().trace( "Adding a name to the root folder" );
-        zos.putNextEntry( new ZipEntry( getFixedZipEntryName( exportRepositoryFile, filePath ) ) );
+        String folderZipEntry = getFixedZipEntryName( exportRepositoryFile, filePath );
+        zos.putNextEntry( new ZipEntry( folderZipEntry ) );
+        trackFolderAdded( folderZipEntry );
       }
       getRepositoryExportLogger().debug( "Starting recursive backup of a folder [ " + exportRepositoryFile.getName() + " ]" );
       exportDirectory( exportRepositoryFile, zos, filePath );
@@ -779,6 +818,51 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       }
     }
     return true;
+  }
+
+  /**
+   * Track file being added to ZIP export
+   */
+  public void trackFileAdded( String zipPath ) {
+    exportedFileCount++;
+    getRepositoryExportLogger().debug( "Added to ZIP [" + exportedFileCount + "]: " + zipPath );
+  }
+
+  /**
+   * Track folder being added to ZIP export
+   */
+  public void trackFolderAdded( String zipPath ) {
+    exportedFolderCount++;
+    getRepositoryExportLogger().debug( "Added folder to ZIP [" + exportedFolderCount + "]: " + zipPath );
+  }
+
+  /**
+   * Get total files exported
+   */
+  public int getExportedFileCount() {
+    return exportedFileCount;
+  }
+
+  /**
+   * Get total folders exported
+   */
+  public int getExportedFolderCount() {
+    return exportedFolderCount;
+  }
+
+  /**
+   * Get total items exported
+   */
+  public int getTotalExportedCount() {
+    return exportedFileCount + exportedFolderCount;
+  }
+
+  /**
+   * Reset export counters
+   */
+  private void resetExportCounters() {
+    exportedFileCount = 0;
+    exportedFolderCount = 0;
   }
 
   public ZipOutputStream getZipStream() {
