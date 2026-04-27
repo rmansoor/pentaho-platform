@@ -41,6 +41,9 @@ import org.pentaho.platform.plugin.action.mondrian.catalog.MondrianCatalog;
 import org.pentaho.platform.plugin.services.importexport.DatabaseConnectionConverter;
 import org.pentaho.platform.plugin.services.importexport.DefaultExportHandler;
 import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
+import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.BackupInventory;
+import org.pentaho.platform.plugin.services.importexport.InventoryLogger;
 import org.pentaho.platform.plugin.services.importexport.ExportManifestUserSetting;
 import org.pentaho.platform.plugin.services.importexport.RoleExport;
 import org.pentaho.platform.plugin.services.importexport.UserExport;
@@ -96,6 +99,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   private MondrianCatalogRepositoryHelper mondrianCatalogRepositoryHelper;
   private IMetaStore metastore;
   private IUserSettingService userSettingService;
+  private BackupComponentConfig componentConfig;
+  private BackupInventory backupInventory;
+  private InventoryLogger inventoryLogger;
 
   private List<IExportHelper> exportHelpers = new ArrayList<>();
 
@@ -106,7 +112,27 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   }
 
   public File performExport() throws ExportException, IOException {
+    if ( componentConfig == null ) {
+      componentConfig = BackupComponentConfig.fullSystem();
+    }
     return this.performExport( null );
+  }
+
+  /**
+   * Perform selective export based on component configuration
+   */
+  public File performSelectiveExport( RepositoryFile exportRepositoryFile, BackupComponentConfig config )
+    throws ExportException, IOException {
+    this.componentConfig = config;
+    getRepositoryExportLogger().info( "Starting selective export: " + config.toString() );
+    return this.performExport( exportRepositoryFile );
+  }
+
+  /**
+   * Perform selective export of root directory
+   */
+  public File performSelectiveExport( BackupComponentConfig config ) throws ExportException, IOException {
+    return performSelectiveExport( null, config );
   }
 
   public void addExportHelper( IExportHelper helper ) {
@@ -131,6 +157,15 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   @Override
   public File performExport( RepositoryFile exportRepositoryFile ) throws ExportException, IOException {
 
+    // Initialize component config if not set (backward compatibility)
+    if ( componentConfig == null ) {
+      componentConfig = BackupComponentConfig.fullSystem();
+    }
+
+    // Initialize backup inventory tracking
+    backupInventory = new BackupInventory("BACKUP");
+    inventoryLogger = new InventoryLogger(getRepositoryExportLogger(), backupInventory, true);
+
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_PROCESS" ) );
     // always export root
     exportRepositoryFile = getUnifiedRepository().getFile( ROOT );
@@ -141,18 +176,33 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
     zos = new ZipOutputStream( new FileOutputStream( exportFile ) );
 
-    try {
-      exportFileContent( exportRepositoryFile );
-    } catch ( ExportException | IOException exception ) {
-      getRepositoryExportLogger().error( Messages.getInstance().getString( "PentahoPlatformExporter.ERROR_EXPORT_FILE_CONTENT", exception.getLocalizedMessage() ) );
+    if ( componentConfig.isIncludeContent() ) {
+      try {
+        exportFileContent( exportRepositoryFile );
+      } catch ( ExportException | IOException exception ) {
+        getRepositoryExportLogger().error( Messages.getInstance().getString( "PentahoPlatformExporter.ERROR_EXPORT_FILE_CONTENT", exception.getLocalizedMessage() ) );
+        if ( inventoryLogger != null ) {
+          inventoryLogger.logObjectFailure("CONTENT", "Repository Root", "REPOSITORY_FOLDER", exception.getMessage());
+        }
+      }
+    } else {
+      getRepositoryExportLogger().debug( "Skipping content export (not included in backup configuration)" );
     }
 
-    exportDatasources();
-    exportMondrianSchemas();
+    if ( componentConfig.isIncludeDatasources() ) {
+      exportDatasources();
+    }
+    if ( componentConfig.isIncludeMondrian() ) {
+      exportMondrianSchemas();
+    }
     exportMetadataModels();
     runExportHelpers();
-    exportUsersAndRoles();
-    exportMetastore();
+    if ( componentConfig.isIncludeUsers() ) {
+      exportUsersAndRoles();
+    }
+    if ( componentConfig.isIncludeMetastore() ) {
+      exportMetastore();
+    }
 
     if ( this.withManifest ) {
       // write manifest to zip output stream
@@ -172,6 +222,11 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
     zos.close();
 
+    // Log final inventory report
+    if ( inventoryLogger != null ) {
+      inventoryLogger.logOperationComplete();
+    }
+
     // clean up
     initManifest();
     zos = null;
@@ -182,34 +237,65 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   }
 
   protected void exportDatasources() {
+    if ( !componentConfig.isIncludeDatasources() ) {
+      getRepositoryExportLogger().debug( "Skipping datasources export (not included in backup configuration)" );
+      return;
+    }
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_JDBC_DATASOURCE" ) );
     // get all connection to export
     int successfulExportJDBCDSCount = 0;
+    int failedCount = 0;
     int databaseConnectionsSize = 0;
     try {
       List<IDatabaseConnection> databaseConnections = getDatasourceMgmtService().getDatasources();
       if ( databaseConnections != null ) {
         databaseConnectionsSize = databaseConnections.size();
         getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_COUNT_JDBC_DATASOURCE_TO_EXPORT", databaseConnectionsSize ) );
+        if ( inventoryLogger != null ) {
+          inventoryLogger.logComponentStart("Datasources", databaseConnectionsSize);
+        }
       }
       for ( IDatabaseConnection datasource : databaseConnections ) {
         if ( datasource instanceof org.pentaho.database.model.DatabaseConnection ) {
           getRepositoryExportLogger().debug( "Starting to perform backup of datasource [ " + datasource.getName() + " ]" );
-          getExportManifest().addDatasource( DatabaseConnectionConverter.model2export( datasource ) );
-          getRepositoryExportLogger().debug( "Finished performing backup of datasource [ " + datasource.getName() + " ]" );
-          successfulExportJDBCDSCount++;
+          try {
+            getExportManifest().addDatasource( DatabaseConnectionConverter.model2export( datasource ) );
+            getRepositoryExportLogger().debug( "Finished performing backup of datasource [ " + datasource.getName() + " ]" );
+            successfulExportJDBCDSCount++;
+            if ( inventoryLogger != null ) {
+              inventoryLogger.logObjectSuccess("DATASOURCES", datasource.getName(), "DATASOURCE");
+            }
+            if ( backupInventory != null ) {
+              backupInventory.recordSuccess("DATASOURCES", datasource.getName(), "DATASOURCE");
+            }
+          } catch ( Exception e ) {
+            failedCount++;
+            if ( inventoryLogger != null ) {
+              inventoryLogger.logObjectFailure("DATASOURCES", datasource.getName(), "DATASOURCE", e.getMessage());
+            }
+          }
         }
       }
     } catch ( DatasourceMgmtServiceException e ) {
       getRepositoryExportLogger().warn( "Unable to retrieve JDBC datasource(s). Cause [" + e.getMessage() + " ]" );
       getRepositoryExportLogger().debug( "Unable to retrieve JDBC datasource(s). Cause [" + e.getMessage() + " ]", e );
+      if ( inventoryLogger != null ) {
+        inventoryLogger.logObjectFailure("DATASOURCES", "All Datasources", "DATASOURCE_COLLECTION", e.getMessage());
+      }
     }
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_SUCCESSFUL_JDBC_DATASOURCE_EXPORT_COUNT", successfulExportJDBCDSCount, databaseConnectionsSize ) );
+    if ( inventoryLogger != null ) {
+      inventoryLogger.logComponentComplete("Datasources", "DATASOURCES", successfulExportJDBCDSCount, failedCount, 0);
+    }
 
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_END_EXPORT_JDBC_DATASOURCE" ) );
   }
 
   protected void exportMetadataModels() {
+    if ( !componentConfig.isIncludeDatasources() ) {
+      getRepositoryExportLogger().debug( "Skipping metadata models export (datasources not included in backup configuration)" );
+      return;
+    }
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_METADATA" ) );
     int successfulExportMetadataDSCount = 0;
     int metadataDSSize = 0;
@@ -660,6 +746,14 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
   public void setUserSettingService( IUserSettingService userSettingService ) {
     this.userSettingService = userSettingService;
+  }
+
+  public BackupComponentConfig getComponentConfig() {
+    return componentConfig;
+  }
+
+  public void setComponentConfig( BackupComponentConfig componentConfig ) {
+    this.componentConfig = componentConfig;
   }
 
   @Override

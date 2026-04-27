@@ -208,6 +208,16 @@ public class ZipExportProcessor extends BaseExportProcessor {
             logger.trace( "Finished creating locale entry for repository object [ " + ( ( repositoryFile != null ) ? repositoryFile.getName() : "" ) + " ] " );
           }
         }
+      } catch ( Exception e ) {
+        // Handle any errors during file export (corrupted data, permissions, etc.)
+        // Log the error with file name and continue with next handler or file
+        String errorMsg = "Error exporting file: " + repositoryFile.getName() + " - " 
+            + e.getClass().getSimpleName() + ": " + e.getMessage();
+        if ( logger != null ) {
+          logger.warn( errorMsg, e );
+        }
+        log.warn( errorMsg, e );
+        // Continue to next handler instead of failing completely
       }
     }
   }
@@ -275,6 +285,14 @@ public class ZipExportProcessor extends BaseExportProcessor {
           } catch ( ZipException e ) {
             // possible duplicate entry, log it and continue on with the other files in the directory
             log.debug( e.getMessage(), e );
+          } catch ( Exception e ) {
+            // Gracefully handle any other export errors (corrupted files, permission issues, etc.)
+            String errorMsg = "Failed to export file: " + repositoryFile.getName() + " - " + e.getMessage();
+            if ( logger != null ) {
+              logger.warn( errorMsg, e );
+            }
+            log.warn( errorMsg, e );
+            // Continue processing other files instead of crashing
           }
         }
       } else {
