@@ -48,6 +48,7 @@ public class ImportSession {
   private boolean retainOwnership;
   private boolean overwriteAclSettings;
   private String currentManifestKey;
+  private BackupComponentConfig componentOverrides; // Component selection overrides for selective restore
 
   private final HashSet<RepositoryFile> importedRepositoryFiles = new HashSet<RepositoryFile>();
   private final List<String> importedScheduleJobIds = new ArrayList<String>();
@@ -70,6 +71,7 @@ public class ImportSession {
     importedScheduleJobIds.clear();
     skippedFiles.clear();
     foldersCreatedImplicitly.clear();
+    componentOverrides = null; // Clear component overrides
   }
 
   public Log getLogger() {
@@ -308,6 +310,22 @@ public class ImportSession {
    */
   public List<String> getImportedScheduleJobIds() {
     return importedScheduleJobIds;
+  }
+
+  /**
+   * Set component overrides for selective restore
+   * @param componentOverrides BackupComponentConfig specifying which components to restore
+   */
+  public void setComponentOverrides( BackupComponentConfig componentOverrides ) {
+    this.componentOverrides = componentOverrides;
+  }
+
+  /**
+   * Get component overrides for selective restore
+   * @return BackupComponentConfig if selective restore, null for full restore
+   */
+  public BackupComponentConfig getComponentOverrides() {
+    return componentOverrides;
   }
 
   /**

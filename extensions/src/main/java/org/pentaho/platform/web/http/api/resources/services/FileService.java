@@ -140,6 +140,9 @@ public class FileService {
   private PentahoPlatformExporter backupExporter;
 
   private void validateFilePath( String logFile ) throws IllegalArgumentException {
+    if ( logFile == null || logFile.isEmpty() ) {
+      return; // Allow null/empty logFile - fallback will be used
+    }
     if ( logFile.contains( ".." ) || logFile.contains( "//" ) || logFile.contains( "\\\\" ) || ( !logFile.endsWith( ".txt" ) && !logFile.endsWith( ".log" ) ) ) {
       throw new IllegalArgumentException( Messages.getInstance().getString( "FileService.ERROR_INVALID_LOG_FILENAME", logFile ) );
     }
@@ -153,8 +156,12 @@ public class FileService {
       Level level = Level.valueOf( logLevel );
       FileOutputStream fileOutputStream = null;
       try {
-        validateFilePath( logFile );
-        fileOutputStream = new FileOutputStream( logFile );
+        if ( logFile != null && !logFile.isEmpty() ) {
+          validateFilePath( logFile );
+          fileOutputStream = new FileOutputStream( logFile );
+        } else {
+          fileOutputStream = retrieveFallbackLogFileLocation( "backup" );
+        }
       } catch ( FileNotFoundException e ) {
         try {
           fileOutputStream = retrieveFallbackLogFileLocation( "backup" );
@@ -292,8 +299,12 @@ public class FileService {
       Level level = Level.valueOf( logLevel );
       FileOutputStream fileOutputStream = null;
       try {
-        validateFilePath( logFile );
-        fileOutputStream = new FileOutputStream( logFile );
+        if ( logFile != null && !logFile.isEmpty() ) {
+          validateFilePath( logFile );
+          fileOutputStream = new FileOutputStream( logFile );
+        } else {
+          fileOutputStream = retrieveFallbackLogFileLocation( "selective_backup" );
+        }
       } catch ( FileNotFoundException e ) {
         try {
           fileOutputStream = retrieveFallbackLogFileLocation( "selective_backup" );
@@ -319,6 +330,19 @@ public class FileService {
 
       // Set the component configuration on the exporter
       PentahoPlatformExporter platformExporter = (PentahoPlatformExporter) exporter;
+      
+      // Log the received component config
+      logger.info( "SELECTIVE BACKUP - Received component config: " + componentConfig );
+      if ( componentConfig != null ) {
+        logger.info( "  includeContent: " + componentConfig.isIncludeContent() );
+        logger.info( "  includeUsers: " + componentConfig.isIncludeUsers() );
+        logger.info( "  includeDatasources: " + componentConfig.isIncludeDatasources() );
+        logger.info( "  includeMondrian: " + componentConfig.isIncludeMondrian() );
+        logger.info( "  includeMetastore: " + componentConfig.isIncludeMetastore() );
+        logger.info( "  includeSchedules: " + componentConfig.isIncludeSchedules() );
+        logger.info( "  includeUserSettings: " + componentConfig.isIncludeUserSettings() );
+      }
+      
       platformExporter.setComponentConfig( componentConfig );
 
       // Perform the selective export
@@ -376,7 +400,7 @@ public class FileService {
    */
   public void selectiveRestore( final InputStream fileUpload, String overwriteFile,
       String applyAclSettings, String overwriteAclSettings, String logFile, String logLevel,
-      BackupComponentConfig componentOverrides ) throws IllegalArgumentException, PlatformImportException,
+      BackupComponentConfig componentOverrides, String backupBundlePath ) throws IllegalArgumentException, PlatformImportException,
       SecurityException {
     if ( doCanAdminister() ) {
       boolean overwriteFileFlag = !"false".equals( overwriteFile );
@@ -405,13 +429,15 @@ public class FileService {
       bundleBuilder.schedulable( RepositoryFile.SCHEDULABLE_BY_DEFAULT );
       bundleBuilder.path( importDirectory );
       bundleBuilder.overwriteFile( overwriteFileFlag );
+      bundleBuilder.name( backupBundlePath != null ? backupBundlePath : "backup.zip" );
       bundleBuilder.applyAclSettings( applyAclSettingsFlag );
       bundleBuilder.overwriteAclSettings( overwriteAclSettingsFlag );
       bundleBuilder.retainOwnership( true );
       bundleBuilder.preserveDsw( true );
 
-      // Add component overrides to bundle if provided
+      // Store component overrides on ImportSession for use during import filtering
       if ( componentOverrides != null ) {
+        ImportSession.getSession().setComponentOverrides( componentOverrides );
         bundleBuilder.comment( "componentOverrides:" + componentOverrides.toString() );
       }
 
@@ -424,6 +450,8 @@ public class FileService {
       importLogger.startJob( importLoggerStream, importDirectory, level, stringLayout );
       try {
         importer.importFile( bundleBuilder.build() );
+      } catch ( Exception e ) {
+        throw e;
       } finally {
         importLogger.endJob();
         try {

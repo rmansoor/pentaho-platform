@@ -90,8 +90,8 @@ public class FileResourceSelectiveBackupTest {
   }
 
   @Test
-  public void testSelectiveBackupWithDataIntegrationConfig() {
-    BackupComponentConfig config = BackupComponentConfig.dataIntegration();
+  public void testSelectiveBackupWithDataSourceConfig() {
+    BackupComponentConfig config = BackupComponentConfig.dataSource();
 
     assertNotNull( config );
     assertTrue( config.isValid() );
@@ -159,7 +159,7 @@ public class FileResourceSelectiveBackupTest {
 
   @Test
   public void testSelectiveRestoreIntegration() {
-    BackupComponentConfig config = BackupComponentConfig.dataIntegration();
+    BackupComponentConfig config = BackupComponentConfig.dataSource();
     
     assertNotNull( config );
     assertTrue( config.isValid() );

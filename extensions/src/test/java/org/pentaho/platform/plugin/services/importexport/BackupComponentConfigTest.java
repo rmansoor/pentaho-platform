@@ -76,8 +76,8 @@ public class BackupComponentConfigTest {
   }
 
   @Test
-  public void testDataIntegrationBackup() {
-    BackupComponentConfig config = BackupComponentConfig.dataIntegration();
+  public void testDataSourceBackup() {
+    BackupComponentConfig config = BackupComponentConfig.dataSource();
 
     assertFalse( config.isIncludeContent() );
     assertFalse( config.isIncludeUsers() );
@@ -184,7 +184,7 @@ public class BackupComponentConfigTest {
 
   @Test
   public void testSerialization() {
-    BackupComponentConfig config = BackupComponentConfig.dataIntegration();
+    BackupComponentConfig config = BackupComponentConfig.dataSource();
     config.setBackupName( "Test Backup" );
     config.setDescription( "Test Description" );
 

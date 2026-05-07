@@ -115,8 +115,8 @@ public class SelectiveBackupIntegrationTest {
   }
 
   @Test
-  public void testDataIntegrationBackupProfile() {
-    BackupComponentConfig config = BackupComponentConfig.dataIntegration();
+  public void testDataSourceBackupProfile() {
+    BackupComponentConfig config = BackupComponentConfig.dataSource();
     exporter.setComponentConfig( config );
 
     BackupComponentConfig retrievedConfig = exporter.getComponentConfig();
@@ -145,7 +145,7 @@ public class SelectiveBackupIntegrationTest {
     config = BackupComponentConfig.contentOnly();
     assertTrue( config.getComponentCount() == 1 );
 
-    config = BackupComponentConfig.dataIntegration();
+    config = BackupComponentConfig.dataSource();
     assertTrue( config.getComponentCount() == 3 );
   }
 

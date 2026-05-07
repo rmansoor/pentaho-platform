@@ -16,6 +16,7 @@ package org.pentaho.platform.web.http.api.resources;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gwt.safehtml.shared.SafeHtmlBuilder;
 import com.sun.jersey.multipart.FormDataParam;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -329,18 +330,17 @@ public class FileResource extends AbstractJaxRSResource {
       @FormDataParam( "applyAclSettings" ) String applyAclSettings,
       @FormDataParam( "overwriteAclSettings" ) String overwriteAclSettings,
       @FormDataParam( "logFile" ) String logFile,
-      @FormDataParam( "logLevel" ) String logLevel ) {
+      @FormDataParam( "logLevel" ) String logLevel,
+      @FormDataParam( "backupBundlePath" ) String backupBundlePath ) {
     try {
       // Parse component overrides if provided
       BackupComponentConfig componentOverrides = null;
       if ( componentOverridesJson != null && !componentOverridesJson.isEmpty() ) {
-        // Parse JSON to BackupComponentConfig
-        // This would typically use a JSON parser like Jackson or Gson
         componentOverrides = parseComponentConfigJson( componentOverridesJson );
       }
 
       fileService.selectiveRestore( fileUpload, overwriteFile, applyAclSettings, overwriteAclSettings,
-          logFile, logLevel, componentOverrides );
+          logFile, logLevel, componentOverrides, backupBundlePath );
       return Response.ok().build();
     } catch ( IllegalArgumentException iae ) {
       throw new WebApplicationException( iae, Response.Status.BAD_REQUEST );
@@ -353,7 +353,7 @@ public class FileResource extends AbstractJaxRSResource {
 
   /**
    * Helper method to parse JSON string to BackupComponentConfig
-   * This would typically use a JSON parsing library like Jackson
+   * Uses Jackson ObjectMapper for robust JSON parsing
    *
    * @param json JSON string representation of BackupComponentConfig
    * @return Parsed BackupComponentConfig
@@ -361,16 +361,8 @@ public class FileResource extends AbstractJaxRSResource {
    */
   private BackupComponentConfig parseComponentConfigJson( String json ) throws IllegalArgumentException {
     try {
-      BackupComponentConfig config = new BackupComponentConfig();
-      // Simple JSON parsing - in production, use Jackson or similar
-      config.setIncludeContent( json.contains( "\"includeContent\":true" ) );
-      config.setIncludeUsers( json.contains( "\"includeUsers\":true" ) );
-      config.setIncludeDatasources( json.contains( "\"includeDatasources\":true" ) );
-      config.setIncludeMetastore( json.contains( "\"includeMetastore\":true" ) );
-      config.setIncludeSchedules( json.contains( "\"includeSchedules\":true" ) );
-      config.setIncludeUserSettings( json.contains( "\"includeUserSettings\":true" ) );
-      config.setIncludeMondrian( json.contains( "\"includeMondrian\":true" ) );
-      return config;
+      ObjectMapper mapper = new ObjectMapper();
+      return mapper.readValue( json, BackupComponentConfig.class );
     } catch ( Exception e ) {
       throw new IllegalArgumentException( "Invalid JSON format for component configuration: " + e.getMessage() );
     }

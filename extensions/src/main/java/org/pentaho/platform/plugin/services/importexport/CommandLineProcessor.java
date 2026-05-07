@@ -196,6 +196,30 @@ public class CommandLineProcessor {
   private static final String INFO_OPTION_BACKUP_PROFILE_KEY = "bp";
   private static final String INFO_OPTION_BACKUP_PROFILE_NAME = "backup-profile";
   
+  // Selective restore component flags
+  private static final String INFO_OPTION_RESTORE_CONTENT_KEY = "rc";
+  private static final String INFO_OPTION_RESTORE_CONTENT_NAME = "restore-content";
+  private static final String INFO_OPTION_RESTORE_USERS_KEY = "ru";
+  private static final String INFO_OPTION_RESTORE_USERS_NAME = "restore-users";
+  private static final String INFO_OPTION_RESTORE_DATASOURCES_KEY = "rd";
+  private static final String INFO_OPTION_RESTORE_DATASOURCES_NAME = "restore-datasources";
+  private static final String INFO_OPTION_RESTORE_METASTORE_KEY = "rm";
+  private static final String INFO_OPTION_RESTORE_METASTORE_NAME = "restore-metastore";
+  private static final String INFO_OPTION_RESTORE_SCHEDULES_KEY = "rs";
+  private static final String INFO_OPTION_RESTORE_SCHEDULES_NAME = "restore-schedules";
+  private static final String INFO_OPTION_RESTORE_SETTINGS_KEY = "rset";
+  private static final String INFO_OPTION_RESTORE_SETTINGS_NAME = "restore-settings";
+  private static final String INFO_OPTION_RESTORE_MONDRIAN_KEY = "rmo";
+  private static final String INFO_OPTION_RESTORE_MONDRIAN_NAME = "restore-mondrian";
+  
+  // Selective restore profile (predefined configuration)
+  private static final String INFO_OPTION_RESTORE_PROFILE_KEY = "rp";
+  private static final String INFO_OPTION_RESTORE_PROFILE_NAME = "restore-profile";
+  
+  // Generated content filter option (CONTENT_ONLY only)
+  private static final String INFO_OPTION_INCLUDE_GENERATED_CONTENT_KEY = "igc";
+  private static final String INFO_OPTION_INCLUDE_GENERATED_CONTENT_NAME = "include-generated-content";
+  
   // Streaming logs option
   private static final String INFO_OPTION_STREAM_LOGS_KEY = "sl";
   private static final String INFO_OPTION_STREAM_LOGS_NAME = "stream-logs";
@@ -335,8 +359,36 @@ public class CommandLineProcessor {
     options.addOption( INFO_OPTION_BACKUP_PROFILE_KEY, INFO_OPTION_BACKUP_PROFILE_NAME, true, Messages.getInstance()
         .getString( "CommandLineProcessor.INFO_OPTION_BACKUP_PROFILE_DESCRIPTION" ) );
     
-    options.addOption( INFO_OPTION_STREAM_LOGS_KEY, INFO_OPTION_STREAM_LOGS_NAME, true, 
-        "Stream backup logs to console in real-time (true/false, default: false)" );
+    // Selective restore component options
+    options.addOption( INFO_OPTION_RESTORE_CONTENT_KEY, INFO_OPTION_RESTORE_CONTENT_NAME, true, Messages.getInstance()
+        .getString( "CommandLineProcessor.INFO_OPTION_RESTORE_CONTENT_DESCRIPTION" ) );
+    
+    options.addOption( INFO_OPTION_RESTORE_USERS_KEY, INFO_OPTION_RESTORE_USERS_NAME, true, Messages.getInstance()
+        .getString( "CommandLineProcessor.INFO_OPTION_RESTORE_USERS_DESCRIPTION" ) );
+    
+    options.addOption( INFO_OPTION_RESTORE_DATASOURCES_KEY, INFO_OPTION_RESTORE_DATASOURCES_NAME, true, Messages.getInstance()
+        .getString( "CommandLineProcessor.INFO_OPTION_RESTORE_DATASOURCES_DESCRIPTION" ) );
+    
+    options.addOption( INFO_OPTION_RESTORE_METASTORE_KEY, INFO_OPTION_RESTORE_METASTORE_NAME, true, Messages.getInstance()
+        .getString( "CommandLineProcessor.INFO_OPTION_RESTORE_METASTORE_DESCRIPTION" ) );
+    
+    options.addOption( INFO_OPTION_RESTORE_SCHEDULES_KEY, INFO_OPTION_RESTORE_SCHEDULES_NAME, true, Messages.getInstance()
+        .getString( "CommandLineProcessor.INFO_OPTION_RESTORE_SCHEDULES_DESCRIPTION" ) );
+    
+    options.addOption( INFO_OPTION_RESTORE_SETTINGS_KEY, INFO_OPTION_RESTORE_SETTINGS_NAME, true, Messages.getInstance()
+        .getString( "CommandLineProcessor.INFO_OPTION_RESTORE_SETTINGS_DESCRIPTION" ) );
+    
+    options.addOption( INFO_OPTION_RESTORE_MONDRIAN_KEY, INFO_OPTION_RESTORE_MONDRIAN_NAME, true, Messages.getInstance()
+        .getString( "CommandLineProcessor.INFO_OPTION_RESTORE_MONDRIAN_DESCRIPTION" ) );
+    
+    options.addOption( INFO_OPTION_RESTORE_PROFILE_KEY, INFO_OPTION_RESTORE_PROFILE_NAME, true, Messages.getInstance()
+        .getString( "CommandLineProcessor.INFO_OPTION_RESTORE_PROFILE_DESCRIPTION" ) );
+    
+    options.addOption( INFO_OPTION_INCLUDE_GENERATED_CONTENT_KEY, INFO_OPTION_INCLUDE_GENERATED_CONTENT_NAME, true, Messages.getInstance()
+        .getString( "CommandLineProcessor.INFO_OPTION_INCLUDE_GENERATED_CONTENT_DESCRIPTION" ) );
+    
+    options.addOption( INFO_OPTION_STREAM_LOGS_KEY, INFO_OPTION_STREAM_LOGS_NAME, true, Messages.getInstance()
+        .getString( "CommandLineProcessor.INFO_OPTION_STREAM_LOGS_DESCRIPTION" ) );
   }
 
   /**
@@ -893,11 +945,69 @@ public class CommandLineProcessor {
     // Check if streaming logs is enabled
     boolean enableStreamingLogs = "true".equalsIgnoreCase( streamLogs );
     
-    if ( enableStreamingLogs && logFile != null && !logFile.isEmpty() ) {
-      performBackupWithStreaming( contextURL, logFile, logLevel, outputFile );
+    // Check if selective backup (profile or component flags) is requested
+    BackupComponentConfig componentConfig = buildBackupComponentConfig();
+    
+    if ( componentConfig != null ) {
+      // Selective backup requested
+      if ( enableStreamingLogs && logFile != null && !logFile.isEmpty() ) {
+        performSelectiveBackupWithStreaming( contextURL, logFile, logLevel, outputFile, componentConfig );
+      } else {
+        performSelectiveBackup( contextURL, logFile, logLevel, outputFile, componentConfig );
+      }
     } else {
-      // Perform full system backup without streaming
-      performFullBackup( contextURL, logFile, logLevel, outputFile );
+      // Full system backup
+      if ( enableStreamingLogs && logFile != null && !logFile.isEmpty() ) {
+        performBackupWithStreaming( contextURL, logFile, logLevel, outputFile );
+      } else {
+        performFullBackup( contextURL, logFile, logLevel, outputFile );
+      }
+    }
+  }
+
+  /**
+   * Perform selective backup with specific component configuration
+   */
+  private void performSelectiveBackup( String contextURL, String logFile, String logLevel, String outputFile,
+      BackupComponentConfig componentConfig ) throws ParseException, KettleException, URISyntaxException {
+    String backupURL = buildURL( contextURL, API_REPO_FILES_SELECTIVE_BACKUP );
+    WebResource resource = client.resource( backupURL );
+
+    // Send component config as JSON in request body
+    String jsonConfig = serializeComponentConfig( componentConfig );
+    
+    // Build query parameters - only add if not null/empty
+    if ( logFile != null && !logFile.isEmpty() ) {
+      resource = resource.queryParam( MULTIVALUE_FIELD_LOG_FILE, logFile );
+    }
+    
+    if ( logLevel != null && logLevel.length() > 0 ) {
+      resource = resource.queryParam( MULTIVALUE_FIELD_LOG_LEVEL, logLevel );
+    } else {
+      resource = resource.queryParam( MULTIVALUE_FIELD_LOG_LEVEL, DEFAULT_LOG_LEVEL );
+    }
+    
+    if ( outputFile != null && !outputFile.isEmpty() ) {
+      resource = resource.queryParam( MULTIVALUE_FIELD_OUTPUT_FILE_NAME_LEVEL, outputFile );
+    }
+    
+    ClientResponse response = resource.type( MediaType.APPLICATION_JSON ).post( ClientResponse.class, jsonConfig );
+
+    if ( response != null && response.getStatus() == 200 ) {
+      writeEntityToFile( response, outputFile );
+
+      String message = Messages.getInstance().getString( "CommandLineProcessor.INFO_BACKUP_COMPLETED" ).concat( "\n" );
+      message += Messages.getInstance().getString( "CommandLineProcessor.INFO_RESPONSE_STATUS", response.getStatus() );
+      message += "\n";
+      message += Messages.getInstance().getString( "CommandLineProcessor.INFO_BACKUP_WRITTEN_TO", outputFile );
+      if ( StringUtils.isNotBlank( logFile ) ) {
+        System.out.println( message );
+        writeToFile( message, logFile );
+      }
+    } else if ( response != null && response.getStatus() == 400 ) {
+      System.out.println( Messages.getInstance().getErrorString( "CommandLineProcessor.ERROR_0009_INVALID_LOG_FILE_PATH", logFile ) );
+    } else {
+      System.out.println( Messages.getInstance().getErrorString( "CommandLineProcessor.ERROR_0002_INVALID_RESPONSE" ) );
     }
   }
 
@@ -972,6 +1082,70 @@ public class CommandLineProcessor {
 
     System.out.println( "" );
     System.out.println( "========== LOG STREAM END ==========" );
+  }
+
+  /**
+   * Perform selective backup with real-time log streaming to console
+   */
+  private void performSelectiveBackupWithStreaming( String contextURL, String logFile, String logLevel, String outputFile,
+      BackupComponentConfig componentConfig ) throws ParseException, KettleException, URISyntaxException {
+    
+    System.out.println( "Starting selective backup with log streaming..." );
+    System.out.println( "Backup log file: " + logFile );
+    System.out.println( "Backup output file: " + outputFile );
+    System.out.println( "Log level: " + (logLevel != null && logLevel.length() > 0 ? logLevel : DEFAULT_LOG_LEVEL) );
+    System.out.println( "Component Config: " + componentConfig.toString() );
+    System.out.println( "" );
+    System.out.println( "========== LOG STREAM START ==========" );
+    System.out.println( "" );
+
+    // Start backup in a background thread
+    Thread backupThread = new Thread( () -> {
+      try {
+        performSelectiveBackup( contextURL, logFile, logLevel, outputFile, componentConfig );
+      } catch ( Exception e ) {
+        System.err.println( "Error during selective backup: " + e.getMessage() );
+        log.error( "Error during selective backup", e );
+      }
+    }, "SelectiveBackupExecutor" );
+    
+    backupThread.setDaemon( false );
+    backupThread.start();
+
+    // Stream the log file to console
+    try {
+      streamLogFile( logFile, backupThread );
+    } catch ( IOException | InterruptedException e ) {
+      System.err.println( "Error streaming logs: " + e.getMessage() );
+      log.error( "Error streaming logs", e );
+    }
+
+    System.out.println( "" );
+    System.out.println( "========== LOG STREAM END ==========" );
+  }
+
+  /**
+   * Serialize BackupComponentConfig to JSON string for REST request
+   */
+  private String serializeComponentConfig( BackupComponentConfig config ) {
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      return mapper.writeValueAsString( config );
+    } catch ( Exception e ) {
+      log.warn( "Error serializing component config, using default JSON", e );
+      // Fallback: manually construct JSON
+      return String.format( 
+          "{\"includeContent\":%b,\"includeUsers\":%b,\"includeDatasources\":%b," +
+          "\"includeMetastore\":%b,\"includeSchedules\":%b,\"includeUserSettings\":%b,\"includeMondrian\":%b}",
+          config.isIncludeContent(),
+          config.isIncludeUsers(),
+          config.isIncludeDatasources(),
+          config.isIncludeMetastore(),
+          config.isIncludeSchedules(),
+          config.isIncludeUserSettings(),
+          config.isIncludeMondrian()
+      );
+    }
   }
 
   /**
@@ -1054,8 +1228,8 @@ public class CommandLineProcessor {
    * REST Service Restore - supports both full system and selective restore
    * --restore --url=http://localhost:8080/pentaho --username=admin --password=password --overwrite=true
    * --logfile=c:/temp/steel-wheels.log --file-path=c:/temp/backup.zip
-   * Optional: --backup-profile=CONTENT_ONLY or individual component flags to override manifest config
-   * Example: --backup-users=true --backup-datasources=true (restore only these components)
+   * Optional: --restore-profile=CONTENT_ONLY or individual component flags to override manifest config
+   * Example: --restore-profile=SECURITY --restore-users=true (restore only security components)
    *
    * @throws ParseException
    */
@@ -1065,13 +1239,23 @@ public class CommandLineProcessor {
     String logFile = getOptionValue( INFO_OPTION_LOGFILE_NAME, false, true );
     String logLevel = getOptionValue( INFO_OPTION_LOGLEVEL_NAME, false, true );
 
-    // Check if selective restore is requested (component overrides provided)
-    BackupComponentConfig componentOverrides = buildBackupComponentConfig();
+    // Check if selective restore is requested (component overrides provided via restore-profile or component flags)
+    System.out.println( "DEBUG: performRestore() starting - checking for restore profile..." );
+    BackupComponentConfig componentOverrides = buildRestoreComponentConfig();
     
     if ( componentOverrides != null && componentOverrides.isValid() ) {
+      System.out.println( "DEBUG: Selective restore detected with profile:" );
+      System.out.println( "  Content: " + componentOverrides.isIncludeContent() );
+      System.out.println( "  Users: " + componentOverrides.isIncludeUsers() );
+      System.out.println( "  Datasources: " + componentOverrides.isIncludeDatasources() );
+      System.out.println( "  Metastore: " + componentOverrides.isIncludeMetastore() );
+      System.out.println( "  Mondrian: " + componentOverrides.isIncludeMondrian() );
+      System.out.println( "  Schedules: " + componentOverrides.isIncludeSchedules() );
+      System.out.println( "  UserSettings: " + componentOverrides.isIncludeUserSettings() );
       // Perform selective restore with component overrides
       performSelectiveRestore( contextURL, filePath, logFile, logLevel, componentOverrides );
     } else {
+      System.out.println( "DEBUG: Full system restore - componentOverrides is null or invalid" );
       // Perform full system restore
       performFullRestore( contextURL, filePath, logFile, logLevel );
     }
@@ -1153,6 +1337,10 @@ public class CommandLineProcessor {
       // Add component overrides as JSON
       String componentOverridesJson = new ObjectMapper().writeValueAsString( componentOverrides );
       part.field( "componentOverrides", componentOverridesJson, MediaType.MULTIPART_FORM_DATA_TYPE );
+      
+      // Add backup bundle path (filename from the uploaded file)
+      String backupBundlePath = fileIS.getName();
+      part.field( "backupBundlePath", backupBundlePath, MediaType.MULTIPART_FORM_DATA_TYPE );
       
       String overwrite = getOptionValue( INFO_OPTION_OVERWRITE_NAME, true, false );
       part.field( MULTIPART_FIELD_OVERWRITE_FILE, "true".equals( overwrite ) ? "true" : "false",
@@ -1361,7 +1549,7 @@ public class CommandLineProcessor {
   /**
    * Build BackupComponentConfig from command line options.
    * Supports two approaches:
-   * 1. Using a predefined profile: --backup-profile=CONTENT_ONLY|FULL_SYSTEM|SECURITY|DATA_INTEGRATION|INFRASTRUCTURE
+   * 1. Using a predefined profile: --backup-profile=CONTENT_ONLY|FULL_SYSTEM|SECURITY|DATA_SOURCE|INFRASTRUCTURE
    * 2. Using individual component flags: --backup-content=true --backup-users=true etc.
    *
    * @return BackupComponentConfig if any components are selected, null if using full system backup
@@ -1369,31 +1557,41 @@ public class CommandLineProcessor {
    */
   private BackupComponentConfig buildBackupComponentConfig() throws ParseException {
     try {
+      BackupComponentConfig config = null;
+      
       // Check for backup profile option first
       String profileOption = getOptionValue( INFO_OPTION_BACKUP_PROFILE_NAME, false, true );
       if ( profileOption != null && !profileOption.isEmpty() ) {
-        return buildProfileBasedConfig( profileOption );
+        config = buildProfileBasedConfig( profileOption );
+      } else {
+        // Check for individual component flags
+        String contentFlag = getOptionValue( INFO_OPTION_BACKUP_CONTENT_NAME, false, true );
+        String usersFlag = getOptionValue( INFO_OPTION_BACKUP_USERS_NAME, false, true );
+        String datasourcesFlag = getOptionValue( INFO_OPTION_BACKUP_DATASOURCES_NAME, false, true );
+        String metastoreFlag = getOptionValue( INFO_OPTION_BACKUP_METASTORE_NAME, false, true );
+        String schedulesFlag = getOptionValue( INFO_OPTION_BACKUP_SCHEDULES_NAME, false, true );
+        String settingsFlag = getOptionValue( INFO_OPTION_BACKUP_SETTINGS_NAME, false, true );
+        String mondrianFlag = getOptionValue( INFO_OPTION_BACKUP_MONDRIAN_NAME, false, true );
+
+        // If any component flags are provided, build custom config
+        if ( contentFlag != null || usersFlag != null || datasourcesFlag != null ||
+             metastoreFlag != null || schedulesFlag != null || settingsFlag != null ||
+             mondrianFlag != null ) {
+          config = buildCustomConfig( contentFlag, usersFlag, datasourcesFlag, metastoreFlag,
+              schedulesFlag, settingsFlag, mondrianFlag );
+        }
       }
-
-      // Check for individual component flags
-      String contentFlag = getOptionValue( INFO_OPTION_BACKUP_CONTENT_NAME, false, true );
-      String usersFlag = getOptionValue( INFO_OPTION_BACKUP_USERS_NAME, false, true );
-      String datasourcesFlag = getOptionValue( INFO_OPTION_BACKUP_DATASOURCES_NAME, false, true );
-      String metastoreFlag = getOptionValue( INFO_OPTION_BACKUP_METASTORE_NAME, false, true );
-      String schedulesFlag = getOptionValue( INFO_OPTION_BACKUP_SCHEDULES_NAME, false, true );
-      String settingsFlag = getOptionValue( INFO_OPTION_BACKUP_SETTINGS_NAME, false, true );
-      String mondrianFlag = getOptionValue( INFO_OPTION_BACKUP_MONDRIAN_NAME, false, true );
-
-      // If any component flags are provided, build custom config
-      if ( contentFlag != null || usersFlag != null || datasourcesFlag != null ||
-           metastoreFlag != null || schedulesFlag != null || settingsFlag != null ||
-           mondrianFlag != null ) {
-        return buildCustomConfig( contentFlag, usersFlag, datasourcesFlag, metastoreFlag,
-            schedulesFlag, settingsFlag, mondrianFlag );
+      
+      // Apply generated content filter if specified
+      if ( config != null ) {
+        String includeGenerated = getOptionValue( INFO_OPTION_INCLUDE_GENERATED_CONTENT_NAME, false, true );
+        if ( includeGenerated != null && !includeGenerated.isEmpty() ) {
+          boolean includeGeneratedContent = parseBoolean( includeGenerated );
+          config.setIncludeGeneratedContent( includeGeneratedContent );
+        }
       }
-
-      // No selective backup options provided - use full system backup
-      return null;
+      
+      return config;
 
     } catch ( ParseException e ) {
       // If optional parameters are not found, return null for full backup
@@ -1404,26 +1602,39 @@ public class CommandLineProcessor {
   /**
    * Build BackupComponentConfig from a predefined profile
    *
-   * @param profile Profile name (FULL_SYSTEM, CONTENT_ONLY, SECURITY, DATA_INTEGRATION, INFRASTRUCTURE)
+   * @param profile Profile name (FULL_SYSTEM, CONTENT_ONLY, SECURITY, DATA_SOURCE, SCHEDULES, SETTINGS, INFRASTRUCTURE)
    * @return BackupComponentConfig based on profile
    */
   private BackupComponentConfig buildProfileBasedConfig( String profile ) {
+    BackupComponentConfig config = null;
     switch ( profile.toUpperCase() ) {
       case "FULL_SYSTEM":
-        return BackupComponentConfig.fullSystem();
+        config = BackupComponentConfig.fullSystem();
+        break;
       case "CONTENT_ONLY":
-        return BackupComponentConfig.contentOnly();
+        config = BackupComponentConfig.contentOnly();
+        break;
       case "SECURITY":
-        return BackupComponentConfig.securityOnly();
-      case "DATA_INTEGRATION":
-        return BackupComponentConfig.dataIntegration();
+        config = BackupComponentConfig.securityOnly();
+        break;
+      case "DATA_SOURCE":
+        config = BackupComponentConfig.dataSource();
+        break;
+      case "SCHEDULES":
+        config = BackupComponentConfig.schedules();
+        break;
+      case "SETTINGS":
+        config = BackupComponentConfig.settings();
+        break;
       case "INFRASTRUCTURE":
-        return BackupComponentConfig.infrastructure();
+        config = BackupComponentConfig.infrastructure();
+        break;
       default:
         System.err.println( "Unknown backup profile: " + profile +
-            ". Valid profiles: FULL_SYSTEM, CONTENT_ONLY, SECURITY, DATA_INTEGRATION, INFRASTRUCTURE" );
+            ". Valid profiles: FULL_SYSTEM, CONTENT_ONLY, SECURITY, DATA_SOURCE, SCHEDULES, SETTINGS, INFRASTRUCTURE" );
         return null;
     }
+    return config;
   }
 
   /**
@@ -1465,6 +1676,93 @@ public class CommandLineProcessor {
     }
 
     return config;
+  }
+
+  /**
+   * Build BackupComponentConfig for restore, checking restore profile first
+   * Falls back to backup profile options and individual component flags
+   *
+   * @return BackupComponentConfig for selective restore, or null for full restore
+   * @throws ParseException
+   */
+  private BackupComponentConfig buildRestoreComponentConfig() throws ParseException {
+    try {
+      // Check for restore profile option first
+      String restoreProfile = getOptionValue( INFO_OPTION_RESTORE_PROFILE_NAME, false, true );
+      if ( restoreProfile != null && !restoreProfile.isEmpty() ) {
+        BackupComponentConfig config = buildProfileBasedConfig( restoreProfile );
+        
+        // Apply generated content filter if specified
+        String includeGenerated = getOptionValue( INFO_OPTION_INCLUDE_GENERATED_CONTENT_NAME, false, true );
+        if ( includeGenerated != null && !includeGenerated.isEmpty() ) {
+          boolean includeGeneratedContent = parseBoolean( includeGenerated );
+          config.setIncludeGeneratedContent( includeGeneratedContent );
+        }
+        
+        return config;
+      }
+
+      // Fall back to backup profile option (backwards compatibility)
+      String backupProfile = getOptionValue( INFO_OPTION_BACKUP_PROFILE_NAME, false, true );
+      if ( backupProfile != null && !backupProfile.isEmpty() ) {
+        BackupComponentConfig config = buildProfileBasedConfig( backupProfile );
+        
+        // Apply generated content filter if specified
+        String includeGenerated = getOptionValue( INFO_OPTION_INCLUDE_GENERATED_CONTENT_NAME, false, true );
+        if ( includeGenerated != null && !includeGenerated.isEmpty() ) {
+          boolean includeGeneratedContent = parseBoolean( includeGenerated );
+          config.setIncludeGeneratedContent( includeGeneratedContent );
+        }
+        
+        return config;
+      }
+
+      // Check for individual restore component flags first
+      String contentFlag = getOptionValue( INFO_OPTION_RESTORE_CONTENT_NAME, false, true );
+      String usersFlag = getOptionValue( INFO_OPTION_RESTORE_USERS_NAME, false, true );
+      String datasourcesFlag = getOptionValue( INFO_OPTION_RESTORE_DATASOURCES_NAME, false, true );
+      String metastoreFlag = getOptionValue( INFO_OPTION_RESTORE_METASTORE_NAME, false, true );
+      String schedulesFlag = getOptionValue( INFO_OPTION_RESTORE_SCHEDULES_NAME, false, true );
+      String settingsFlag = getOptionValue( INFO_OPTION_RESTORE_SETTINGS_NAME, false, true );
+      String mondrianFlag = getOptionValue( INFO_OPTION_RESTORE_MONDRIAN_NAME, false, true );
+
+      // If restore component flags not provided, fall back to backup component flags (backwards compatibility)
+      if ( contentFlag == null && usersFlag == null && datasourcesFlag == null &&
+           metastoreFlag == null && schedulesFlag == null && settingsFlag == null &&
+           mondrianFlag == null ) {
+        contentFlag = getOptionValue( INFO_OPTION_BACKUP_CONTENT_NAME, false, true );
+        usersFlag = getOptionValue( INFO_OPTION_BACKUP_USERS_NAME, false, true );
+        datasourcesFlag = getOptionValue( INFO_OPTION_BACKUP_DATASOURCES_NAME, false, true );
+        metastoreFlag = getOptionValue( INFO_OPTION_BACKUP_METASTORE_NAME, false, true );
+        schedulesFlag = getOptionValue( INFO_OPTION_BACKUP_SCHEDULES_NAME, false, true );
+        settingsFlag = getOptionValue( INFO_OPTION_BACKUP_SETTINGS_NAME, false, true );
+        mondrianFlag = getOptionValue( INFO_OPTION_BACKUP_MONDRIAN_NAME, false, true );
+      }
+
+      // If any component flags are provided, build custom config
+      if ( contentFlag != null || usersFlag != null || datasourcesFlag != null ||
+           metastoreFlag != null || schedulesFlag != null || settingsFlag != null ||
+           mondrianFlag != null ) {
+        BackupComponentConfig config = buildCustomConfig( contentFlag, usersFlag, datasourcesFlag, metastoreFlag,
+            schedulesFlag, settingsFlag, mondrianFlag );
+        
+        // Apply generated content filter if specified
+        String includeGenerated = getOptionValue( INFO_OPTION_INCLUDE_GENERATED_CONTENT_NAME, false, true );
+        if ( includeGenerated != null && !includeGenerated.isEmpty() ) {
+          boolean includeGeneratedContent = parseBoolean( includeGenerated );
+          config.setIncludeGeneratedContent( includeGeneratedContent );
+        }
+        
+        return config;
+      }
+
+      // No selective restore options provided - use full system restore
+      return null;
+
+    } catch ( ParseException e ) {
+      // If optional parameters are not found, return null for full restore
+      return null;
+    }
   }
 
   /**

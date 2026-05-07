@@ -30,6 +30,7 @@ import org.pentaho.platform.api.repository.datasource.IDatasourceMgmtService;
 import org.pentaho.platform.api.repository2.unified.IPlatformImportBundle;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
+import org.pentaho.platform.api.repository2.unified.RepositoryFileExtraMetaData;
 import org.pentaho.platform.api.scheduler2.IJob;
 import org.pentaho.platform.api.scheduler2.IJobRequest;
 import org.pentaho.platform.api.scheduler2.IJobScheduleParam;
@@ -52,6 +53,7 @@ import org.pentaho.platform.plugin.services.importexport.ImportSource.IRepositor
 import org.pentaho.platform.plugin.services.importexport.RepositoryFileBundle;
 import org.pentaho.platform.plugin.services.importexport.RoleExport;
 import org.pentaho.platform.plugin.services.importexport.UserExport;
+import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.Parameters;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMetaStore;
@@ -128,6 +130,9 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
     if ( !processZip( bundle.getInputStream() ) ) {
       // Something went wrong, do not proceed!
+      if ( isPerformingRestore ) {
+        getLogger().error( "Failed to process ZIP file during restore" );
+      }
       return;
     }
     if ( isPerformingRestore ) {
@@ -138,31 +143,59 @@ public class SolutionImportHandler implements IPlatformImportHandler {
 
     //Process Manifest Settings
     ExportManifest manifest = getImportSession().getManifest();
+    BackupComponentConfig componentOverrides = getImportSession().getComponentOverrides();
+    
+    if ( isPerformingRestore && componentOverrides != null ) {
+      getLogger().debug( "Selective restore active with component overrides: Users=" + componentOverrides.isIncludeUsers() + 
+        ", Content=" + componentOverrides.isIncludeContent() + ", Datasources=" + componentOverrides.isIncludeDatasources() );
+    }
+    
     // Process Metadata
     if ( manifest != null ) {
-      // import the users
-      Map<String, List<String>> roleToUserMap = importUsers( manifest.getUserExports() );
+      // Import users only if included in component overrides (or no overrides = full restore)
+      if ( componentOverrides == null || componentOverrides.isIncludeUsers() ) {
+        Map<String, List<String>> roleToUserMap = importUsers( manifest.getUserExports() );
 
-      // import the roles
-      importRoles( manifest.getRoleExports(), roleToUserMap );
+        // import the roles
+        importRoles( manifest.getRoleExports(), roleToUserMap );
+      } else {
+        if ( isPerformingRestore ) {
+          getLogger().debug( "Skipping users import - not included in component overrides" );
+        }
+      }
 
-      // import the metadata
-      importMetadata( manifest.getMetadataList(), bundle.isPreserveDsw() );
+      // Import metadata (datasources) only if included
+      if ( componentOverrides == null || componentOverrides.isIncludeDatasources() ) {
+        importMetadata( manifest.getMetadataList(), bundle.isPreserveDsw() );
+      }
 
-      // Process Mondrian
-      importMondrian( manifest.getMondrianList() );
+      // Process Mondrian only if included
+      if ( componentOverrides == null || componentOverrides.isIncludeMondrian() ) {
+        importMondrian( manifest.getMondrianList() );
+      }
 
-      // import the metastore
-      importMetaStore( manifest.getMetaStore(), bundle.overwriteInRepository() );
+      // Import metastore only if included
+      if ( componentOverrides == null || componentOverrides.isIncludeMetastore() ) {
+        importMetaStore( manifest.getMetaStore(), bundle.overwriteInRepository() );
+      }
 
-      // import jdbc datasource
-      importJDBCDataSource( manifest );
+      // Import JDBC datasources only if included
+      if ( componentOverrides == null || componentOverrides.isIncludeDatasources() ) {
+        importJDBCDataSource( manifest );
+      }
+    } else {
+      if ( isPerformingRestore ) {
+        getLogger().error( "Manifest is null - no content to import" );
+      }
     }
-    // import files and folders
-    importRepositoryFilesAndFolders( manifest, bundle );
+    
+    // Import files and folders only if content is included
+    if ( componentOverrides == null || componentOverrides.isIncludeContent() ) {
+      importRepositoryFilesAndFolders( manifest, bundle );
+    }
 
-    // import schedules
-    if ( manifest != null ) {
+    // Import schedules only if included
+    if ( manifest != null && ( componentOverrides == null || componentOverrides.isIncludeSchedules() ) ) {
       importSchedules( manifest.getScheduleList() );
     }
   }
@@ -192,19 +225,35 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       String repositoryFilePath =
           RepositoryFilenameUtils.concat( PentahoPlatformImporter.computeBundlePath( actualFilePath ), fileName );
 
+      BackupComponentConfig componentOverrides = getImportSession().getComponentOverrides();
+
       if ( cachedImports.containsKey( repositoryFilePath ) ) {
         getLogger().debug( "Repository object with path [ " + repositoryFilePath + " ] found in the cache" );
         byte[] bytes = IOUtils.toByteArray( fileBundle.getInputStream() );
         RepositoryFileImportBundle.Builder builder = cachedImports.get( repositoryFilePath );
         builder.input( new ByteArrayInputStream( bytes ) );
-
         try {
-          importer.importFile( build( builder ) );
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ] from the cache" );
+          IPlatformImportBundle platformImportBundle = build( builder );
+          RepositoryFileExtraMetaData repositoryFileExtraMetaData = platformImportBundle.getExtraMetaData();
+          // If the user specifically request to not restore the generated content during the restore process, we need to skip the import
+          boolean isFileAGC = false;
+          if ( repositoryFileExtraMetaData != null ) {
+            Map<String, Serializable> metadata = repositoryFileExtraMetaData.getExtraMetaData( );
+            isFileAGC = metadata != null && metadata.containsKey( IScheduler.RESERVEDMAPKEY_LINEAGE_ID );
           }
-          successfulFilesImportCount++;
-          continue;
+          if ( !isFileAGC || componentOverrides != null && componentOverrides.isIncludeGeneratedContent() ) {
+            importer.importFile( build( builder ) );
+            if ( isPerformingRestore ) {
+              getLogger().info( "Successfully restored repository object with path [ " + repositoryFilePath + " ] from the cache" );
+            }
+            successfulFilesImportCount++;
+            continue;
+          } else {
+            if ( isPerformingRestore ) {
+              getLogger().info( "SKIPPING generated content file: " + platformImportBundle.getPath() );
+            }
+            continue;
+          }
         } catch ( PlatformImportException e ) {
           if ( isPerformingRestore ) {
             getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_REPOSITORY_OBJECT", repositoryFilePath, e.getLocalizedMessage() ) );
@@ -286,10 +335,47 @@ public class SolutionImportHandler implements IPlatformImportHandler {
 
       IPlatformImportBundle platformImportBundle = build( bundleBuilder );
       try {
-        importer.importFile( platformImportBundle );
-        successfulFilesImportCount++;
-        if ( isPerformingRestore ) {
-          getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ]" );
+        // Skip metadata files if datasources are not included in selective restore
+        if ( componentOverrides != null && !componentOverrides.isIncludeDatasources() ) {
+          String bundlePath = platformImportBundle.getPath() + platformImportBundle.getName();
+          if ( bundlePath != null && bundlePath.endsWith( ".xmi" ) ) {
+            if ( isPerformingRestore ) {
+              getLogger().debug( "Skipping metadata file during restore: " + bundlePath + " (datasources not included)" );
+            }
+            continue;
+          }
+        }
+
+        // Note: Generated content filtering during restore is limited - it would require reading metadata 
+        // from the backup file bundle which may not be readily available. The includeGeneratedContent 
+        // flag is primarily useful during backup operations to exclude transient scheduler output files.
+        // During restore, users should exclude generated content at the backup stage.
+
+
+        // If the user specifically request to not restore the generated content during the restore process, we need to skip the import
+        boolean isFileAGC = false;
+        RepositoryFileExtraMetaData repositoryFileExtraMetaData = getImportSession().processExtraMetaDataForFile( sourcePath );
+
+        if ( repositoryFileExtraMetaData != null ) {
+          Map<String, Serializable> metadata = repositoryFileExtraMetaData.getExtraMetaData( );
+          isFileAGC = metadata != null && metadata.containsKey( IScheduler.RESERVEDMAPKEY_LINEAGE_ID );
+        }
+
+        if ( isPerformingRestore && componentOverrides != null ) {
+          getLogger().info( "Processing file: " + sourcePath + " | isGeneratedContent=" + isFileAGC
+            + " | includeGeneratedContent=" + componentOverrides.isIncludeGeneratedContent() );
+        }
+
+        if ( componentOverrides != null && !componentOverrides.isIncludeGeneratedContent() && isFileAGC ) {
+          if ( isPerformingRestore ) {
+            getLogger().info( "SKIPPING generated content file: " + sourcePath );
+          }
+        } else {
+          importer.importFile( platformImportBundle );
+          successfulFilesImportCount++;
+          if ( isPerformingRestore ) {
+            getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ]" );
+          }
         }
       } catch ( PlatformImportException e ) {
         if ( isPerformingRestore ) {
@@ -1027,9 +1113,10 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     try {
       byte[] bytes = IOUtils.toByteArray( file.getInputStream() );
       ByteArrayInputStream in = new ByteArrayInputStream( bytes );
-      getImportSession().setManifest( ExportManifest.fromXml( in ) );
+      ExportManifest manifest = ExportManifest.fromXml( in );
+      getImportSession().setManifest( manifest );
     } catch ( Exception e ) {
-      getLogger().trace( e );
+      getLogger().error( "Failed to parse export manifest from backup file", e );
     }
   }
 

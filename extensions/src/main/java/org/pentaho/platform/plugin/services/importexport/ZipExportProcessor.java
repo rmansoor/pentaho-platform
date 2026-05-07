@@ -24,6 +24,7 @@ import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.repository2.unified.RepositoryFileAcl;
 import org.pentaho.platform.api.repository2.unified.RepositoryRequest;
 import org.pentaho.platform.api.importexport.ExportException;
+import org.pentaho.platform.api.scheduler2.IScheduler;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
@@ -44,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
@@ -278,8 +280,17 @@ public class ZipExportProcessor extends BaseExportProcessor {
           exportDirectory( repositoryFile, outputStream, filePath );
         } else {
           try {
-            if ( logger != null ) {
-              logger.debug( "Repository Object [ " + repositoryFile.getName() + " ] is a file. Adding it to the bundle" );
+            // Check if we should skip generated content files
+            boolean isFileAGC = isFileAGeneratedContent( repositoryFile );
+            if ( isFileAGC && shouldSkipGeneratedContent( repositoryFile ) ) {
+              if ( logger != null && logger.isDebugEnabled() ) {
+                logger.debug( "Skipping generated content file [ " + repositoryFile.getName() + " ] (generated content not included in backup)" );
+              }
+              continue;
+            }
+            
+            if ( logger != null && logger.isDebugEnabled()  ) {
+              logger.debug( "Repository Object [ " + repositoryFile.getName() + " ] is a file"  + ( ( isFileAGC ) ? "and a generated content": "" ) +  ". Adding it to the bundle" );
             }
             exportFile( repositoryFile, outputStream, filePath );
           } catch ( ZipException e ) {
@@ -308,6 +319,12 @@ public class ZipExportProcessor extends BaseExportProcessor {
     if ( logger != null ) {
       logger.trace( "Finished creating locale entry for repository object [ " + repositoryDir.getName() + " ] " );
     }
+  }
+
+  private boolean isFileAGeneratedContent( RepositoryFile file) {
+    // now check metadata for RESERVEDMAPKEY_LINEAGE_ID
+    Map<String, Serializable> metadata = getUnifiedRepository().getFileMetadata( file.getId() );
+    return metadata.containsKey( IScheduler.RESERVEDMAPKEY_LINEAGE_ID );
   }
 
   protected boolean isExportCandidate( String path ) {
@@ -500,5 +517,20 @@ public class ZipExportProcessor extends BaseExportProcessor {
 
   public void setExportManifest( ExportManifest exportManifest ) {
     this.exportManifest = exportManifest;
+  }
+
+  /**
+   * Determines if a file should be skipped during export based on generated content filtering.
+   * Generated content is identified by the presence of "lineage-id" metadata, which marks files
+   * created from scheduler/background job execution.
+   * 
+   * @param repositoryFile The file to check
+   * @return true if the file should be skipped (is generated content and includeGeneratedContent is false)
+   */
+  protected boolean shouldSkipGeneratedContent( RepositoryFile repositoryFile ) {
+    // This method is intended to be overridden by subclasses (like PentahoPlatformExporter)
+    // that have access to BackupComponentConfig for selective backup/restore
+    // By default, no filtering is applied
+    return false;
   }
 }

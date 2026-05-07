@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Configuration for selective backup/restore of repository components.
@@ -29,18 +31,33 @@ public class BackupComponentConfig implements Serializable {
   private static final long serialVersionUID = 1L;
 
   // Component flags
+  @JsonProperty("includeContent")
   private boolean includeContent = true;
+  @JsonProperty("includeUsers")
   private boolean includeUsers = true;
+  @JsonProperty("includeDatasources")
   private boolean includeDatasources = true;
+  @JsonProperty("includeMetastore")
   private boolean includeMetastore = true;
+  @JsonProperty("includeSchedules")
   private boolean includeSchedules = true;
+  @JsonProperty("includeUserSettings")
   private boolean includeUserSettings = true;
+  @JsonProperty("includeMondrian")
   private boolean includeMondrian = true;
 
+  // Content filtering options
+  @JsonProperty("includeGeneratedContent")
+  private boolean includeGeneratedContent = true;
+
   // Configuration metadata
+  @JsonProperty("backupName")
   private String backupName;
+  @JsonProperty("description")
   private String description;
+  @JsonProperty("createdTimestamp")
   private long createdTimestamp;
+  @JsonProperty("version")
   private int version = 1;
 
   /**
@@ -70,6 +87,7 @@ public class BackupComponentConfig implements Serializable {
     config.includeSchedules = true;
     config.includeUserSettings = true;
     config.includeMondrian = true;
+    config.includeGeneratedContent = true; // Include generated content by default
     return config;
   }
 
@@ -85,6 +103,17 @@ public class BackupComponentConfig implements Serializable {
     config.includeSchedules = false;
     config.includeUserSettings = false;
     config.includeMondrian = false;
+    config.includeGeneratedContent = true; // Include generated content by default
+    return config;
+  }
+
+  /**
+   * Content only backup - without generated content
+   */
+  public static BackupComponentConfig contentOnlyWithoutGenerated() {
+    BackupComponentConfig config = contentOnly();
+    config.includeGeneratedContent = false; // Exclude generated content
+    config.backupName = "Content Only Backup (No Generated)";
     return config;
   }
 
@@ -100,14 +129,15 @@ public class BackupComponentConfig implements Serializable {
     config.includeSchedules = false;
     config.includeUserSettings = false;
     config.includeMondrian = false;
+    config.includeGeneratedContent = false; // N/A for security
     return config;
   }
 
   /**
-   * Data integration backup - datasources and metadata
+   * Data source backup - datasources and metadata
    */
-  public static BackupComponentConfig dataIntegration() {
-    BackupComponentConfig config = new BackupComponentConfig( "Data Integration Backup" );
+  public static BackupComponentConfig dataSource() {
+    BackupComponentConfig config = new BackupComponentConfig( "Data Source Backup" );
     config.includeContent = false;
     config.includeUsers = false;
     config.includeDatasources = true;
@@ -115,12 +145,46 @@ public class BackupComponentConfig implements Serializable {
     config.includeSchedules = false;
     config.includeUserSettings = false;
     config.includeMondrian = true;
+    config.includeGeneratedContent = false; // N/A for datasources
     return config;
   }
 
   /**
-   * Infrastructure backup - schedules and settings
+   * Schedules backup - job schedules only
    */
+  public static BackupComponentConfig schedules() {
+    BackupComponentConfig config = new BackupComponentConfig( "Schedules Backup" );
+    config.includeContent = false;
+    config.includeUsers = false;
+    config.includeDatasources = false;
+    config.includeMetastore = false;
+    config.includeSchedules = true;
+    config.includeUserSettings = false;
+    config.includeMondrian = false;
+    config.includeGeneratedContent = false; // N/A for schedules
+    return config;
+  }
+
+  /**
+   * Settings backup - user settings and email configuration only
+   */
+  public static BackupComponentConfig settings() {
+    BackupComponentConfig config = new BackupComponentConfig( "Settings Backup" );
+    config.includeContent = false;
+    config.includeUsers = false;
+    config.includeDatasources = false;
+    config.includeMetastore = false;
+    config.includeSchedules = false;
+    config.includeUserSettings = true;
+    config.includeMondrian = false;
+    config.includeGeneratedContent = false; // N/A for settings
+    return config;
+  }
+
+  /**
+   * Infrastructure backup - schedules and settings (deprecated, use schedules() or settings() instead)
+   */
+  @Deprecated
   public static BackupComponentConfig infrastructure() {
     BackupComponentConfig config = new BackupComponentConfig( "Infrastructure Backup" );
     config.includeContent = false;
@@ -130,12 +194,14 @@ public class BackupComponentConfig implements Serializable {
     config.includeSchedules = true;
     config.includeUserSettings = true;
     config.includeMondrian = false;
+    config.includeGeneratedContent = false; // N/A for infrastructure
     return config;
   }
 
   /**
    * Validate backup configuration
    */
+  @JsonIgnore
   public boolean isValid() {
     // At least one component must be selected
     return includeContent || includeUsers || includeDatasources || includeMetastore
@@ -145,6 +211,7 @@ public class BackupComponentConfig implements Serializable {
   /**
    * Get list of enabled components
    */
+  @JsonIgnore
   public List<String> getEnabledComponents() {
     List<String> components = new ArrayList<>();
 
@@ -185,12 +252,14 @@ public class BackupComponentConfig implements Serializable {
     map.put( "schedules", includeSchedules );
     map.put( "userSettings", includeUserSettings );
     map.put( "mondrian", includeMondrian );
+    map.put( "generatedContent", includeGeneratedContent );
     return map;
   }
 
   /**
    * Get total number of selected components
    */
+  @JsonIgnore
   public int getComponentCount() {
     int count = 0;
     if ( includeContent ) count++;
@@ -272,6 +341,14 @@ public class BackupComponentConfig implements Serializable {
 
   public void setIncludeMondrian( boolean includeMondrian ) {
     this.includeMondrian = includeMondrian;
+  }
+
+  public boolean isIncludeGeneratedContent() {
+    return includeGeneratedContent;
+  }
+
+  public void setIncludeGeneratedContent( boolean includeGeneratedContent ) {
+    this.includeGeneratedContent = includeGeneratedContent;
   }
 
   public String getBackupName() {

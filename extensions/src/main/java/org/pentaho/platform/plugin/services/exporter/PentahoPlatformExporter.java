@@ -68,6 +68,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -177,6 +178,18 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     if ( componentConfig == null ) {
       componentConfig = BackupComponentConfig.fullSystem();
     }
+
+    // LOG COMPONENT CONFIG AT START
+    getRepositoryExportLogger().info( "========== COMPONENT CONFIG AT EXPORT START ==========" );
+    getRepositoryExportLogger().info( "  Content: " + componentConfig.isIncludeContent() );
+    getRepositoryExportLogger().info( "  Users: " + componentConfig.isIncludeUsers() );
+    getRepositoryExportLogger().info( "  Datasources: " + componentConfig.isIncludeDatasources() );
+    getRepositoryExportLogger().info( "  Mondrian: " + componentConfig.isIncludeMondrian() );
+    getRepositoryExportLogger().info( "  Metastore: " + componentConfig.isIncludeMetastore() );
+    getRepositoryExportLogger().info( "  Schedules: " + componentConfig.isIncludeSchedules() );
+    getRepositoryExportLogger().info( "  UserSettings: " + componentConfig.isIncludeUserSettings() );
+    getRepositoryExportLogger().info( "  Generated Content: " + componentConfig.isIncludeGeneratedContent() );
+    getRepositoryExportLogger().info( "=====================================================" );
 
     // Reset export counters
     resetExportCounters();
@@ -872,5 +885,34 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
   public ZipOutputStream getZipStream() {
     return zos;
+  }
+
+  /**
+   * Override from ZipExportProcessor to implement generated content filtering.
+   * Checks if a file is marked as generated content (has lineage-id metadata)
+   * and should be excluded based on the component configuration.
+   */
+  @Override
+  protected boolean shouldSkipGeneratedContent( RepositoryFile repositoryFile ) {
+    // Skip filtering if no component config, or if content not included, or if generated content is included
+    if ( componentConfig == null || !componentConfig.isIncludeContent() || componentConfig.isIncludeGeneratedContent() ) {
+      return false;
+    }
+    
+    // Now check if the file is marked as generated content by looking for lineage-id metadata
+    try {
+      IUnifiedRepository repo = getUnifiedRepository();
+      if ( repo != null && repositoryFile != null && repositoryFile.getId() != null ) {
+        java.util.Map<String, Serializable> metadata = repo.getFileMetadata( repositoryFile.getId() );
+        if ( metadata != null && metadata.containsKey( "lineage-id" ) ) {
+          getRepositoryExportLogger().debug( "Skipping generated content file: " + repositoryFile.getPath() );
+          return true;  // This is generated content, skip it
+        }
+      }
+    } catch ( Exception e ) {
+      getRepositoryExportLogger().warn( "Error checking file metadata for generated content: " + e.getMessage(), e );
+    }
+    
+    return false;  // Not generated content, don't skip
   }
 }
