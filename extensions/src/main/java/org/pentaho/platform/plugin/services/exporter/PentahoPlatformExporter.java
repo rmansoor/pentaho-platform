@@ -46,6 +46,7 @@ import org.pentaho.platform.plugin.services.importexport.BackupInventory;
 import org.pentaho.platform.plugin.services.importexport.InventoryLogger;
 import org.pentaho.platform.plugin.services.importexport.ImportExportLogger;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetricsCollector;
+import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.ExportManifestUserSetting;
 import org.pentaho.platform.plugin.services.importexport.RoleExport;
 import org.pentaho.platform.plugin.services.importexport.UserExport;
@@ -107,6 +108,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   private InventoryLogger inventoryLogger;
   private ImportExportLogger importExportLogger;
   private ImportExportMetricsCollector metricsCollector;
+  private ImportExportMetrics exportMetrics;  // New comprehensive metrics collector
   private int exportedFileCount = 0;  // Track total files exported
   private int exportedFolderCount = 0;  // Track total folders exported
 
@@ -232,6 +234,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     // Initialize new logging framework
     metricsCollector = new ImportExportMetricsCollector();
     importExportLogger = new ImportExportLogger();
+    exportMetrics = new ImportExportMetrics( ImportExportMetrics.OperationType.BACKUP );
 
     // Log backup start with config
     importExportLogger.logBackupStart( componentConfig );
@@ -316,6 +319,11 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     if ( metricsCollector != null ) {
       metricsCollector.printConsolidatedSummary();
     }
+    
+    // Log comprehensive export metrics report
+    if ( exportMetrics != null ) {
+      getRepositoryExportLogger().info( exportMetrics.generateDetailedReport() );
+    }
 
     // Log file count statistics
     getRepositoryExportLogger().info( "======================================" );
@@ -363,6 +371,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
             getExportManifest().addDatasource( DatabaseConnectionConverter.model2export( datasource ) );
             getRepositoryExportLogger().debug( "Finished performing backup of datasource [ " + datasource.getName() + " ]" );
             successfulExportJDBCDSCount++;
+            if ( exportMetrics != null ) {
+              exportMetrics.recordSuccess( ImportExportMetrics.Category.DATASOURCES );
+            }
             if ( inventoryLogger != null ) {
               inventoryLogger.logObjectSuccess("DATASOURCES", datasource.getName(), "DATASOURCE");
             }
@@ -371,6 +382,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
             }
           } catch ( Exception e ) {
             failedCount++;
+            if ( exportMetrics != null ) {
+              exportMetrics.recordFailure( ImportExportMetrics.Category.DATASOURCES, datasource.getName(), e );
+            }
             if ( inventoryLogger != null ) {
               inventoryLogger.logObjectFailure("DATASOURCES", datasource.getName(), "DATASOURCE", e.getMessage());
             }

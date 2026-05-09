@@ -47,6 +47,7 @@ import org.pentaho.platform.engine.core.system.TenantUtils;
 import org.pentaho.platform.plugin.services.importexport.DatabaseConnectionConverter;
 import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
 import org.pentaho.platform.plugin.services.importexport.ExportManifestUserSetting;
+import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.ImportSession;
 import org.pentaho.platform.plugin.services.importexport.ImportSession.ManifestFile;
 import org.pentaho.platform.plugin.services.importexport.ImportSource.IRepositoryFileBundle;
@@ -99,6 +100,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   private boolean overwriteFile;
   private List<IRepositoryFileBundle> files;
   private boolean isPerformingRestore = false;
+  protected ImportExportMetrics metrics;
 
   public SolutionImportHandler( List<IMimeType> mimeTypes ) {
     this.mimeTypes = mimeTypes;
@@ -119,6 +121,10 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       DomainAlreadyExistsException, DomainStorageException, IOException {
     IPlatformImporter platformImporter = PentahoSystem.get( IPlatformImporter.class );
     isPerformingRestore = platformImporter.getRepositoryImportLogger().isPerformingRestore();
+    
+    // Initialize metrics collector
+    metrics = new ImportExportMetrics( ImportExportMetrics.OperationType.RESTORE );
+    
     if ( isPerformingRestore ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_PROCESS" ) );
     }
@@ -197,6 +203,11 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     // Import schedules only if included
     if ( manifest != null && ( componentOverrides == null || componentOverrides.isIncludeSchedules() ) ) {
       importSchedules( manifest.getScheduleList() );
+    }
+    
+    // Output metrics report
+    if ( isPerformingRestore && metrics != null ) {
+      getLogger().info( metrics.generateDetailedReport() );
     }
   }
 
