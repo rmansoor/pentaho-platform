@@ -225,35 +225,19 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       String repositoryFilePath =
           RepositoryFilenameUtils.concat( PentahoPlatformImporter.computeBundlePath( actualFilePath ), fileName );
 
-      BackupComponentConfig componentOverrides = getImportSession().getComponentOverrides();
-
       if ( cachedImports.containsKey( repositoryFilePath ) ) {
         getLogger().debug( "Repository object with path [ " + repositoryFilePath + " ] found in the cache" );
         byte[] bytes = IOUtils.toByteArray( fileBundle.getInputStream() );
         RepositoryFileImportBundle.Builder builder = cachedImports.get( repositoryFilePath );
         builder.input( new ByteArrayInputStream( bytes ) );
+
         try {
-          IPlatformImportBundle platformImportBundle = build( builder );
-          RepositoryFileExtraMetaData repositoryFileExtraMetaData = platformImportBundle.getExtraMetaData();
-          // If the user specifically request to not restore the generated content during the restore process, we need to skip the import
-          boolean isFileAGC = false;
-          if ( repositoryFileExtraMetaData != null ) {
-            Map<String, Serializable> metadata = repositoryFileExtraMetaData.getExtraMetaData( );
-            isFileAGC = metadata != null && metadata.containsKey( IScheduler.RESERVEDMAPKEY_LINEAGE_ID );
+          importer.importFile( build( builder ) );
+          if ( isPerformingRestore ) {
+            getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ] from the cache" );
           }
-          if ( !isFileAGC || componentOverrides != null && componentOverrides.isIncludeGeneratedContent() ) {
-            importer.importFile( build( builder ) );
-            if ( isPerformingRestore ) {
-              getLogger().info( "Successfully restored repository object with path [ " + repositoryFilePath + " ] from the cache" );
-            }
-            successfulFilesImportCount++;
-            continue;
-          } else {
-            if ( isPerformingRestore ) {
-              getLogger().info( "SKIPPING generated content file: " + platformImportBundle.getPath() );
-            }
-            continue;
-          }
+          successfulFilesImportCount++;
+          continue;
         } catch ( PlatformImportException e ) {
           if ( isPerformingRestore ) {
             getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_REPOSITORY_OBJECT", repositoryFilePath, e.getLocalizedMessage() ) );
@@ -311,6 +295,21 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         continue;
       }
 
+      RepositoryFileExtraMetaData repositoryFileExtraMetaData = getImportSession().processExtraMetaDataForFile( sourcePath );
+      if ( repositoryFileExtraMetaData != null ) {
+        // If the user specifically request to not restore the generated content during the restore process, we need to skip the import
+        Map<String, Serializable> metadata = repositoryFileExtraMetaData.getExtraMetaData();
+        boolean isFileAGC = metadata.containsKey( IScheduler.RESERVEDMAPKEY_LINEAGE_ID );
+        BackupComponentConfig componentOverrides = getImportSession().getComponentOverrides();
+        if ( componentOverrides != null && !componentOverrides.isIncludeGeneratedContent() && isFileAGC ) {
+          if ( isPerformingRestore ) {
+            getLogger().debug( "Skipping generated content file during restore: " + sourcePath
+              + " (includeGeneratedContent=" + componentOverrides.isIncludeGeneratedContent() + ")" );
+          }
+          continue;
+        }
+      }
+
       getImportSession().setCurrentManifestKey( sourcePath );
 
       bundleBuilder.charSet( bundle.getCharSet() );
@@ -319,7 +318,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       bundleBuilder.retainOwnership( bundle.isRetainOwnership() );
       bundleBuilder.overwriteAclSettings( bundle.isOverwriteAclSettings() );
       bundleBuilder.acl( getImportSession().processAclForFile( sourcePath ) );
-      bundleBuilder.extraMetaData( getImportSession().processExtraMetaDataForFile( sourcePath ) );
+      bundleBuilder.extraMetaData( repositoryFileExtraMetaData );
 
       RepositoryFile file = getFile( importBundle, fileBundle );
       ManifestFile manifestFile = getImportSession().getManifestFile( sourcePath, file != null );
@@ -336,6 +335,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       IPlatformImportBundle platformImportBundle = build( bundleBuilder );
       try {
         // Skip metadata files if datasources are not included in selective restore
+        BackupComponentConfig componentOverrides = getImportSession().getComponentOverrides();
         if ( componentOverrides != null && !componentOverrides.isIncludeDatasources() ) {
           String bundlePath = platformImportBundle.getPath() + platformImportBundle.getName();
           if ( bundlePath != null && bundlePath.endsWith( ".xmi" ) ) {
@@ -350,32 +350,11 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         // from the backup file bundle which may not be readily available. The includeGeneratedContent 
         // flag is primarily useful during backup operations to exclude transient scheduler output files.
         // During restore, users should exclude generated content at the backup stage.
-
-
-        // If the user specifically request to not restore the generated content during the restore process, we need to skip the import
-        boolean isFileAGC = false;
-        RepositoryFileExtraMetaData repositoryFileExtraMetaData = getImportSession().processExtraMetaDataForFile( sourcePath );
-
-        if ( repositoryFileExtraMetaData != null ) {
-          Map<String, Serializable> metadata = repositoryFileExtraMetaData.getExtraMetaData( );
-          isFileAGC = metadata != null && metadata.containsKey( IScheduler.RESERVEDMAPKEY_LINEAGE_ID );
-        }
-
-        if ( isPerformingRestore && componentOverrides != null ) {
-          getLogger().info( "Processing file: " + sourcePath + " | isGeneratedContent=" + isFileAGC
-            + " | includeGeneratedContent=" + componentOverrides.isIncludeGeneratedContent() );
-        }
-
-        if ( componentOverrides != null && !componentOverrides.isIncludeGeneratedContent() && isFileAGC ) {
-          if ( isPerformingRestore ) {
-            getLogger().info( "SKIPPING generated content file: " + sourcePath );
-          }
-        } else {
-          importer.importFile( platformImportBundle );
-          successfulFilesImportCount++;
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ]" );
-          }
+        
+        importer.importFile( platformImportBundle );
+        successfulFilesImportCount++;
+        if ( isPerformingRestore ) {
+          getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ]" );
         }
       } catch ( PlatformImportException e ) {
         if ( isPerformingRestore ) {
@@ -470,6 +449,285 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     return repository.getFile( repositoryFilePath );
   }
 
+  /**
+   * Normalize a repository path for consistent comparison:
+   * - Ensures leading forward slash
+   * - Converts backslashes to forward slashes
+   * - Decodes URL-encoded characters (e.g., %28 → (, %29 → ), %20 → space)
+   * - Normalizes space encoding (both spaces and + are treated equivalently)
+   * - Handles URL encoding inconsistencies
+   * 
+   * @param path the path to normalize
+   * @return normalized path
+   */
+  private String normalizePath( String path ) {
+    if ( path == null ) {
+      return "";
+    }
+    
+    String normalized = path;
+    
+    // 1. URL-decode common characters that might be encoded
+    // Handle parentheses: %28 = (, %29 = )
+    normalized = normalized.replace( "%28", "(" );
+    normalized = normalized.replace( "%29", ")" );
+    // Handle spaces: %20 = space
+    normalized = normalized.replace( "%20", " " );
+    // Handle other common encoded chars
+    normalized = normalized.replace( "%5B", "[" );  // [
+    normalized = normalized.replace( "%5D", "]" );  // ]
+    normalized = normalized.replace( "%26", "&" );  // &
+    normalized = normalized.replace( "%2B", "+" );  // +
+    
+    // 2. Convert backslashes to forward slashes
+    normalized = normalized.replace( File.separator, RepositoryFile.SEPARATOR );
+    normalized = normalized.replace( "\\", RepositoryFile.SEPARATOR );
+    
+    // 3. Ensure leading forward slash
+    if ( !normalized.startsWith( RepositoryFile.SEPARATOR ) ) {
+      normalized = RepositoryFile.SEPARATOR + normalized;
+    }
+    
+    // 4. Normalize space encoding: convert + to space
+    normalized = normalized.replace( "+", " " );  // Convert + to space
+    normalized = normalized.replaceAll( "\\s+", " " );  // Normalize multiple spaces to single space
+    
+    return normalized;
+  }
+
+  /**
+   * Imports a file to the repository using the same logic as importRepositoryFilesAndFolders.
+   * This properly handles all the import details: mime types, ACLs, metadata, etc.
+   * 
+   * @param fileBundle the file bundle to import
+   * @param importManifest the export manifest (may be null)
+   * @return true if successfully imported, false otherwise
+   */
+  protected boolean importFileBundle( IRepositoryFileBundle fileBundle, ExportManifest importManifest ) {
+    try {
+      String fileName = fileBundle.getFile().getName();
+      String actualFilePath = fileBundle.getPath();
+      String manifestVersion = null;
+      
+      if ( importManifest != null ) {
+        manifestVersion = importManifest.getManifestInformation().getManifestVersion();
+        if ( manifestVersion != null ) {
+          fileName = ExportFileNameEncoder.decodeZipFileName( fileName );
+          actualFilePath = ExportFileNameEncoder.decodeZipFileName( actualFilePath );
+        }
+      }
+      
+      // Skip folders for schedule dependencies - only import actual files
+      if ( fileBundle.getFile().isFolder() ) {
+        return true;
+      }
+      
+      byte[] fileBytes = IOUtils.toByteArray( fileBundle.getInputStream() );
+      InputStream bundleInputStream = new ByteArrayInputStream( fileBytes );
+      
+      String decodedFilePath = actualFilePath;
+      RepositoryFile decodedFile = fileBundle.getFile();
+      if ( manifestVersion != null ) {
+        decodedFile = new RepositoryFile.Builder( decodedFile ).path( decodedFilePath ).name( fileName ).title( fileName ).build();
+        decodedFilePath = ExportFileNameEncoder.decodeZipFileName( fileBundle.getPath() );
+      }
+      
+      RepositoryFileImportBundle.Builder bundleBuilder = new RepositoryFileImportBundle.Builder();
+      
+      String filePath = ( decodedFilePath.equals( "/" ) || decodedFilePath.equals( "\\" ) ) ? "" : decodedFilePath;
+      String repositoryFilePath = RepositoryFilenameUtils.concat( "/", filePath );
+      
+      bundleBuilder.name( fileName );
+      bundleBuilder.path( repositoryFilePath );
+      bundleBuilder.input( bundleInputStream );
+      bundleBuilder.mime( solutionHelper.getMime( fileName ) );
+      
+      String sourcePath = RepositoryFilenameUtils.concat( PentahoPlatformImporter.computeBundlePath( actualFilePath ), fileName );
+      
+      bundleBuilder.charSet( UTF_8 );
+      bundleBuilder.overwriteFile( overwriteFile );
+      bundleBuilder.applyAclSettings( true );
+      bundleBuilder.retainOwnership( false );
+      bundleBuilder.overwriteAclSettings( false );
+      
+      // Process extra metadata and ACLs
+      RepositoryFileExtraMetaData repositoryFileExtraMetaData = getImportSession().processExtraMetaDataForFile( sourcePath );
+      if ( repositoryFileExtraMetaData != null ) {
+        bundleBuilder.extraMetaData( repositoryFileExtraMetaData );
+        bundleBuilder.acl( getImportSession().processAclForFile( sourcePath ) );
+      }
+      
+      // Mark as schedulable if it's referenced by a schedule
+      boolean isSchedulable = importManifest != null && fileIsScheduleInputSource( importManifest, sourcePath );
+      if ( isSchedulable ) {
+        bundleBuilder.schedulable( true );
+      }
+      
+      IPlatformImportBundle platformImportBundle = build( bundleBuilder );
+      IPlatformImporter importer = PentahoSystem.get( IPlatformImporter.class );
+      importer.importFile( platformImportBundle );
+      
+      if ( isPerformingRestore ) {
+        getLogger().debug( "Successfully imported file for schedule dependency: [ " + repositoryFilePath + " ]" );
+      }
+      return true;
+      
+    } catch ( Exception e ) {
+      if ( isPerformingRestore ) {
+        getLogger().error( "Failed to import file bundle for schedule: " + e.getMessage(), e );
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Ensures that the file referenced by a schedule input path exists in the repository.
+   * For selective restores, files are only in the bundle if they're schedule dependencies,
+   * so we must import them before schedule creation.
+   * 
+   * @param inputFilePath the repository path of the file referenced by the schedule
+   * @return true if the file exists or was successfully imported, false otherwise
+   */
+  protected boolean ensureScheduleInputFileExists( String inputFilePath ) {
+    // Normalize the path to use forward slashes
+    String normalizedPath = inputFilePath.replace( File.separator, RepositoryFile.SEPARATOR );
+    
+    // Check if the file already exists in the repository
+    RepositoryFile existingFile = repository.getFile( normalizedPath );
+    if ( existingFile != null ) {
+      if ( isPerformingRestore ) {
+        getLogger().debug( "Schedule input file [ " + normalizedPath + " ] already exists in repository" );
+      }
+      return true;
+    }
+    
+    if ( isPerformingRestore ) {
+      getLogger().debug( "Schedule input file [ " + normalizedPath + " ] does not exist in repository, searching in backup files..." );
+    }
+    
+    // File doesn't exist, try to find and import it from the backup
+    if ( CollectionUtils.isEmpty( files ) ) {
+      if ( isPerformingRestore ) {
+        getLogger().warn( "No backup files available to import missing schedule input file [ " + normalizedPath + " ]" );
+      }
+      return false;
+    }
+    
+    ExportManifest manifest = getImportSession().getManifest();
+    
+    // Search for the file in the extracted files list
+    // Strategy: First try exact path match, then try filename match as fallback
+    IRepositoryFileBundle matchedBundle = null;
+    String normalizedInputPath = normalizePath( normalizedPath );
+    String inputFileName = normalizedPath.substring( normalizedPath.lastIndexOf( "/" ) + 1 ).toLowerCase();
+    
+    // Pass 1: Try exact path matching
+    for ( IRepositoryFileBundle fileBundle : files ) {
+      String fileName = fileBundle.getFile().getName();
+      String filePath = fileBundle.getPath();
+      
+      // Build the full repository path for this file
+      String repositoryPath = RepositoryFilenameUtils.concat( filePath, fileName );
+      
+      // Normalize both paths for comparison
+      String normalizedRepositoryPath = normalizePath( repositoryPath );
+      
+      // Also check if this is a locale file for the file we're looking for
+      // Locale files have format: "path/filename.locale" 
+      String baseFileNameWithoutLocale = normalizedRepositoryPath;
+      if ( normalizedRepositoryPath.endsWith( ".locale" ) ) {
+        // Remove the .locale suffix for comparison
+        baseFileNameWithoutLocale = normalizedRepositoryPath.substring( 0, normalizedRepositoryPath.lastIndexOf( ".locale" ) );
+      }
+      
+      if ( isPerformingRestore ) {
+        getLogger().trace( "Comparing Input: [ " + normalizedInputPath + " ] vs Repo: [ " + normalizedRepositoryPath + " ]" );
+      }
+      
+      // Check if this is the file we're looking for (exact path or locale file match)
+      if ( normalizedRepositoryPath.equalsIgnoreCase( normalizedInputPath ) ||
+           baseFileNameWithoutLocale.equalsIgnoreCase( normalizedInputPath ) ) {
+        if ( isPerformingRestore ) {
+          getLogger().debug( "✓ EXACT MATCH FOUND - Input: [ " + normalizedPath + " ] matches Backup: [ " + repositoryPath + " ]" );
+        }
+        matchedBundle = fileBundle;
+        break;
+      }
+      
+      // Also check suffix match (last parts of path)
+      // This helps when bundle path structure differs (e.g., "/input/file.ktr" vs "/schedules/input/file.ktr")
+      String normalizedRepoFileName = normalizedRepositoryPath.substring( normalizedRepositoryPath.lastIndexOf( "/" ) + 1 ).toLowerCase();
+      if ( normalizedInputPath.endsWith( normalizedRepositoryPath ) || 
+           normalizedRepositoryPath.endsWith( normalizedInputPath ) ) {
+        if ( isPerformingRestore ) {
+          getLogger().debug( "✓ SUFFIX MATCH FOUND - Input: [ " + normalizedPath + " ] partially matches Backup: [ " + repositoryPath + " ]" );
+        }
+        matchedBundle = fileBundle;
+        break;
+      }
+    }
+    
+    // Pass 2: If no exact match, try filename-only matching as fallback
+    if ( matchedBundle == null ) {
+      if ( isPerformingRestore ) {
+        getLogger().debug( "No exact path match found for [ " + normalizedPath + " ], trying filename-only match..." );
+      }
+      
+      for ( IRepositoryFileBundle fileBundle : files ) {
+        String fileName = fileBundle.getFile().getName();
+        String bundleFileNameLower = fileName.toLowerCase();
+        
+        // Remove .locale suffix if present for comparison
+        String bundleFileNameBase = bundleFileNameLower;
+        if ( bundleFileNameLower.endsWith( ".locale" ) ) {
+          bundleFileNameBase = bundleFileNameLower.substring( 0, bundleFileNameLower.lastIndexOf( ".locale" ) );
+        }
+        
+        // Match filename (case-insensitive)
+        if ( inputFileName.equalsIgnoreCase( bundleFileNameBase ) || 
+             inputFileName.equalsIgnoreCase( bundleFileNameLower ) ) {
+          if ( isPerformingRestore ) {
+            getLogger().debug( "✓ FILENAME MATCH FOUND - [ " + inputFileName + " ] matches Bundle file: [ " + fileName + " ]" );
+          }
+          matchedBundle = fileBundle;
+          break;
+        }
+      }
+    }
+    
+    // If we found a match, import it
+    if ( matchedBundle != null ) {
+      if ( isPerformingRestore ) {
+        getLogger().info( "✓ MATCH FOUND - Schedule input file [ " + normalizedPath + " ] found in backup bundle" );
+      }
+      
+      // Use the proper import mechanism that mirrors importRepositoryFilesAndFolders
+      if ( importFileBundle( matchedBundle, manifest ) ) {
+        if ( isPerformingRestore ) {
+          getLogger().info( "✓ Successfully imported schedule input file: [ " + normalizedPath + " ]" );
+        }
+        return true;
+      } else {
+        if ( isPerformingRestore ) {
+          getLogger().error( "✗ Failed to import schedule input file: [ " + normalizedPath + " ]" );
+        }
+        return false;
+      }
+    }
+    
+    if ( isPerformingRestore ) {
+      getLogger().warn( "✗ NO MATCH - Schedule file [ " + normalizedPath + " ] not found in backup files. Searched " + files.size() + " files." );
+      getLogger().info( "Available files in backup:" );
+      for ( IRepositoryFileBundle fb : files ) {
+        String fName = fb.getFile().getName();
+        String fPath = fb.getPath();
+        String fullPath = RepositoryFilenameUtils.concat( fPath, fName );
+        getLogger().info( "  - [ " + normalizePath( fullPath ) + " ]" );
+      }
+    }
+    return false;
+  }
+
   protected void importSchedules( List<IJobScheduleRequest> scheduleList ) throws PlatformImportException {
     if ( isPerformingRestore ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_SCHEDULE" ) );
@@ -492,6 +750,32 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         if ( isPerformingRestore ) {
           getLogger().debug( "Restoring schedule name [ " + jobScheduleRequest.getJobName() + "] inputFile [ " + jobScheduleRequest.getInputFile() + " ] outputFile [ " + jobScheduleRequest.getOutputFile() + "]" );
         }
+        
+        // DEPENDENCY CHECK: Before importing schedule, ensure the input file exists in repository
+        // If not, import it first from the backup or import bundle
+        String inputFilePath = jobScheduleRequest.getInputFile();
+        if ( inputFilePath != null && !inputFilePath.trim().isEmpty() ) {
+          if ( !ensureScheduleInputFileExists( inputFilePath ) ) {
+            if ( isPerformingRestore ) {
+              getLogger().warn( "Skipping schedule [ " + jobScheduleRequest.getJobName() 
+                + " ] because required input file [ " + inputFilePath + " ] could not be imported from backup" );
+            }
+            continue; // Skip this schedule, the file couldn't be imported
+          } else {
+            // File was successfully found and imported (or already existed in repository)
+            if ( isPerformingRestore ) {
+              getLogger().debug( "Schedule [ " + jobScheduleRequest.getJobName() 
+                + " ] input file [ " + inputFilePath + " ] is available in repository - schedule can proceed" );
+            }
+          }
+        } else {
+          // Schedule has no input file requirement (output-only or manual schedule)
+          if ( isPerformingRestore ) {
+            getLogger().debug( "Schedule [ " + jobScheduleRequest.getJobName() 
+              + " ] has no input file requirement - proceeding with schedule import" );
+          }
+        }
+        
         boolean jobExists = false;
 
         List<IJob> jobs = getAllJobs( schedulerResource );

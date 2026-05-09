@@ -126,12 +126,8 @@ public class InventoryLogger {
       }
       log.info(summaryLine);
 
-      // Log detailed report
-      String detailedReport = inventory.getDetailedReport();
-      if (exportLogger != null) {
-        exportLogger.info(detailedReport);
-      }
-      log.info(detailedReport);
+      // Verbose detailed report removed - it added no value and showed all zeros
+      // when actual exports were successful. Summary line above is sufficient.
     }
   }
 

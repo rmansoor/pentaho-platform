@@ -44,6 +44,8 @@ import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.BackupInventory;
 import org.pentaho.platform.plugin.services.importexport.InventoryLogger;
+import org.pentaho.platform.plugin.services.importexport.ImportExportLogger;
+import org.pentaho.platform.plugin.services.importexport.ImportExportMetricsCollector;
 import org.pentaho.platform.plugin.services.importexport.ExportManifestUserSetting;
 import org.pentaho.platform.plugin.services.importexport.RoleExport;
 import org.pentaho.platform.plugin.services.importexport.UserExport;
@@ -103,6 +105,8 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   private BackupComponentConfig componentConfig;
   private BackupInventory backupInventory;
   private InventoryLogger inventoryLogger;
+  private ImportExportLogger importExportLogger;
+  private ImportExportMetricsCollector metricsCollector;
   private int exportedFileCount = 0;  // Track total files exported
   private int exportedFolderCount = 0;  // Track total folders exported
 
@@ -167,6 +171,37 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   }
 
   /**
+   * Export a specific file from the repository to the export bundle.
+   * Used by export helpers to export files referenced by other components (e.g., files referenced by schedules).
+   * 
+   * @param repositoryFilePath the repository path of the file to export
+   * @throws ExportException if the file cannot be exported
+   */
+  public void exportFileByPath( String repositoryFilePath ) throws ExportException {
+    if ( repositoryFilePath == null || repositoryFilePath.trim().isEmpty() ) {
+      throw new ExportException( "Repository file path cannot be null or empty" );
+    }
+    
+    try {
+      IUnifiedRepository repository = getUnifiedRepository();
+      if ( repository == null ) {
+        throw new ExportException( "Unable to access unified repository" );
+      }
+      
+      RepositoryFile file = repository.getFile( repositoryFilePath );
+      if ( file == null ) {
+        throw new ExportException( "File not found in repository: " + repositoryFilePath );
+      }
+      
+      getRepositoryExportLogger().debug( "Exporting dependency file: " + repositoryFilePath );
+      exportFileContent( file );
+      getRepositoryExportLogger().debug( "Successfully exported dependency file: " + repositoryFilePath );
+    } catch ( IOException e ) {
+      throw new ExportException( "Error exporting file [ " + repositoryFilePath + " ]: " + e.getMessage(), e );
+    }
+  }
+
+  /**
    * Performs the export process, returns a zip File object
    *
    * @throws ExportException indicates an error in import processing
@@ -194,7 +229,14 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     // Reset export counters
     resetExportCounters();
 
-    // Initialize backup inventory tracking
+    // Initialize new logging framework
+    metricsCollector = new ImportExportMetricsCollector();
+    importExportLogger = new ImportExportLogger();
+
+    // Log backup start with config
+    importExportLogger.logBackupStart( componentConfig );
+
+    // Initialize backup inventory tracking (legacy)
     backupInventory = new BackupInventory("BACKUP");
     inventoryLogger = new InventoryLogger(getRepositoryExportLogger(), backupInventory, true);
 
@@ -265,9 +307,14 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       backupInventory.setExportFileStats( exportedFileCount, exportedFolderCount );
     }
 
-    // Log final inventory report
+    // Log final inventory report (legacy)
     if ( inventoryLogger != null ) {
       inventoryLogger.logOperationComplete();
+    }
+
+    // Log consolidated metrics summary (new framework)
+    if ( metricsCollector != null ) {
+      metricsCollector.printConsolidatedSummary();
     }
 
     // Log file count statistics
@@ -302,6 +349,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       if ( databaseConnections != null ) {
         databaseConnectionsSize = databaseConnections.size();
         getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_COUNT_JDBC_DATASOURCE_TO_EXPORT", databaseConnectionsSize ) );
+        if ( metricsCollector != null ) {
+          metricsCollector.addJdbcDatasources( databaseConnectionsSize );
+        }
         if ( inventoryLogger != null ) {
           inventoryLogger.logComponentStart("Datasources", databaseConnectionsSize);
         }
@@ -335,6 +385,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       }
     }
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_SUCCESSFUL_JDBC_DATASOURCE_EXPORT_COUNT", successfulExportJDBCDSCount, databaseConnectionsSize ) );
+    if ( metricsCollector != null ) {
+      importExportLogger.logComponentComplete("Datasources", successfulExportJDBCDSCount, failedCount, 0);
+    }
     if ( inventoryLogger != null ) {
       inventoryLogger.logComponentComplete("Datasources", "DATASOURCES", successfulExportJDBCDSCount, failedCount, 0);
     }
@@ -518,6 +571,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     if ( userList != null ) {
       usersSize = userList.size();
       getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_COUNT_USER_TO_EXPORT", usersSize ) );
+      if ( metricsCollector != null ) {
+        metricsCollector.addUsers( usersSize );
+      }
     }
     for ( String user : userList ) {
       getRepositoryExportLogger().debug( "Starting backup of user [ " + user + " ] " );
@@ -575,6 +631,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     if ( roles != null ) {
       rolesSize = roles.size();
       getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_COUNT_ROLE_TO_EXPORT", rolesSize ) );
+      if ( metricsCollector != null ) {
+        metricsCollector.addRoles( rolesSize );
+      }
     }
     for ( String role : roles ) {
       getRepositoryExportLogger().debug( "Starting backup of role [ " + role + " ] " );
