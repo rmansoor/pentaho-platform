@@ -285,10 +285,26 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       exportMetrics.recordSkip( ImportExportMetrics.Category.DATASOURCES, "datasources", "Datasource export disabled" );
     }
     if ( componentConfig.isIncludeMondrian() ) {
-      exportMondrianSchemas();
+      try {
+        exportMondrianSchemas();
+        exportMetrics.recordSuccess( ImportExportMetrics.Category.MONDRIAN );
+      } catch ( Exception e ) {
+        getRepositoryExportLogger().error( "Failed to export Mondrian schemas: " + e.getMessage(), e );
+        exportMetrics.recordFailure( ImportExportMetrics.Category.MONDRIAN, "schemas", e );
+      }
+    } else {
+      exportMetrics.recordSkip( ImportExportMetrics.Category.MONDRIAN, "schemas", "Mondrian export disabled" );
     }
     if ( componentConfig.isIncludeDatasources() ) {
-      exportMetadataModels();
+      try {
+        exportMetadataModels();
+        exportMetrics.recordSuccess( ImportExportMetrics.Category.METADATA );
+      } catch ( Exception e ) {
+        getRepositoryExportLogger().error( "Failed to export metadata models: " + e.getMessage(), e );
+        exportMetrics.recordFailure( ImportExportMetrics.Category.METADATA, "models", e );
+      }
+    } else {
+      exportMetrics.recordSkip( ImportExportMetrics.Category.METADATA, "models", "Metadata export disabled" );
     }
     // Only run export helpers if any user-related settings are enabled
     if ( componentConfig.isIncludeSchedules() || componentConfig.isIncludeUserSettings() ) {
@@ -627,35 +643,51 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       }
     }
     for ( String user : userList ) {
-      getRepositoryExportLogger().debug( "Starting backup of user [ " + user + " ] " );
-      UserExport userExport = new UserExport();
-      userExport.setUsername( user );
-      userExport.setPassword( userDetailsService.loadUserByUsername( user ).getPassword() );
+      try {
+        getRepositoryExportLogger().debug( "Starting backup of user [ " + user + " ] " );
+        UserExport userExport = new UserExport();
+        userExport.setUsername( user );
+        userExport.setPassword( userDetailsService.loadUserByUsername( user ).getPassword() );
 
-      for ( String role : userRoleListService.getRolesForUser( tenant, user ) ) {
-        getRepositoryExportLogger().trace( "user [ " + user + " ] has an associated role [ " + role + " ]" );
-        userExport.setRole( role );
-      }
-
-      if ( service != null && service instanceof IAnyUserSettingService ) {
-        getRepositoryExportLogger().debug( "Starting backup of user specific settings for user [ " + user + " ] " );
-        IAnyUserSettingService userSettings = (IAnyUserSettingService) service;
-        List<IUserSetting> settings = userSettings.getUserSettings( user );
-        if ( settings != null ) {
-          for ( IUserSetting setting : settings ) {
-            getRepositoryExportLogger().debug( "Adding user specific setting [ "
-                + setting.getSettingName() + " ] with value [ " + setting.getSettingValue() + " ] to backup" );
-            userExport.addUserSetting( new ExportManifestUserSetting( setting ) );
-            getRepositoryExportLogger().debug( "Successfully added user specific setting [ "
-                + setting.getSettingName() + " ] with value [ " + setting.getSettingValue() + " ] to backup" );
-          }
+        for ( String role : userRoleListService.getRolesForUser( tenant, user ) ) {
+          getRepositoryExportLogger().trace( "user [ " + user + " ] has an associated role [ " + role + " ]" );
+          userExport.setRole( role );
         }
-        getRepositoryExportLogger().debug( "Finished backup of user specific settings for user [ " + user + " ] " );
-      }
 
-      this.getExportManifest().addUserExport( userExport );
-      successfulExportUsers++;
-      getRepositoryExportLogger().debug( "Successfully perform backup of user [ " + user + " ] " );
+        if ( service != null && service instanceof IAnyUserSettingService ) {
+          getRepositoryExportLogger().debug( "Starting backup of user specific settings for user [ " + user + " ] " );
+          IAnyUserSettingService userSettings = (IAnyUserSettingService) service;
+          List<IUserSetting> settings = userSettings.getUserSettings( user );
+          if ( settings != null ) {
+            for ( IUserSetting setting : settings ) {
+              try {
+                getRepositoryExportLogger().debug( "Adding user specific setting [ "
+                    + setting.getSettingName() + " ] with value [ " + setting.getSettingValue() + " ] to backup" );
+                userExport.addUserSetting( new ExportManifestUserSetting( setting ) );
+                getRepositoryExportLogger().debug( "Successfully added user specific setting [ "
+                    + setting.getSettingName() + " ] with value [ " + setting.getSettingValue() + " ] to backup" );
+              } catch ( Exception e ) {
+                getRepositoryExportLogger().warn( "Failed to export user setting [ " + setting.getSettingName() + " ] for user [ " + user + " ]: " + e.getMessage() );
+                // Continue with next setting
+              }
+            }
+          }
+          getRepositoryExportLogger().debug( "Finished backup of user specific settings for user [ " + user + " ] " );
+        }
+
+        this.getExportManifest().addUserExport( userExport );
+        successfulExportUsers++;
+        if ( exportMetrics != null ) {
+          exportMetrics.recordSuccess( ImportExportMetrics.Category.USERS );
+        }
+        getRepositoryExportLogger().debug( "Successfully perform backup of user [ " + user + " ] " );
+      } catch ( Exception e ) {
+        getRepositoryExportLogger().error( "Failed to export user [ " + user + " ]: " + e.getMessage(), e );
+        if ( exportMetrics != null ) {
+          exportMetrics.recordFailure( ImportExportMetrics.Category.USERS, user, e );
+        }
+        // Continue with next user
+      }
     }
 
     // export the global user settings
@@ -687,13 +719,24 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       }
     }
     for ( String role : roles ) {
-      getRepositoryExportLogger().debug( "Starting backup of role [ " + role + " ] " );
-      RoleExport roleExport = new RoleExport();
-      roleExport.setRolename( role );
-      roleExport.setPermission( roleBindingDao.getRoleBindingStruct( null ).bindingMap.get( role ) );
-      exportManifest.addRoleExport( roleExport );
-      successfulExportRoles++;
-      getRepositoryExportLogger().debug( "Finished backup of role [ " + role + " ] " );
+      try {
+        getRepositoryExportLogger().debug( "Starting backup of role [ " + role + " ] " );
+        RoleExport roleExport = new RoleExport();
+        roleExport.setRolename( role );
+        roleExport.setPermission( roleBindingDao.getRoleBindingStruct( null ).bindingMap.get( role ) );
+        exportManifest.addRoleExport( roleExport );
+        successfulExportRoles++;
+        if ( exportMetrics != null ) {
+          exportMetrics.recordSuccess( ImportExportMetrics.Category.ROLES );
+        }
+        getRepositoryExportLogger().debug( "Finished backup of role [ " + role + " ] " );
+      } catch ( Exception e ) {
+        getRepositoryExportLogger().error( "Failed to export role [ " + role + " ]: " + e.getMessage(), e );
+        if ( exportMetrics != null ) {
+          exportMetrics.recordFailure( ImportExportMetrics.Category.ROLES, role, e );
+        }
+        // Continue with next role
+      }
     }
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_SUCCESSFUL_ROLE_EXPORT_COUNT", successfulExportRoles, rolesSize ) );
 
