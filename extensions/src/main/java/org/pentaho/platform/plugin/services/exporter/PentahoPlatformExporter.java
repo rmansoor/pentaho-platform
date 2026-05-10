@@ -111,6 +111,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   private ImportExportMetrics exportMetrics;  // New comprehensive metrics collector
   private int exportedFileCount = 0;  // Track total files exported
   private int exportedFolderCount = 0;  // Track total folders exported
+  private long exportStartTime = 0;  // Track export start time for duration calculation
 
   private List<IExportHelper> exportHelpers = new ArrayList<>();
 
@@ -235,6 +236,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     metricsCollector = new ImportExportMetricsCollector();
     importExportLogger = new ImportExportLogger();
     exportMetrics = new ImportExportMetrics( ImportExportMetrics.OperationType.BACKUP );
+    exportStartTime = System.currentTimeMillis();  // Track start time for duration calculation
 
     // Log backup start with config
     importExportLogger.logBackupStart( componentConfig );
@@ -255,19 +257,32 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
     if ( componentConfig.isIncludeContent() ) {
       try {
+        getRepositoryExportLogger().info( "Starting file and folder export..." );
         exportFileContent( exportRepositoryFile );
+        // Track exported files as success
+        exportMetrics.recordSuccess( ImportExportMetrics.Category.FILES );
+        getRepositoryExportLogger().info( "File content export completed successfully" );
       } catch ( ExportException | IOException exception ) {
         getRepositoryExportLogger().error( Messages.getInstance().getString( "PentahoPlatformExporter.ERROR_EXPORT_FILE_CONTENT", exception.getLocalizedMessage() ) );
+        exportMetrics.recordFailure( ImportExportMetrics.Category.FILES, "repository", exception );
         if ( inventoryLogger != null ) {
           inventoryLogger.logObjectFailure("CONTENT", "Repository Root", "REPOSITORY_FOLDER", exception.getMessage());
         }
       }
     } else {
       getRepositoryExportLogger().debug( "Skipping content export (not included in backup configuration)" );
+      exportMetrics.recordSkip( ImportExportMetrics.Category.FILES, "repository", "Content export disabled" );
     }
 
     if ( componentConfig.isIncludeDatasources() ) {
-      exportDatasources();
+      try {
+        exportDatasources();
+        exportMetrics.recordSuccess( ImportExportMetrics.Category.DATASOURCES );
+      } catch ( Exception e ) {
+        exportMetrics.recordFailure( ImportExportMetrics.Category.DATASOURCES, "datasources", e );
+      }
+    } else {
+      exportMetrics.recordSkip( ImportExportMetrics.Category.DATASOURCES, "datasources", "Datasource export disabled" );
     }
     if ( componentConfig.isIncludeMondrian() ) {
       exportMondrianSchemas();
@@ -280,10 +295,24 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       runExportHelpers();
     }
     if ( componentConfig.isIncludeUsers() ) {
-      exportUsersAndRoles();
+      try {
+        exportUsersAndRoles();
+        exportMetrics.recordSuccess( ImportExportMetrics.Category.USERS );
+      } catch ( Exception e ) {
+        exportMetrics.recordFailure( ImportExportMetrics.Category.USERS, "users", e );
+      }
+    } else {
+      exportMetrics.recordSkip( ImportExportMetrics.Category.USERS, "users", "User export disabled" );
     }
     if ( componentConfig.isIncludeMetastore() ) {
-      exportMetastore();
+      try {
+        exportMetastore();
+        exportMetrics.recordSuccess( ImportExportMetrics.Category.METASTORE );
+      } catch ( Exception e ) {
+        exportMetrics.recordFailure( ImportExportMetrics.Category.METASTORE, "metastore", e );
+      }
+    } else {
+      exportMetrics.recordSkip( ImportExportMetrics.Category.METASTORE, "metastore", "Metastore export disabled" );
     }
 
     if ( this.withManifest ) {
@@ -322,16 +351,24 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     
     // Log comprehensive export metrics report
     if ( exportMetrics != null ) {
+      long endTime = System.currentTimeMillis();
+      long duration = endTime - getStartTime();
+      
+      getRepositoryExportLogger().info( "" );
+      getRepositoryExportLogger().info( "================================================================================" );
+      getRepositoryExportLogger().info( "                    BACKUP OPERATION SUMMARY" );
+      getRepositoryExportLogger().info( "================================================================================" );
+      getRepositoryExportLogger().info( "Duration: " + formatDuration( duration ) );
+      getRepositoryExportLogger().info( "" );
       getRepositoryExportLogger().info( exportMetrics.generateDetailedReport() );
+      getRepositoryExportLogger().info( "" );
     }
 
     // Log file count statistics
-    getRepositoryExportLogger().info( "======================================" );
     getRepositoryExportLogger().info( "Export Summary Statistics:" );
     getRepositoryExportLogger().info( "  Total Files Exported: " + exportedFileCount );
     getRepositoryExportLogger().info( "  Total Folders Exported: " + exportedFolderCount );
     getRepositoryExportLogger().info( "  Total Items Exported: " + getTotalExportedCount() );
-    getRepositoryExportLogger().info( "======================================" );
 
     // clean up
     initManifest();
@@ -988,4 +1025,31 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     
     return false;  // Not generated content, don't skip
   }
+
+  /**
+   * Get the export start time
+   */
+  protected long getStartTime() {
+    return exportStartTime;
+  }
+
+  /**
+   * Format duration in milliseconds to human-readable format
+   */
+  private String formatDuration( long millis ) {
+    if ( millis < 0 ) return "0ms";
+    long seconds = ( millis / 1000 ) % 60;
+    long minutes = ( millis / ( 1000 * 60 ) ) % 60;
+    long hours = millis / ( 1000 * 60 * 60 );
+    StringBuilder result = new StringBuilder();
+    if ( hours > 0 ) {
+      result.append( hours ).append( "h " );
+    }
+    if ( minutes > 0 || hours > 0 ) {
+      result.append( minutes ).append( "m " );
+    }
+    result.append( seconds ).append( "s" );
+    return result.toString();
+  }
+
 }

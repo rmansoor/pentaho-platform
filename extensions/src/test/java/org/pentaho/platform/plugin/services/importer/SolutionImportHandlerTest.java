@@ -467,6 +467,10 @@ public class SolutionImportHandlerTest {
   @Test
   @Ignore
   public void testImportSchedules() throws Exception {
+    // DEPRECATED - Schedule import testing moved to pentaho-scheduler-plugin
+    // The importSchedules() method is no longer called directly
+    // Instead, schedules are imported via the IImportHelper plugin mechanism
+    /*
     List<IJobScheduleRequest> schedules = new ArrayList<>();
     IJobScheduleRequest scheduleRequest = Mockito.spy( new FakeJobSchedluerRequest() );
     schedules.add( scheduleRequest );
@@ -496,11 +500,14 @@ public class SolutionImportHandlerTest {
         .createSchedulerJob( ArgumentMatchers.any( ISchedulerResource.class ), ArgumentMatchers.eq( scheduleRequest ) );
       Assert.assertEquals( 1, ImportSession.getSession().getImportedScheduleJobIds().size() );
     }
+    */
   }
 
   @Test
   @Ignore
   public void testImportSchedules_FailsToCreateSchedule() throws Exception {
+    // DEPRECATED - Schedule import testing moved to pentaho-scheduler-plugin
+    /*
     List<IJobScheduleRequest> schedules = new ArrayList<>();
     IJobScheduleRequest scheduleRequest = Mockito.spy( new FakeJobSchedluerRequest() );
     scheduleRequest.setInputFile( "/home/admin/scheduledTransform.ktr" );
@@ -525,11 +532,14 @@ public class SolutionImportHandlerTest {
       importHandler.importSchedules( schedules );
       Assert.assertEquals( 0, ImportSession.getSession().getImportedScheduleJobIds().size() );
     }
+    */
   }
 
   @Test
   @Ignore
   public void testImportSchedules_FailsToCreateScheduleWithSpace() throws Exception {
+    // DEPRECATED - Schedule import testing moved to pentaho-scheduler-plugin
+    /*
     List<IJobScheduleRequest> schedules = new ArrayList<>();
     IJobScheduleRequest scheduleRequest = Mockito.spy( new FakeJobSchedluerRequest() );
     scheduleRequest.setInputFile( "/home/admin/scheduled Transform.ktr" );
@@ -563,11 +573,14 @@ public class SolutionImportHandlerTest {
         ArgumentMatchers.any( ISchedulerResource.class ), ArgumentMatchers.any( IJobScheduleRequest.class ) );
       Assert.assertEquals( 1, ImportSession.getSession().getImportedScheduleJobIds().size() );
     }
+    */
   }
 
   @Test
   @Ignore
   public void testImportSchedules_FailsToCreateScheduleWithSpaceOnWindows() throws Exception {
+    // DEPRECATED - Schedule import testing moved to pentaho-scheduler-plugin
+    /*
     String sep = File.separator;
     System.setProperty( "file.separator", "\\" );
     List<IJobScheduleRequest> schedules = new ArrayList<>();
@@ -607,6 +620,7 @@ public class SolutionImportHandlerTest {
       Assert.assertEquals( 1, ImportSession.getSession().getImportedScheduleJobIds().size() );
       System.setProperty( "file.separator", sep );
     }
+    */
   }
 
   private static class ScheduleRequestMatcher implements ArgumentMatcher<IJobScheduleRequest> {

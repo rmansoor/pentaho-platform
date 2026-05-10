@@ -24,6 +24,7 @@ import org.pentaho.metadata.repository.DomainStorageException;
 import org.pentaho.platform.api.engine.security.userroledao.AlreadyExistsException;
 import org.pentaho.platform.api.engine.security.userroledao.IPentahoRole;
 import org.pentaho.platform.api.engine.security.userroledao.IUserRoleDao;
+import org.pentaho.platform.api.importexport.IImportHelper;
 import org.pentaho.platform.api.mimetype.IMimeType;
 import org.pentaho.platform.api.mt.ITenant;
 import org.pentaho.platform.api.repository.datasource.IDatasourceMgmtService;
@@ -47,10 +48,12 @@ import org.pentaho.platform.engine.core.system.TenantUtils;
 import org.pentaho.platform.plugin.services.importexport.DatabaseConnectionConverter;
 import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
 import org.pentaho.platform.plugin.services.importexport.ExportManifestUserSetting;
+import org.pentaho.platform.plugin.services.importexport.IRepositoryImportLogger;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.ImportSession;
 import org.pentaho.platform.plugin.services.importexport.ImportSession.ManifestFile;
 import org.pentaho.platform.plugin.services.importexport.ImportSource.IRepositoryFileBundle;
+import org.pentaho.platform.plugin.services.importexport.Log4JRepositoryImportLogger;
 import org.pentaho.platform.plugin.services.importexport.RepositoryFileBundle;
 import org.pentaho.platform.plugin.services.importexport.RoleExport;
 import org.pentaho.platform.plugin.services.importexport.UserExport;
@@ -101,6 +104,8 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   private List<IRepositoryFileBundle> files;
   private boolean isPerformingRestore = false;
   protected ImportExportMetrics metrics;
+  protected List<IImportHelper> importHelpers = new ArrayList<>();
+  IRepositoryImportLogger logger = new Log4JRepositoryImportLogger();
 
   public SolutionImportHandler( List<IMimeType> mimeTypes ) {
     this.mimeTypes = mimeTypes;
@@ -114,6 +119,21 @@ public class SolutionImportHandler implements IPlatformImportHandler {
 
   public Log getLogger() {
     return getImportSession().getLogger();
+  }
+
+  public void addImportHelper( IImportHelper helper ) {
+    importHelpers.add( helper );
+  }
+
+  public void runImportHelpers() {
+    for ( IImportHelper helper : importHelpers ) {
+      try {
+        logger.info( "Running import helper: " + helper.getName() );
+        helper.doImport( this );
+      } catch ( Exception e ) {
+        logger.warn( "Import helper " + helper.getName() + " failed: " + e.getMessage() );
+      }
+    }
   }
 
   @Override
@@ -200,9 +220,9 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       importRepositoryFilesAndFolders( manifest, bundle );
     }
 
-    // Import schedules only if included
-    if ( manifest != null && ( componentOverrides == null || componentOverrides.isIncludeSchedules() ) ) {
-      importSchedules( manifest.getScheduleList() );
+    // Run import helpers (e.g., schedule import from scheduler-plugin)
+    if ( !importHelpers.isEmpty() ) {
+      runImportHelpers();
     }
     
     // Output metrics report
@@ -397,6 +417,20 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
 
     if ( isPerformingRestore ) {
+      int totalFileCount = successfulFilesImportCount + successfulLocaleFilesProcessed;
+      int totalAttempted = files.size();
+      int failedCount = totalAttempted - totalFileCount;
+      
+      // Track file imports in metrics
+      if ( metrics != null ) {
+        for ( int i = 0; i < totalFileCount; i++ ) {
+          metrics.recordSuccess( ImportExportMetrics.Category.FILES );
+        }
+        for ( int i = 0; i < failedCount; i++ ) {
+          metrics.recordFailure( ImportExportMetrics.Category.FILES, "file", "Import failed" );
+        }
+      }
+      
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_REPOSITORY_IMPORT_COUNT", successfulFilesImportCount + successfulLocaleFilesProcessed, files.size() ) );
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_FILEFOLDER" ) );
     }
@@ -442,6 +476,18 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         }
       }
       if ( isPerformingRestore ) {
+        int datasourceFailedCount = datasourceList.size() - successfulDatasourceImportCount;
+        
+        // Track datasource imports in metrics
+        if ( metrics != null ) {
+          for ( int i = 0; i < successfulDatasourceImportCount; i++ ) {
+            metrics.recordSuccess( ImportExportMetrics.Category.DATASOURCES );
+          }
+          for ( int i = 0; i < datasourceFailedCount; i++ ) {
+            metrics.recordFailure( ImportExportMetrics.Category.DATASOURCES, "datasource", "Import failed" );
+          }
+        }
+        
         getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_DATASOURCE_IMPORT_COUNT", successfulDatasourceImportCount, datasourceList.size() ) );
       }
     }
@@ -739,166 +785,15 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     return false;
   }
 
+  // MOVED TO: pentaho-scheduler-plugin/ScheduleImportUtil.java via IImportHelper pattern
+  // This method is no longer used - schedule imports are now handled via the IImportHelper plugin mechanism
+  // The ScheduleImportUtil class in the scheduler-plugin implements IImportHelper and handles all schedule imports
+  //
+  // @Deprecated - Use ScheduleImportUtil in scheduler-plugin instead
   protected void importSchedules( List<IJobScheduleRequest> scheduleList ) throws PlatformImportException {
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_SCHEDULE" ) );
-    }
-    if ( CollectionUtils.isNotEmpty( scheduleList ) ) {
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_SCHEDULUE", scheduleList.size() ) );
-      }
-      int successfulScheduleImportCount = 0;
-      IScheduler scheduler = PentahoSystem.get( IScheduler.class, "IScheduler2", null ); //$NON-NLS-1$
-      ISchedulerResource schedulerResource = scheduler.createSchedulerResource();
-      if ( isPerformingRestore ) {
-        getLogger().debug( "Pausing the scheduler before the start of the restore process" );
-      }
-      schedulerResource.pause();
-      if ( isPerformingRestore ) {
-        getLogger().debug( "Successfully paused the scheduler" );
-      }
-      for ( IJobScheduleRequest jobScheduleRequest : scheduleList ) {
-        if ( isPerformingRestore ) {
-          getLogger().debug( "Restoring schedule name [ " + jobScheduleRequest.getJobName() + "] inputFile [ " + jobScheduleRequest.getInputFile() + " ] outputFile [ " + jobScheduleRequest.getOutputFile() + "]" );
-        }
-        
-        // DEPENDENCY CHECK: Before importing schedule, ensure the input file exists in repository
-        // If not, import it first from the backup or import bundle
-        String inputFilePath = jobScheduleRequest.getInputFile();
-        if ( inputFilePath != null && !inputFilePath.trim().isEmpty() ) {
-          if ( !ensureScheduleInputFileExists( inputFilePath ) ) {
-            if ( isPerformingRestore ) {
-              getLogger().warn( "Skipping schedule [ " + jobScheduleRequest.getJobName() 
-                + " ] because required input file [ " + inputFilePath + " ] could not be imported from backup" );
-            }
-            continue; // Skip this schedule, the file couldn't be imported
-          } else {
-            // File was successfully found and imported (or already existed in repository)
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Schedule [ " + jobScheduleRequest.getJobName() 
-                + " ] input file [ " + inputFilePath + " ] is available in repository - schedule can proceed" );
-            }
-          }
-        } else {
-          // Schedule has no input file requirement (output-only or manual schedule)
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Schedule [ " + jobScheduleRequest.getJobName() 
-              + " ] has no input file requirement - proceeding with schedule import" );
-          }
-        }
-        
-        boolean jobExists = false;
-
-        List<IJob> jobs = getAllJobs( schedulerResource );
-        if ( jobs != null ) {
-
-          //paramRequest to map<String, Serializable>
-          Map<String, Serializable> mapParamsRequest = new HashMap<>();
-          for ( IJobScheduleParam paramRequest : jobScheduleRequest.getJobParameters() ) {
-            mapParamsRequest.put( paramRequest.getName(), paramRequest.getValue() );
-          }
-
-          // We will check the existing job in the repository. If the job being imported exists, we will remove it from the repository
-          for ( IJob job : jobs ) {
-
-            if ( ( mapParamsRequest.get( RESERVEDMAPKEY_LINEAGE_ID ) != null )
-                && ( mapParamsRequest.get( RESERVEDMAPKEY_LINEAGE_ID )
-                .equals( job.getJobParams().get( RESERVEDMAPKEY_LINEAGE_ID ) ) ) ) {
-              jobExists = true;
-            }
-
-            if ( overwriteFile && jobExists ) {
-              if ( isPerformingRestore ) {
-                getLogger().debug( "Schedule  [ " + jobScheduleRequest.getJobName() + "] already exists and overwrite flag is set to true. Removing the job so we can add it again" );
-              }
-              IJobRequest jobRequest = scheduler.createJobRequest();
-              jobRequest.setJobId( job.getJobId() );
-              schedulerResource.removeJob( jobRequest );
-              jobExists = false;
-              break;
-            }
-          }
-        }
-
-        if ( !jobExists ) {
-          try {
-            Response response = createSchedulerJob( schedulerResource, jobScheduleRequest );
-            if ( response.getStatus() == Response.Status.OK.getStatusCode() ) {
-              if ( response.getEntity() != null ) {
-                // get the schedule job id from the response and add it to the import session
-                ImportSession.getSession().addImportedScheduleJobId( response.getEntity().toString() );
-                if ( isPerformingRestore ) {
-                  getLogger().debug( "Successfully restored schedule [ " + jobScheduleRequest.getJobName() + " ] " );
-                }
-                successfulScheduleImportCount++;
-              }
-            } else {
-              getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_SCHEDULE", jobScheduleRequest.getJobName(), response.getEntity() != null
-                  ? response.getEntity().toString() : "" ) );
-            }
-          } catch ( Exception e ) {
-            // there is a scenario where if the file scheduled has a space in the file name, that it won't work. the
-            // di server
-
-            // replaces spaces with underscores and the export mechanism can't determine if it needs this to happen
-            // or not
-            // so, if we failed to import and there is a space in the path, try again but this time with replacing
-            // the space(s)
-            if ( jobScheduleRequest.getInputFile().contains( " " ) || jobScheduleRequest.getOutputFile()
-                .contains( " " ) ) {
-              getLogger().debug( Messages.getInstance()
-                  .getString( "SolutionImportHandler.SchedulesWithSpaces", jobScheduleRequest.getInputFile() ) );
-              File inFile = new File( jobScheduleRequest.getInputFile() );
-              File outFile = new File( jobScheduleRequest.getOutputFile() );
-              String inputFileName = inFile.getParent() + RepositoryFile.SEPARATOR
-                  + inFile.getName().replace( " ", "_" );
-              String outputFileName = outFile.getParent() + RepositoryFile.SEPARATOR
-                  + outFile.getName().replace( " ", "_" );
-              jobScheduleRequest.setInputFile( inputFileName );
-              jobScheduleRequest.setOutputFile( outputFileName );
-              try {
-                if ( !File.separator.equals( RepositoryFile.SEPARATOR ) ) {
-                  // on windows systems, the backslashes will result in the file not being found in the repository
-                  jobScheduleRequest.setInputFile( inputFileName.replace( File.separator, RepositoryFile.SEPARATOR ) );
-                  jobScheduleRequest
-                      .setOutputFile( outputFileName.replace( File.separator, RepositoryFile.SEPARATOR ) );
-                }
-                Response response = createSchedulerJob( schedulerResource, jobScheduleRequest );
-                if ( response.getStatus() == Response.Status.OK.getStatusCode() ) {
-                  if ( response.getEntity() != null ) {
-                    // get the schedule job id from the response and add it to the import session
-                    ImportSession.getSession().addImportedScheduleJobId( response.getEntity().toString() );
-                    successfulScheduleImportCount++;
-                  }
-                }
-              } catch ( Exception ex ) {
-                // log it and keep going. we shouldn't stop processing all schedules just because one fails.
-                getLogger().error( Messages.getInstance()
-                    .getString( "SolutionImportHandler.ERROR_0001_ERROR_CREATING_SCHEDULE", "[ " + jobScheduleRequest.getJobName() + " ] cause [ " + ex.getMessage() + " ]" ), ex );
-              }
-            } else {
-              // log it and keep going. we shouldn't stop processing all schedules just because one fails.
-              getLogger().error( Messages.getInstance()
-                  .getString( "SolutionImportHandler.ERROR_0001_ERROR_CREATING_SCHEDULE", "[ " + jobScheduleRequest.getJobName() + " ]" ) );
-            }
-          }
-        } else {
-          getLogger().info( Messages.getInstance()
-              .getString( "DefaultImportHandler.ERROR_0009_OVERWRITE_CONTENT", jobScheduleRequest.toString() ) );
-        }
-      }
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance()
-            .getString( "SolutionImportHandler.INFO_SUCCESSFUL_SCHEDULE_IMPORT_COUNT", successfulScheduleImportCount, scheduleList.size() ) );
-      }
-      schedulerResource.start();
-      if ( isPerformingRestore ) {
-        getLogger().debug( "Successfully started the scheduler" );
-      }
-    }
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_SCHEDULE" ) );
-    }
+    // This method is deprecated and should not be called
+    // Schedule imports are now handled by ScheduleImportUtil which is registered as an IImportHelper
+    getLogger().warn( "importSchedules() is deprecated. Schedule imports should be handled by ScheduleImportUtil via IImportHelper." );
   }
 
   protected void importMetaStore( ExportManifestMetaStore manifestMetaStore, boolean overwrite ) {
@@ -919,6 +814,15 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       cachedImports.put( manifestMetaStore.getFile(), bundleBuilder );
       if ( isPerformingRestore ) {
         getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_IMPORT_METASTORE" ) );
+        // Track metastore import as success in metrics
+        if ( metrics != null ) {
+          metrics.recordSuccess( ImportExportMetrics.Category.METASTORE );
+        }
+      }
+    } else {
+      // Metastore was not included in export
+      if ( metrics != null ) {
+        metrics.recordSkip( ImportExportMetrics.Category.METASTORE, "metastore", "Not included in export" );
       }
     }
     if ( isPerformingRestore ) {
@@ -1009,6 +913,18 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       }
     }
     if ( isPerformingRestore ) {
+      int userFailedCount = users.size() - successFullUserImportCount;
+      
+      // Track user imports in metrics
+      if ( metrics != null ) {
+        for ( int i = 0; i < successFullUserImportCount; i++ ) {
+          metrics.recordSuccess( ImportExportMetrics.Category.USERS );
+        }
+        for ( int i = 0; i < userFailedCount; i++ ) {
+          metrics.recordFailure( ImportExportMetrics.Category.USERS, "user", "Import failed" );
+        }
+      }
+      
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_USER_COUNT", successFullUserImportCount, users.size() ) );
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_USER" ) );
     }
@@ -1165,6 +1081,18 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         }
       }
       if ( isPerformingRestore ) {
+        int roleFailedCount = roles.size() - successFullRoleImportCount;
+        
+        // Track role imports in metrics
+        if ( metrics != null ) {
+          for ( int i = 0; i < successFullRoleImportCount; i++ ) {
+            metrics.recordSuccess( ImportExportMetrics.Category.ROLES );
+          }
+          for ( int i = 0; i < roleFailedCount; i++ ) {
+            metrics.recordFailure( ImportExportMetrics.Category.ROLES, "role", "Import failed" );
+          }
+        }
+        
         getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_ROLE_COUNT", successFullRoleImportCount, roles.size() ) );
       }
     }
@@ -1212,6 +1140,18 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         successfulMetadataModelImport++;
       }
       if ( isPerformingRestore ) {
+        int metadataFailedCount = metadataList.size() - successfulMetadataModelImport;
+        
+        // Track metadata imports in metrics
+        if ( metrics != null ) {
+          for ( int i = 0; i < successfulMetadataModelImport; i++ ) {
+            metrics.recordSuccess( ImportExportMetrics.Category.METADATA );
+          }
+          for ( int i = 0; i < metadataFailedCount; i++ ) {
+            metrics.recordFailure( ImportExportMetrics.Category.METADATA, "metadata", "Import failed" );
+          }
+        }
+        
         getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_METDATA_DATASOURCE_COUNT", successfulMetadataModelImport, metadataList.size() ) );
       }
     }
@@ -1267,6 +1207,18 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         }
       }
       if ( isPerformingRestore ) {
+        int mondrianFailedCount = mondrianList.size() - successfulMondrianSchemaImport;
+        
+        // Track Mondrian imports in metrics
+        if ( metrics != null ) {
+          for ( int i = 0; i < successfulMondrianSchemaImport; i++ ) {
+            metrics.recordSuccess( ImportExportMetrics.Category.MONDRIAN );
+          }
+          for ( int i = 0; i < mondrianFailedCount; i++ ) {
+            metrics.recordFailure( ImportExportMetrics.Category.MONDRIAN, "schema", "Import failed" );
+          }
+        }
+        
         getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_MONDRIAN_DATASOURCE_IMPORT_COUNT", successfulMondrianSchemaImport, mondrianList.size() ) );
       }
     }
@@ -1428,16 +1380,18 @@ public class SolutionImportHandler implements IPlatformImportHandler {
 
   // handlers that extend this class may override this method and perform operations
   // over the job prior to its creation at scheduler.createJob()
-  public Response createSchedulerJob( ISchedulerResource scheduler, IJobScheduleRequest jobScheduleRequest )
-      throws IOException {
-    Response rs = scheduler != null ? (Response) scheduler.createJob( jobScheduleRequest ) : null;
-    if ( jobScheduleRequest.getJobState() != JobState.NORMAL ) {
-      IJobRequest jobRequest = PentahoSystem.get( IScheduler.class, "IScheduler2", null ).createJobRequest();
-      jobRequest.setJobId( rs.getEntity().toString() );
-      scheduler.pauseJob( jobRequest );
-    }
-    return rs;
-  }
+  // MOVED TO: pentaho-scheduler-plugin/ScheduleImportUtil.java
+  //
+  //  public Response createSchedulerJob( ISchedulerResource scheduler, IJobScheduleRequest jobScheduleRequest )
+  //      throws IOException {
+  //    Response rs = scheduler != null ? (Response) scheduler.createJob( jobScheduleRequest ) : null;
+  //    if ( jobScheduleRequest.getJobState() != JobState.NORMAL ) {
+  //      IJobRequest jobRequest = PentahoSystem.get( IScheduler.class, "IScheduler2", null ).createJobRequest();
+  //      jobRequest.setJobId( rs.getEntity().toString() );
+  //      scheduler.pauseJob( jobRequest );
+  //    }
+  //    return rs;
+  //  }
 
   public boolean isOverwriteFile() {
     return overwriteFile;
@@ -1445,5 +1399,9 @@ public class SolutionImportHandler implements IPlatformImportHandler {
 
   public void setOverwriteFile( boolean overwriteFile ) {
     this.overwriteFile = overwriteFile;
+  }
+
+  public boolean isPerformingRestore() {
+    return isPerformingRestore;
   }
 }
