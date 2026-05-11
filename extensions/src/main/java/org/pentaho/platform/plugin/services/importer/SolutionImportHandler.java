@@ -17,6 +17,8 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.pentaho.database.model.IDatabaseConnection;
 import org.pentaho.metadata.repository.DomainAlreadyExistsException;
 import org.pentaho.metadata.repository.DomainIdNullException;
@@ -105,6 +107,11 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   private boolean isPerformingRestore = false;
   protected ImportExportMetrics metrics;
   protected List<IImportHelper> importHelpers = new ArrayList<>();
+  
+  // Static SLF4J logger for pre-context operations (e.g., helper execution)
+  private static final Logger STATIC_LOGGER = LoggerFactory.getLogger( SolutionImportHandler.class );
+  
+  // Instance logger for post-context operations (requires MDC setup)
   IRepositoryImportLogger logger = new Log4JRepositoryImportLogger();
 
   public SolutionImportHandler( List<IMimeType> mimeTypes ) {
@@ -131,17 +138,20 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     
     for ( IImportHelper helper : importHelpers ) {
       try {
-        logger.info( "Running import helper: " + helper.getName() );
+        // Use static SLF4J logger - not Log4JRepositoryImportLogger
+        // because job context may not be initialized yet
+        STATIC_LOGGER.info( "Running import helper: " + helper.getName() );
         helper.doImport( this );
         successfulHelpers++;
+        STATIC_LOGGER.info( "Successfully completed import helper: " + helper.getName() );
       } catch ( Exception e ) {
-        logger.warn( "Import helper " + helper.getName() + " failed: " + e.getMessage(), e );
+        STATIC_LOGGER.error( "Import helper " + helper.getName() + " failed: " + e.getMessage(), e );
         // Record failure but continue with next helper
       }
     }
     
     if ( isPerformingRestore ) {
-      logger.debug( "Import helpers completed: " + successfulHelpers + "/" + totalHelpers + " successful" );
+      STATIC_LOGGER.debug( "Import helpers completed: " + successfulHelpers + "/" + totalHelpers + " successful" );
     }
   }
 
