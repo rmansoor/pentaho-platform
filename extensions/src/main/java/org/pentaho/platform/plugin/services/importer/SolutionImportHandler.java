@@ -25,6 +25,7 @@ import org.pentaho.metadata.repository.DomainIdNullException;
 import org.pentaho.metadata.repository.DomainStorageException;
 import org.pentaho.platform.api.engine.security.userroledao.AlreadyExistsException;
 import org.pentaho.platform.api.engine.security.userroledao.IPentahoRole;
+import org.pentaho.platform.api.engine.security.userroledao.IPentahoUser;
 import org.pentaho.platform.api.engine.security.userroledao.IUserRoleDao;
 import org.pentaho.platform.api.importexport.IImportHelper;
 import org.pentaho.platform.api.mimetype.IMimeType;
@@ -1040,6 +1041,36 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
     
     ITenant tenant = new Tenant( "/pentaho/" + TenantUtils.getDefaultTenant(), true );
+    
+    // Check if user already exists
+    try {
+      IPentahoUser existingUser = roleDao.getUser( tenant, username );
+      if ( existingUser != null ) {
+        if ( isPerformingRestore ) {
+          getLogger().debug( "User [ " + username + " ] already exists, skipping import" );
+        }
+        
+        // Still need to map the user to their roles for role binding later
+        for ( String role : user.getRoles() ) {
+          List<String> userList;
+          if ( !roleToUserMap.containsKey( role ) ) {
+            userList = new ArrayList<>();
+            roleToUserMap.put( role, userList );
+          } else {
+            userList = roleToUserMap.get( role );
+          }
+          userList.add( username );
+        }
+        return true; // User exists, treat as success
+      }
+    } catch ( Exception e ) {
+      // User doesn't exist, proceed with import
+      if ( isPerformingRestore ) {
+        getLogger().debug( "User [ " + username + " ] does not exist or error checking existence: " + e.getMessage() );
+      }
+    }
+    
+    // User doesn't exist, import it
     String password = user.getPassword();
     getLogger().debug( Messages.getInstance().getString( "USER.importing", username ) );
 
@@ -1067,26 +1098,8 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     } catch ( AlreadyExistsException e ) {
       // it's ok if the user already exists, it is probably a default user
       getLogger().debug( Messages.getInstance().getString( "USER.Already.Exists", username ) );
-
-      try {
-        if ( isOverwriteFile() ) {
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Overwrite is set to true. So restoring user [ " + username + " ]" );
-          }
-          // set the roles, maybe they changed
-          roleDao.setUserRoles( tenant, username, userRoles );
-
-          // set the password just in case it changed
-          roleDao.setPassword( tenant, username, password );
-        }
-      } catch ( Exception ex ) {
-        // couldn't set the roles or password either
-        getLogger().warn( Messages.getInstance()
-            .getString( "ERROR.OverridingExistingUser", username ) );
-        getLogger().debug( Messages.getInstance()
-            .getString( "ERROR.OverridingExistingUser", username ), ex );
-        return false;
-      }
+      // User was just created but this exception thrown anyway - still treat as success
+      return true;
     } catch ( Exception e ) {
       getLogger().debug( Messages.getInstance()
           .getString( "ERROR.OverridingExistingUser", username ), e );
@@ -1252,19 +1265,45 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       int successFullRoleImportCount = 0;
       for ( RoleExport role : roles ) {
         getLogger().debug( Messages.getInstance().getString( "ROLE.importing", role.getRolename() ) );
+        
+        // Check if role already exists before attempting to create
+        boolean roleExists = false;
         try {
-          List<String> users = roleToUserMap.get( role.getRolename() );
-          String[] userarray = users == null ? new String[] {} : users.toArray( new String[] {} );
-          IPentahoRole role1 = roleDao.createRole( tenant, role.getRolename(), null, userarray );
-          successFullRoleImportCount++;
-        } catch ( AlreadyExistsException e ) {
-          existingRoles.add( role.getRolename() );
-          // it's ok if the role already exists, it is probably a default role
-          getLogger().debug( Messages.getInstance().getString( "ROLE.Already.Exists", role.getRolename() ) );
+          IPentahoRole existingRole = roleDao.getRole( tenant, role.getRolename() );
+          if ( existingRole != null ) {
+            roleExists = true;
+            existingRoles.add( role.getRolename() );
+            if ( isPerformingRestore ) {
+              getLogger().debug( Messages.getInstance().getString( "ROLE.Already.Exists", role.getRolename() ) );
+            }
+          }
         } catch ( Exception e ) {
-          getLogger().error( "Failed to create role [ " + role.getRolename() + " ]: " + e.getMessage(), e );
-          // Continue with next role even if creation fails
-          continue;
+          // Role doesn't exist, proceed with creation
+          if ( isPerformingRestore ) {
+            getLogger().debug( "Role [ " + role.getRolename() + " ] does not exist or error checking existence: " + e.getMessage() );
+          }
+        }
+        
+        // Only create role if it doesn't already exist
+        if ( !roleExists ) {
+          try {
+            List<String> users = roleToUserMap.get( role.getRolename() );
+            String[] userarray = users == null ? new String[] {} : users.toArray( new String[] {} );
+            IPentahoRole role1 = roleDao.createRole( tenant, role.getRolename(), null, userarray );
+            successFullRoleImportCount++;
+          } catch ( AlreadyExistsException e ) {
+            existingRoles.add( role.getRolename() );
+            // it's ok if the role already exists, it is probably a default role
+            getLogger().debug( Messages.getInstance().getString( "ROLE.Already.Exists", role.getRolename() ) );
+            successFullRoleImportCount++; // Treat existing role as successful
+          } catch ( Exception e ) {
+            getLogger().error( "Failed to create role [ " + role.getRolename() + " ]: " + e.getMessage(), e );
+            // Continue with next role even if creation fails
+            continue;
+          }
+        } else {
+          // Role already exists, count it as processed
+          successFullRoleImportCount++;
         }
         try {
           if ( existingRoles.contains( role.getRolename() ) ) {
