@@ -569,7 +569,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
   }
 
-  List<IJob> getAllJobs( ISchedulerResource schedulerResource ) {
+  public List<IJob> getAllJobs( ISchedulerResource schedulerResource ) {
     return schedulerResource.getJobsList();
   }
 
