@@ -625,14 +625,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     int usersSize = 0;
 
     IUserRoleListService userRoleListService = PentahoSystem.get( IUserRoleListService.class );
-    UserDetailsService userDetailsService = PentahoSystem.get( UserDetailsService.class );
-
-    IRoleAuthorizationPolicyRoleBindingDao roleBindingDao = PentahoSystem.get(
-        IRoleAuthorizationPolicyRoleBindingDao.class );
     ITenant tenant = TenantUtils.getCurrentTenant();
-
-    //  get the user settings for this user
-    IUserSettingService service = getUserSettingService();
 
     //User Export
     List<String> userList = userRoleListService.getAllUsers( tenant );
@@ -643,55 +636,16 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
         metricsCollector.addUsers( usersSize );
       }
     }
+    
+    // Export each user and their roles
     for ( String user : userList ) {
-      try {
-        getRepositoryExportLogger().debug( "Starting backup of user [ " + user + " ] " );
-        UserExport userExport = new UserExport();
-        userExport.setUsername( user );
-        userExport.setPassword( userDetailsService.loadUserByUsername( user ).getPassword() );
-
-        for ( String role : userRoleListService.getRolesForUser( tenant, user ) ) {
-          getRepositoryExportLogger().trace( "user [ " + user + " ] has an associated role [ " + role + " ]" );
-          userExport.setRole( role );
-        }
-
-        if ( service != null && service instanceof IAnyUserSettingService ) {
-          getRepositoryExportLogger().debug( "Starting backup of user specific settings for user [ " + user + " ] " );
-          IAnyUserSettingService userSettings = (IAnyUserSettingService) service;
-          List<IUserSetting> settings = userSettings.getUserSettings( user );
-          if ( settings != null ) {
-            for ( IUserSetting setting : settings ) {
-              try {
-                getRepositoryExportLogger().debug( "Adding user specific setting [ "
-                    + setting.getSettingName() + " ] with value [ " + setting.getSettingValue() + " ] to backup" );
-                userExport.addUserSetting( new ExportManifestUserSetting( setting ) );
-                getRepositoryExportLogger().debug( "Successfully added user specific setting [ "
-                    + setting.getSettingName() + " ] with value [ " + setting.getSettingValue() + " ] to backup" );
-              } catch ( Exception e ) {
-                getRepositoryExportLogger().warn( "Failed to export user setting [ " + setting.getSettingName() + " ] for user [ " + user + " ]: " + e.getMessage() );
-                // Continue with next setting
-              }
-            }
-          }
-          getRepositoryExportLogger().debug( "Finished backup of user specific settings for user [ " + user + " ] " );
-        }
-
-        this.getExportManifest().addUserExport( userExport );
+      if ( exportUserAndRole( user ) ) {
         successfulExportUsers++;
-        if ( exportMetrics != null ) {
-          exportMetrics.recordSuccess( ImportExportMetrics.Category.USERS );
-        }
-        getRepositoryExportLogger().debug( "Successfully perform backup of user [ " + user + " ] " );
-      } catch ( Exception e ) {
-        getRepositoryExportLogger().error( "Failed to export user [ " + user + " ]: " + e.getMessage(), e );
-        if ( exportMetrics != null ) {
-          exportMetrics.recordFailure( ImportExportMetrics.Category.USERS, user, e );
-        }
-        // Continue with next user
       }
     }
 
     // export the global user settings
+    IUserSettingService service = getUserSettingService();
     if ( service != null ) {
       getRepositoryExportLogger().debug( "Starting backup of global user settings" );
       List<IUserSetting> globalUserSettings = service.getGlobalUserSettings();
@@ -706,9 +660,83 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_END_EXPORT_USER" ) );
 
+    // Export roles
+    exportRoles();
+  }
+
+  /**
+   * Export a single user and their roles
+   * @param username the username to export
+   * @return true if the user was successfully exported, false otherwise
+   */
+  public boolean exportUserAndRole( String username ) {
+    if ( username == null || username.trim().isEmpty() ) {
+      return false;
+    }
+
+    UserDetailsService userDetailsService = PentahoSystem.get( UserDetailsService.class );
+    IUserRoleListService userRoleListService = PentahoSystem.get( IUserRoleListService.class );
+    ITenant tenant = TenantUtils.getCurrentTenant();
+    IUserSettingService service = getUserSettingService();
+
+    try {
+      getRepositoryExportLogger().debug( "Starting backup of user [ " + username + " ] " );
+      UserExport userExport = new UserExport();
+      userExport.setUsername( username );
+      userExport.setPassword( userDetailsService.loadUserByUsername( username ).getPassword() );
+
+      for ( String role : userRoleListService.getRolesForUser( tenant, username ) ) {
+        getRepositoryExportLogger().trace( "user [ " + username + " ] has an associated role [ " + role + " ]" );
+        userExport.setRole( role );
+      }
+
+      if ( service != null && service instanceof IAnyUserSettingService ) {
+        getRepositoryExportLogger().debug( "Starting backup of user specific settings for user [ " + username + " ] " );
+        IAnyUserSettingService userSettings = (IAnyUserSettingService) service;
+        List<IUserSetting> settings = userSettings.getUserSettings( username );
+        if ( settings != null ) {
+          for ( IUserSetting setting : settings ) {
+            try {
+              getRepositoryExportLogger().debug( "Adding user specific setting [ "
+                  + setting.getSettingName() + " ] with value [ " + setting.getSettingValue() + " ] to backup" );
+              userExport.addUserSetting( new ExportManifestUserSetting( setting ) );
+              getRepositoryExportLogger().debug( "Successfully added user specific setting [ "
+                  + setting.getSettingName() + " ] with value [ " + setting.getSettingValue() + " ] to backup" );
+            } catch ( Exception e ) {
+              getRepositoryExportLogger().warn( "Failed to export user setting [ " + setting.getSettingName() + " ] for user [ " + username + " ]: " + e.getMessage() );
+              // Continue with next setting
+            }
+          }
+        }
+        getRepositoryExportLogger().debug( "Finished backup of user specific settings for user [ " + username + " ] " );
+      }
+
+      this.getExportManifest().addUserExport( userExport );
+      if ( exportMetrics != null ) {
+        exportMetrics.recordSuccess( ImportExportMetrics.Category.USERS );
+      }
+      getRepositoryExportLogger().debug( "Successfully perform backup of user [ " + username + " ] " );
+      return true;
+    } catch ( Exception e ) {
+      getRepositoryExportLogger().error( "Failed to export user [ " + username + " ]: " + e.getMessage(), e );
+      if ( exportMetrics != null ) {
+        exportMetrics.recordFailure( ImportExportMetrics.Category.USERS, username, e );
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Export all roles in the system
+   */
+  protected void exportRoles() {
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_ROLE" ) );
     int successfulExportRoles = 0;
     int rolesSize = 0;
+
+    IUserRoleListService userRoleListService = PentahoSystem.get( IUserRoleListService.class );
+    IRoleAuthorizationPolicyRoleBindingDao roleBindingDao = PentahoSystem.get(
+        IRoleAuthorizationPolicyRoleBindingDao.class );
 
     //RoleExport
     List<String> roles = userRoleListService.getAllRoles();

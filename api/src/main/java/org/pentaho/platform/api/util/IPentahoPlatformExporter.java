@@ -38,4 +38,12 @@ public interface IPentahoPlatformExporter {
    */
   void exportScheduleOwnersAndRoles( Set<String> selectedUsernames );
 
+  /**
+   * Export a single user and their roles with user settings.
+   * 
+   * @param username the username to export
+   * @return true if the user was successfully exported, false otherwise
+   */
+  boolean exportUserAndRole( String username );
+
 }
