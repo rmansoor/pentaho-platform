@@ -306,12 +306,11 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     } else {
       exportMetrics.recordSkip( ImportExportMetrics.Category.METADATA, "models", "Metadata export disabled" );
     }
-    
-    // CRITICAL: Export users/roles BEFORE helpers if schedules are included
-    // This ensures schedule owners are in the manifest before schedules are exported
-    boolean shouldExportUsers = componentConfig.isIncludeUsers() || componentConfig.isIncludeSchedules();
-    
-    if ( shouldExportUsers ) {
+    // Only run export helpers if any user-related settings are enabled
+    if ( componentConfig.isIncludeSchedules() || componentConfig.isIncludeUserSettings() ) {
+      runExportHelpers();
+    }
+    if ( componentConfig.isIncludeUsers() ) {
       try {
         exportUsersAndRoles();
         exportMetrics.recordSuccess( ImportExportMetrics.Category.USERS );
@@ -320,11 +319,6 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       }
     } else {
       exportMetrics.recordSkip( ImportExportMetrics.Category.USERS, "users", "User export disabled" );
-    }
-    
-    // Only run export helpers if any user-related settings are enabled
-    if ( componentConfig.isIncludeSchedules() || componentConfig.isIncludeUserSettings() ) {
-      runExportHelpers();
     }
     if ( componentConfig.isIncludeMetastore() ) {
       try {
