@@ -569,10 +569,6 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
   }
 
-  public List<IJob> getAllJobs( ISchedulerResource schedulerResource ) {
-    return schedulerResource.getJobsList();
-  }
-
   private RepositoryFile getFile( IPlatformImportBundle importBundle, IRepositoryFileBundle fileBundle ) {
     String repositoryFilePath =
         repositoryPathConcat( importBundle.getPath(), fileBundle.getPath(), fileBundle.getFile().getName() );
