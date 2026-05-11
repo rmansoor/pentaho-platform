@@ -991,82 +991,22 @@ public class SolutionImportHandler implements IPlatformImportHandler {
    */
   protected Map<String, List<String>> importUsers( List<UserExport> users ) {
     Map<String, List<String>> roleToUserMap = new HashMap<>();
-    IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
-    ITenant tenant = new Tenant( "/pentaho/" + TenantUtils.getDefaultTenant(), true );
     int successFullUserImportCount = 0;
     if ( isPerformingRestore ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_USER" ) );
     }
-    if ( users != null && roleDao != null ) {
+    if ( users != null ) {
       if ( isPerformingRestore ) {
         getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_USER", users.size() ) );
       }
       for ( UserExport user : users ) {
-        String password = user.getPassword();
-        getLogger().debug( Messages.getInstance().getString( "USER.importing", user.getUsername() ) );
-
-        // map the user to the roles he/she is in
-        for ( String role : user.getRoles() ) {
-          List<String> userList;
-          if ( !roleToUserMap.containsKey( role ) ) {
-            userList = new ArrayList<>();
-            roleToUserMap.put( role, userList );
-          } else {
-            userList = roleToUserMap.get( role );
-          }
-          userList.add( user.getUsername() );
-        }
-
-        String[] userRoles = user.getRoles().toArray( new String[] {} );
-        try {
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Restoring user [ " + user.getUsername() + " ] " );
-          }
-          roleDao.createUser( tenant, user.getUsername(), password, null, userRoles );
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Successfully restored user [ " + user.getUsername() + " ]" );
-          }
+        if ( importUserAndRole( user.getUsername(), user, roleToUserMap ) ) {
           successFullUserImportCount++;
-        } catch ( AlreadyExistsException e ) {
-          // it's ok if the user already exists, it is probably a default user
-          getLogger().debug( Messages.getInstance().getString( "USER.Already.Exists", user.getUsername() ) );
-
-          try {
-            if ( isOverwriteFile() ) {
-              if ( isPerformingRestore ) {
-                getLogger().debug( "Overwrite is set to true. So restoring user [ " + user.getUsername() + " ]" );
-              }
-              // set the roles, maybe they changed
-              roleDao.setUserRoles( tenant, user.getUsername(), userRoles );
-
-              // set the password just in case it changed
-              roleDao.setPassword( tenant, user.getUsername(), password );
-              successFullUserImportCount++;
-            }
-          } catch ( Exception ex ) {
-            // couldn't set the roles or password either
-            getLogger().warn( Messages.getInstance()
-                .getString( "ERROR.OverridingExistingUser", user.getUsername() ) );
-            getLogger().debug( Messages.getInstance()
-                .getString( "ERROR.OverridingExistingUser", user.getUsername() ), ex );
-          }
-        } catch ( Exception e ) {
-          getLogger().debug( Messages.getInstance()
-              .getString( "ERROR.OverridingExistingUser", user.getUsername() ), e );
-          getLogger().error( Messages.getInstance()
-              .getString( "ERROR.OverridingExistingUser", user.getUsername() ) );
-        }
-        if ( isPerformingRestore ) {
-          getLogger().debug( "Restoring user [ " + user.getUsername() + " ] specific settings" );
-        }
-        importUserSettings( user );
-        if ( isPerformingRestore ) {
-          getLogger().debug( "Successfully restored user [ " + user.getUsername() + " ] specific settings" );
         }
       }
     }
     if ( isPerformingRestore ) {
-      int userFailedCount = users.size() - successFullUserImportCount;
+      int userFailedCount = ( users != null ? users.size() : 0 ) - successFullUserImportCount;
       
       // Track user imports in metrics
       if ( metrics != null ) {
@@ -1078,10 +1018,90 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         }
       }
       
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_USER_COUNT", successFullUserImportCount, users.size() ) );
+      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_USER_COUNT", successFullUserImportCount, users != null ? users.size() : 0 ) );
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_USER" ) );
     }
     return roleToUserMap;
+  }
+
+  /**
+   * Import a single user with their roles and settings
+   * 
+   * @param username the username of the user to import
+   * @param user the UserExport object containing user data (password, roles, settings)
+   * @param roleToUserMap the map to populate with user-to-role mappings for later role import
+   * @return true if user was successfully imported, false otherwise
+   */
+  public boolean importUserAndRole( String username, UserExport user, Map<String, List<String>> roleToUserMap ) {
+    IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
+    if ( roleDao == null ) {
+      getLogger().warn( "Unable to import user [ " + username + " ] - IUserRoleDao not available" );
+      return false;
+    }
+    
+    ITenant tenant = new Tenant( "/pentaho/" + TenantUtils.getDefaultTenant(), true );
+    String password = user.getPassword();
+    getLogger().debug( Messages.getInstance().getString( "USER.importing", username ) );
+
+    // map the user to the roles he/she is in
+    for ( String role : user.getRoles() ) {
+      List<String> userList;
+      if ( !roleToUserMap.containsKey( role ) ) {
+        userList = new ArrayList<>();
+        roleToUserMap.put( role, userList );
+      } else {
+        userList = roleToUserMap.get( role );
+      }
+      userList.add( username );
+    }
+
+    String[] userRoles = user.getRoles().toArray( new String[] {} );
+    try {
+      if ( isPerformingRestore ) {
+        getLogger().debug( "Restoring user [ " + username + " ] " );
+      }
+      roleDao.createUser( tenant, username, password, null, userRoles );
+      if ( isPerformingRestore ) {
+        getLogger().debug( "Successfully restored user [ " + username + " ]" );
+      }
+    } catch ( AlreadyExistsException e ) {
+      // it's ok if the user already exists, it is probably a default user
+      getLogger().debug( Messages.getInstance().getString( "USER.Already.Exists", username ) );
+
+      try {
+        if ( isOverwriteFile() ) {
+          if ( isPerformingRestore ) {
+            getLogger().debug( "Overwrite is set to true. So restoring user [ " + username + " ]" );
+          }
+          // set the roles, maybe they changed
+          roleDao.setUserRoles( tenant, username, userRoles );
+
+          // set the password just in case it changed
+          roleDao.setPassword( tenant, username, password );
+        }
+      } catch ( Exception ex ) {
+        // couldn't set the roles or password either
+        getLogger().warn( Messages.getInstance()
+            .getString( "ERROR.OverridingExistingUser", username ) );
+        getLogger().debug( Messages.getInstance()
+            .getString( "ERROR.OverridingExistingUser", username ), ex );
+        return false;
+      }
+    } catch ( Exception e ) {
+      getLogger().debug( Messages.getInstance()
+          .getString( "ERROR.OverridingExistingUser", username ), e );
+      getLogger().error( Messages.getInstance()
+          .getString( "ERROR.OverridingExistingUser", username ) );
+      return false;
+    }
+    if ( isPerformingRestore ) {
+      getLogger().debug( "Restoring user [ " + username + " ] specific settings" );
+    }
+    importUserSettings( user );
+    if ( isPerformingRestore ) {
+      getLogger().debug( "Successfully restored user [ " + username + " ] specific settings" );
+    }
+    return true;
   }
 
   /**
