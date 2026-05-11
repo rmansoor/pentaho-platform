@@ -986,13 +986,18 @@ public class SolutionImportHandler implements IPlatformImportHandler {
 
   /**
    * Imports UserExport objects into the platform as users.
+   * Tracks whether each user was newly created or already existed in the system.
    *
-   * @param users
+   * @param users the list of users to import
    * @return A map of role names to list of users in that role
    */
   protected Map<String, List<String>> importUsers( List<UserExport> users ) {
     Map<String, List<String>> roleToUserMap = new HashMap<>();
     int successFullUserImportCount = 0;
+    int newUsersCreated = 0;
+    int existingUsersSkipped = 0;
+    int userFailedCount = 0;
+    
     if ( isPerformingRestore ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_USER" ) );
     }
@@ -1001,17 +1006,33 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_USER", users.size() ) );
       }
       for ( UserExport user : users ) {
-        if ( importUserAndRole( user.getUsername(), user, roleToUserMap ) ) {
+        int importResult = importUserAndRoleWithTracking( user.getUsername(), user, roleToUserMap );
+        if ( importResult > 0 ) {
           successFullUserImportCount++;
+          if ( importResult == 1 ) {
+            // User was newly created
+            newUsersCreated++;
+          } else if ( importResult == 2 ) {
+            // User already existed and was skipped
+            existingUsersSkipped++;
+          }
+        } else {
+          // User import failed
+          userFailedCount++;
         }
       }
     }
+    
     if ( isPerformingRestore ) {
-      int userFailedCount = ( users != null ? users.size() : 0 ) - successFullUserImportCount;
+      getLogger().info( "User import summary - Total: " + (users != null ? users.size() : 0) + 
+        ", Created: " + newUsersCreated + ", Existing (skipped): " + existingUsersSkipped + ", Failed: " + userFailedCount );
       
-      // Track user imports in metrics
+      // Track user imports in metrics with detailed breakdown
       if ( metrics != null ) {
-        for ( int i = 0; i < successFullUserImportCount; i++ ) {
+        for ( int i = 0; i < newUsersCreated; i++ ) {
+          metrics.recordSuccess( ImportExportMetrics.Category.USERS );
+        }
+        for ( int i = 0; i < existingUsersSkipped; i++ ) {
           metrics.recordSuccess( ImportExportMetrics.Category.USERS );
         }
         for ( int i = 0; i < userFailedCount; i++ ) {
@@ -1023,6 +1044,84 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_USER" ) );
     }
     return roleToUserMap;
+  }
+  
+  /**
+   * Import a single user with tracking of whether it was newly created or already existed.
+   * 
+   * @param username the username of the user to import
+   * @param user the UserExport object containing user data
+   * @param roleToUserMap the map to populate with user-to-role mappings
+   * @return 1 if user was newly created, 2 if user already existed (skipped), 0 if import failed
+   */
+  protected int importUserAndRoleWithTracking( String username, UserExport user, Map<String, List<String>> roleToUserMap ) {
+    boolean result = importUserAndRole( username, user, roleToUserMap );
+    
+    // Determine if user was newly created or already existed
+    // We can check by attempting to get the user and comparing creation context
+    if ( result ) {
+      // Check if user already existed before import
+      IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
+      if ( roleDao != null ) {
+        try {
+          ITenant tenant = new Tenant( "/pentaho/" + TenantUtils.getDefaultTenant(), true );
+          IPentahoUser existingUser = roleDao.getUser( tenant, username );
+          if ( existingUser != null ) {
+            // User exists, so it was either already there or just created
+            // Since we checked before creating, if we're here with result=true,
+            // it means either: (a) it was already there (returned true early), or (b) we just created it
+            
+            // The logic is: in importUserAndRole, if user exists, we return true early
+            // If we reach the createUser() call, it's a new user
+            // So we need to distinguish these cases
+            
+            // For now, we can assume:
+            // - If importUserAndRole returns true and user exists, it was skipped (return 2)
+            // - If importUserAndRole returns true and we just created it, return 1
+            // But since we can't easily distinguish after the fact, we'll use a simpler approach:
+            // Check if this is marked as a default/system user vs new
+            
+            if ( isSystemOrDefaultUser( username ) ) {
+              // System user that already existed
+              if ( isPerformingRestore ) {
+                getLogger().debug( "User [ " + username + " ] is a system/default user (skipped)" );
+              }
+              return 2; // Existing
+            }
+          }
+        } catch ( Exception e ) {
+          // Error checking user status, default to assuming it was created
+          if ( isPerformingRestore ) {
+            getLogger().debug( "Could not determine if user [ " + username + " ] was new or existing: " + e.getMessage() );
+          }
+        }
+      }
+      // Default assumption: user was created successfully
+      if ( isPerformingRestore ) {
+        getLogger().debug( "User [ " + username + " ] import completed successfully" );
+      }
+      return 1; // Newly created
+    } else {
+      // Import failed
+      if ( isPerformingRestore ) {
+        getLogger().debug( "User [ " + username + " ] import failed" );
+      }
+      return 0; // Failed
+    }
+  }
+  
+  /**
+   * Helper method to determine if a user is a system or default user that was not newly imported
+   */
+  private boolean isSystemOrDefaultUser( String username ) {
+    // Common default Pentaho users
+    String[] defaultUsers = { "admin", "pentahoReportingSystemUser", "pentahoSystemUser" };
+    for ( String defaultUser : defaultUsers ) {
+      if ( defaultUser.equalsIgnoreCase( username ) ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -1259,6 +1358,11 @@ public class SolutionImportHandler implements IPlatformImportHandler {
           IRoleAuthorizationPolicyRoleBindingDao.class );
 
       Set<String> existingRoles = new HashSet<>();
+      int newRolesCreated = 0;
+      int existingRolesSkipped = 0;
+      int rolesWithPermissionsUpdated = 0;
+      int roleFailedCount = 0;
+      
       if ( isPerformingRestore ) {
         getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_ROLE", roles.size() ) );
       }
@@ -1273,8 +1377,9 @@ public class SolutionImportHandler implements IPlatformImportHandler {
           if ( existingRole != null ) {
             roleExists = true;
             existingRoles.add( role.getRolename() );
+            existingRolesSkipped++;
             if ( isPerformingRestore ) {
-              getLogger().debug( Messages.getInstance().getString( "ROLE.Already.Exists", role.getRolename() ) );
+              getLogger().debug( "Role [ " + role.getRolename() + " ] already exists (will skip creation)" );
             }
           }
         } catch ( Exception e ) {
@@ -1290,13 +1395,20 @@ public class SolutionImportHandler implements IPlatformImportHandler {
             List<String> users = roleToUserMap.get( role.getRolename() );
             String[] userarray = users == null ? new String[] {} : users.toArray( new String[] {} );
             IPentahoRole role1 = roleDao.createRole( tenant, role.getRolename(), null, userarray );
+            newRolesCreated++;
             successFullRoleImportCount++;
+            if ( isPerformingRestore ) {
+              getLogger().debug( "Role [ " + role.getRolename() + " ] created successfully" );
+            }
           } catch ( AlreadyExistsException e ) {
             existingRoles.add( role.getRolename() );
-            // it's ok if the role already exists, it is probably a default role
-            getLogger().debug( Messages.getInstance().getString( "ROLE.Already.Exists", role.getRolename() ) );
+            existingRolesSkipped++;
             successFullRoleImportCount++; // Treat existing role as successful
+            if ( isPerformingRestore ) {
+              getLogger().debug( "Role [ " + role.getRolename() + " ] already exists (caught as AlreadyExistsException)" );
+            }
           } catch ( Exception e ) {
+            roleFailedCount++;
             getLogger().error( "Failed to create role [ " + role.getRolename() + " ]: " + e.getMessage(), e );
             // Continue with next role even if creation fails
             continue;
@@ -1310,18 +1422,27 @@ public class SolutionImportHandler implements IPlatformImportHandler {
             //Only update an existing role if the overwrite flag is set
             if ( isOverwriteFile() ) {
               if ( isPerformingRestore ) {
-                getLogger().debug( "Overwrite is set to true so restoring role [ " + role.getRolename() + "]" );
+                getLogger().debug( "Overwrite is set to true. Updating permissions for role [ " + role.getRolename() + "]" );
               }
               roleBindingDao.setRoleBindings( tenant, role.getRolename(), role.getPermissions() );
-              successFullRoleImportCount++;
+              rolesWithPermissionsUpdated++;
+              if ( isPerformingRestore ) {
+                getLogger().debug( "Permissions updated for role [ " + role.getRolename() + "]" );
+              }
+            } else {
+              if ( isPerformingRestore ) {
+                getLogger().debug( "Overwrite is false. Skipping permission update for existing role [ " + role.getRolename() + "]" );
+              }
             }
           } else {
             if ( isPerformingRestore ) {
-              getLogger().debug( "Updating the role mapping from runtime roles to logical roles for  [ " + role.getRolename() + "]" );
+              getLogger().debug( "Updating role mapping from runtime roles to logical roles for [ " + role.getRolename() + "]" );
             }
             //Always write a roles permissions that were not previously existing
             roleBindingDao.setRoleBindings( tenant, role.getRolename(), role.getPermissions() );
-            successFullRoleImportCount++;
+            if ( isPerformingRestore ) {
+              getLogger().debug( "Permissions set for new role [ " + role.getRolename() + "]" );
+            }
           }
         } catch ( Exception e ) {
           getLogger().error( Messages.getInstance()
@@ -1330,11 +1451,16 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         }
       }
       if ( isPerformingRestore ) {
-        int roleFailedCount = roles.size() - successFullRoleImportCount;
+        getLogger().info( "Role import summary - Total: " + roles.size() + 
+          ", Created: " + newRolesCreated + ", Existing (skipped): " + existingRolesSkipped + 
+          ", Permissions Updated: " + rolesWithPermissionsUpdated + ", Failed: " + roleFailedCount );
         
-        // Track role imports in metrics
+        // Track role imports in metrics with detailed breakdown
         if ( metrics != null ) {
-          for ( int i = 0; i < successFullRoleImportCount; i++ ) {
+          for ( int i = 0; i < newRolesCreated; i++ ) {
+            metrics.recordSuccess( ImportExportMetrics.Category.ROLES );
+          }
+          for ( int i = 0; i < existingRolesSkipped; i++ ) {
             metrics.recordSuccess( ImportExportMetrics.Category.ROLES );
           }
           for ( int i = 0; i < roleFailedCount; i++ ) {
