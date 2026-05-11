@@ -1106,16 +1106,19 @@ public class SolutionImportHandler implements IPlatformImportHandler {
 
   /**
    * Import only selected users and their roles (used by plugins like scheduler to import dependencies)
-   * @param users List of users to import
+   * 
+   * This is typically called by plugins (e.g., scheduler) to import individual users as needed.
+   * The import flow is:
+   * 1. Main import: all users/roles imported first (lines 203-207)
+   * 2. Helpers run: plugins can import additional users for dependencies via this method
+   * 
+   * @param username the username to import
+   * @param user the UserExport containing user data
+   * @param roleToUserMap map to populate for role binding
+   * @return true if successfully imported, false otherwise
    */
-  public void importScheduleOwnersAndRoles( List<UserExport> users ) {
-    if ( users == null || users.isEmpty() ) {
-      return;
-    }
-    
-    getLogger().debug( "Importing schedule owner users" );
-    importUsers( users );
-    getLogger().debug( "Successfully imported schedule owner users" );
+  public boolean importScheduleOwnerUser( String username, UserExport user, Map<String, List<String>> roleToUserMap ) {
+    return importUserAndRole( username, user, roleToUserMap );
   }
 
   protected void importGlobalUserSettings( List<ExportManifestUserSetting> globalSettings ) {
