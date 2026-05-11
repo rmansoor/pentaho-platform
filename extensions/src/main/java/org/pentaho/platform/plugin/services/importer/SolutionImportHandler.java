@@ -1047,6 +1047,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   }
   
   /**
+  /**
    * Import a single user with tracking of whether it was newly created or already existed.
    * 
    * @param username the username of the user to import
@@ -1055,52 +1056,41 @@ public class SolutionImportHandler implements IPlatformImportHandler {
    * @return 1 if user was newly created, 2 if user already existed (skipped), 0 if import failed
    */
   protected int importUserAndRoleWithTracking( String username, UserExport user, Map<String, List<String>> roleToUserMap ) {
-    boolean result = importUserAndRole( username, user, roleToUserMap );
-    
-    // Determine if user was newly created or already existed
-    // We can check by attempting to get the user and comparing creation context
-    if ( result ) {
-      // Check if user already existed before import
-      IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
-      if ( roleDao != null ) {
-        try {
-          ITenant tenant = new Tenant( "/pentaho/" + TenantUtils.getDefaultTenant(), true );
-          IPentahoUser existingUser = roleDao.getUser( tenant, username );
-          if ( existingUser != null ) {
-            // User exists, so it was either already there or just created
-            // Since we checked before creating, if we're here with result=true,
-            // it means either: (a) it was already there (returned true early), or (b) we just created it
-            
-            // The logic is: in importUserAndRole, if user exists, we return true early
-            // If we reach the createUser() call, it's a new user
-            // So we need to distinguish these cases
-            
-            // For now, we can assume:
-            // - If importUserAndRole returns true and user exists, it was skipped (return 2)
-            // - If importUserAndRole returns true and we just created it, return 1
-            // But since we can't easily distinguish after the fact, we'll use a simpler approach:
-            // Check if this is marked as a default/system user vs new
-            
-            if ( isSystemOrDefaultUser( username ) ) {
-              // System user that already existed
-              if ( isPerformingRestore ) {
-                getLogger().debug( "User [ " + username + " ] is a system/default user (skipped)" );
-              }
-              return 2; // Existing
-            }
-          }
-        } catch ( Exception e ) {
-          // Error checking user status, default to assuming it was created
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Could not determine if user [ " + username + " ] was new or existing: " + e.getMessage() );
-          }
+    // Check if user exists BEFORE import attempt
+    boolean userExistedBeforeImport = false;
+    IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
+    if ( roleDao != null ) {
+      try {
+        ITenant tenant = new Tenant( "/pentaho/" + TenantUtils.getDefaultTenant(), true );
+        IPentahoUser existingUser = roleDao.getUser( tenant, username );
+        if ( existingUser != null ) {
+          userExistedBeforeImport = true;
+        }
+      } catch ( Exception e ) {
+        // If we can't check, assume user doesn't exist
+        if ( isPerformingRestore ) {
+          getLogger().debug( "Could not check if user [ " + username + " ] existed before import: " + e.getMessage() );
         }
       }
-      // Default assumption: user was created successfully
-      if ( isPerformingRestore ) {
-        getLogger().debug( "User [ " + username + " ] import completed successfully" );
+    }
+    
+    // Attempt import
+    boolean result = importUserAndRole( username, user, roleToUserMap );
+    
+    if ( result ) {
+      if ( userExistedBeforeImport ) {
+        // User already existed, so it was skipped
+        if ( isPerformingRestore ) {
+          getLogger().debug( "User [ " + username + " ] already existed, skipped import" );
+        }
+        return 2; // Existing (skipped)
+      } else {
+        // User did not exist before, so it was newly created
+        if ( isPerformingRestore ) {
+          getLogger().debug( "User [ " + username + " ] was newly created" );
+        }
+        return 1; // Newly created
       }
-      return 1; // Newly created
     } else {
       // Import failed
       if ( isPerformingRestore ) {
@@ -1108,20 +1098,6 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       }
       return 0; // Failed
     }
-  }
-  
-  /**
-   * Helper method to determine if a user is a system or default user that was not newly imported
-   */
-  private boolean isSystemOrDefaultUser( String username ) {
-    // Common default Pentaho users
-    String[] defaultUsers = { "admin", "pentahoReportingSystemUser", "pentahoSystemUser" };
-    for ( String defaultUser : defaultUsers ) {
-      if ( defaultUser.equalsIgnoreCase( username ) ) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**
