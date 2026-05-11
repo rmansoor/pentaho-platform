@@ -75,6 +75,7 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -741,6 +742,92 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_SUCCESSFUL_ROLE_EXPORT_COUNT", successfulExportRoles, rolesSize ) );
 
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_END_EXPORT_ROLE" ) );
+  }
+
+  /**
+   * Export only selected users and their roles (used by plugins like scheduler to export dependencies)
+   * @param selectedUsernames Set of usernames to export
+   */
+  public void exportScheduleOwnersAndRoles( Set<String> selectedUsernames ) {
+    if ( selectedUsernames == null || selectedUsernames.isEmpty() ) {
+      return;
+    }
+    
+    getRepositoryExportLogger().info( "Exporting schedule owner users" );
+    int successfulExportUsers = 0;
+
+    IUserRoleListService userRoleListService = PentahoSystem.get( IUserRoleListService.class );
+    UserDetailsService userDetailsService = PentahoSystem.get( UserDetailsService.class );
+    IRoleAuthorizationPolicyRoleBindingDao roleBindingDao = PentahoSystem.get(
+        IRoleAuthorizationPolicyRoleBindingDao.class );
+    ITenant tenant = TenantUtils.getCurrentTenant();
+
+    if ( userRoleListService == null || userDetailsService == null ) {
+      getRepositoryExportLogger().warn( "Could not export schedule owners: UserRoleListService or UserDetailsService not available" );
+      return;
+    }
+
+    // Export only the selected users
+    Set<String> exportedRoles = new HashSet<>();
+    for ( String username : selectedUsernames ) {
+      try {
+        getRepositoryExportLogger().debug( "Exporting schedule owner user [ " + username + " ]" );
+        UserExport userExport = new UserExport();
+        userExport.setUsername( username );
+        
+        try {
+          userExport.setPassword( userDetailsService.loadUserByUsername( username ).getPassword() );
+        } catch ( Exception e ) {
+          getRepositoryExportLogger().warn( "Could not load password for user [ " + username + " ]: " + e.getMessage() );
+          // Continue - user will still be exported without password
+        }
+        
+        // Add the user's roles
+        for ( String role : userRoleListService.getRolesForUser( tenant, username ) ) {
+          getRepositoryExportLogger().trace( "Schedule owner [ " + username + " ] has role [ " + role + " ]" );
+          userExport.setRole( role );
+          exportedRoles.add( role );
+        }
+        
+        getExportManifest().addUserExport( userExport );
+        successfulExportUsers++;
+        if ( exportMetrics != null ) {
+          exportMetrics.recordSuccess( ImportExportMetrics.Category.USERS );
+        }
+        getRepositoryExportLogger().debug( "Successfully exported schedule owner user [ " + username + " ]" );
+      } catch ( Exception e ) {
+        getRepositoryExportLogger().warn( "Failed to export schedule owner user [ " + username + " ]: " + e.getMessage(), e );
+        if ( exportMetrics != null ) {
+          exportMetrics.recordFailure( ImportExportMetrics.Category.USERS, username, e );
+        }
+        // Continue with next user
+      }
+    }
+
+    // Export only the roles referenced by the selected users
+    for ( String role : exportedRoles ) {
+      try {
+        getRepositoryExportLogger().debug( "Exporting role [ " + role + " ] for schedule owners" );
+        RoleExport roleExport = new RoleExport();
+        roleExport.setRolename( role );
+        if ( roleBindingDao != null ) {
+          roleExport.setPermission( roleBindingDao.getRoleBindingStruct( null ).bindingMap.get( role ) );
+        }
+        getExportManifest().addRoleExport( roleExport );
+        if ( exportMetrics != null ) {
+          exportMetrics.recordSuccess( ImportExportMetrics.Category.ROLES );
+        }
+        getRepositoryExportLogger().debug( "Successfully exported role [ " + role + " ]" );
+      } catch ( Exception e ) {
+        getRepositoryExportLogger().warn( "Failed to export role [ " + role + " ]: " + e.getMessage(), e );
+        if ( exportMetrics != null ) {
+          exportMetrics.recordFailure( ImportExportMetrics.Category.ROLES, role, e );
+        }
+        // Continue with next role
+      }
+    }
+
+    getRepositoryExportLogger().info( "Successfully exported " + successfulExportUsers + " schedule owner users" );
   }
 
   protected void exportMetastore() throws IOException {

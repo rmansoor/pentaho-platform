@@ -15,6 +15,7 @@ package org.pentaho.platform.api.util;
 
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.api.importexport.ExportException;
+import java.util.Set;
 
 public interface IPentahoPlatformExporter {
   void addExportHelper( IExportHelper helper );
@@ -29,5 +30,12 @@ public interface IPentahoPlatformExporter {
    * @throws ExportException if the file cannot be exported
    */
   void exportFileByPath( String repositoryFilePath ) throws ExportException;
+
+  /**
+   * Export only selected users and their roles (used by plugins like scheduler to export dependencies).
+   * 
+   * @param selectedUsernames Set of usernames to export
+   */
+  void exportScheduleOwnersAndRoles( Set<String> selectedUsernames );
 
 }
