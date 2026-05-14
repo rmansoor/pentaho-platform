@@ -22,6 +22,7 @@ import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.repository2.unified.RepositoryFileAcl;
+import org.pentaho.platform.api.repository2.unified.RepositoryFileSid;
 import org.pentaho.platform.api.repository2.unified.RepositoryRequest;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.scheduler2.IScheduler;
@@ -234,12 +235,54 @@ public class ZipExportProcessor extends BaseExportProcessor {
     if ( this.withManifest ) {
       // add this entity to the manifest
       RepositoryFileAcl fileAcl = getUnifiedRepository().getAcl( repositoryFile.getId() );
+      
+      // If this is a user home folder (e.g., /home/user1), ensure the owner is the user
+      fileAcl = ensureUserHomeFolderOwnership( repositoryFile, fileAcl );
+      
       try {
         getExportManifest().add( repositoryFile, fileAcl );
       } catch ( ExportManifestFormatException e ) {
         throw new ExportException( e.getMessage() );
       }
     }
+  }
+
+  /**
+   * For user home folders (path like /home/username), ensure the owner in the ACL is the user.
+   * This fixes cases where user home folders may have been created with the wrong owner.
+   * 
+   * @param repositoryFile the file/folder being exported
+   * @param fileAcl the ACL from the repository
+   * @return the ACL, potentially corrected to have the user as owner for user home folders
+   */
+  private RepositoryFileAcl ensureUserHomeFolderOwnership( RepositoryFile repositoryFile, RepositoryFileAcl fileAcl ) {
+    if ( fileAcl == null || !repositoryFile.isFolder() ) {
+      return fileAcl;
+    }
+    
+    String path = repositoryFile.getPath();
+    // Check if this is a user home folder: /home/username (direct child of /home)
+    if ( path != null && path.startsWith( "/home/" ) ) {
+      String[] pathParts = path.split( "/" );
+      // /home/username should have 3 parts: "", "home", "username"
+      if ( pathParts.length == 3 ) {
+        String username = pathParts[2];
+        
+        // Create a SID for this user
+        RepositoryFileSid userSid = new RepositoryFileSid( username, RepositoryFileSid.Type.USER );
+        
+        // If the current owner is not this user, create a new ACL with the user as owner
+        if ( fileAcl.getOwner() == null || !fileAcl.getOwner().getName().equals( username ) ) {
+          // Build a new ACL with the user as owner, keeping the existing ACEs
+          fileAcl = new RepositoryFileAcl.Builder( userSid )
+              .aces( fileAcl.getAces() )
+              .entriesInheriting( fileAcl.isEntriesInheriting() )
+              .build();
+        }
+      }
+    }
+    
+    return fileAcl;
   }
 
   /**

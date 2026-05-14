@@ -432,7 +432,7 @@ public class FileService {
       bundleBuilder.name( backupBundlePath != null ? backupBundlePath : "backup.zip" );
       bundleBuilder.applyAclSettings( applyAclSettingsFlag );
       bundleBuilder.overwriteAclSettings( overwriteAclSettingsFlag );
-      bundleBuilder.retainOwnership( true );
+      bundleBuilder.retainOwnership( false );
       bundleBuilder.preserveDsw( true );
 
       // Store component overrides on ImportSession for use during import filtering

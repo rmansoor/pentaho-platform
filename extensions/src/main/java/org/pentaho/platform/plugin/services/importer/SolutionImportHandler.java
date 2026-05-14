@@ -287,6 +287,11 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       }
     }
 
+    // Validate schedule times before running import helpers
+    // FIX: Remove endTime for one-time schedules (repeatCount < 0) to prevent validation errors
+    // NOTE: Schedule validation is now handled by ScheduleImportUtil in the scheduler-plugin
+    // This ensures all scheduler-related logic is in one place
+    
     // Run import helpers (e.g., schedule import from scheduler-plugin)
     if ( !importHelpers.isEmpty() ) {
       try {
