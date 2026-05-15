@@ -119,6 +119,22 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     this.mimeTypes = mimeTypes;
     this.solutionHelper = new SolutionFileImportHelper();
     repository = PentahoSystem.get( IUnifiedRepository.class );
+    initializeBuiltInHelpers();
+  }
+
+  /**
+   * Initialize built-in import helpers for core content types.
+   * These handle users, datasources, metadata, mondrian, metastore, and repository files.
+   * Plugins can add additional helpers via addImportHelper().
+   */
+  private void initializeBuiltInHelpers() {
+    // Register built-in content type helpers
+    addImportHelper( new UsersAndRolesImportHelper() );
+    addImportHelper( new MetadataImportHelper() );
+    addImportHelper( new MondrianImportHelper() );
+    addImportHelper( new MetastoreImportHelper() );
+    addImportHelper( new JdbcDatasourceImportHelper() );
+    addImportHelper( new RepositoryFilesImportHelper() );
   }
 
   public ImportSession getImportSession() {
@@ -197,7 +213,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     setOverwriteFile( bundle.overwriteInRepository() );
     cachedImports = new HashMap<>();
 
-    //Process Manifest Settings
+    // Initialize helper settings before running helpers
     ExportManifest manifest = getImportSession().getManifest();
     BackupComponentConfig componentOverrides = getImportSession().getComponentOverrides();
     
@@ -205,104 +221,22 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       getLogger().debug( "Selective restore active with component overrides: Users=" + componentOverrides.isIncludeUsers() + 
         ", Content=" + componentOverrides.isIncludeContent() + ", Datasources=" + componentOverrides.isIncludeDatasources() );
     }
-    
-    // Process Metadata
-    if ( manifest != null ) {
-      // Import users only if included in component overrides (or no overrides = full restore)
-      if ( componentOverrides == null || componentOverrides.isIncludeUsers() ) {
-        try {
-          Map<String, List<String>> roleToUserMap = importUsers( manifest.getUserExports() );
-          // import the roles
-          importRoles( manifest.getRoleExports(), roleToUserMap );
-        } catch ( Exception e ) {
-          if ( isPerformingRestore ) {
-            getLogger().error( "Failed to import users and roles: " + e.getMessage() );
-            getLogger().debug( "Users and roles import error", e );
-          }
-        }
-      } else {
-        if ( isPerformingRestore ) {
-          getLogger().debug( "Skipping users import - not included in component overrides" );
-        }
-      }
 
-      // Import metadata (datasources) only if included
-      if ( componentOverrides == null || componentOverrides.isIncludeDatasources() ) {
-        try {
-          importMetadata( manifest.getMetadataList(), bundle.isPreserveDsw() );
-        } catch ( Exception e ) {
-          if ( isPerformingRestore ) {
-            getLogger().error( "Failed to import metadata: " + e.getMessage() );
-            getLogger().debug( "Metadata import error", e );
-          }
-        }
+    // Configure repository files helper with bundle reference
+    for ( IImportHelper helper : importHelpers ) {
+      if ( helper instanceof RepositoryFilesImportHelper ) {
+        ( (RepositoryFilesImportHelper) helper ).setBundle( bundle );
       }
-
-      // Process Mondrian only if included
-      if ( componentOverrides == null || componentOverrides.isIncludeMondrian() ) {
-        try {
-          importMondrian( manifest.getMondrianList() );
-        } catch ( Exception e ) {
-          if ( isPerformingRestore ) {
-            getLogger().error( "Failed to import Mondrian schemas: " + e.getMessage() );
-            getLogger().debug( "Mondrian import error", e );
-          }
-        }
+      if ( helper instanceof MetadataImportHelper ) {
+        ( (MetadataImportHelper) helper ).setPreserveDsw( bundle.isPreserveDsw() );
       }
-
-      // Import metastore only if included
-      if ( componentOverrides == null || componentOverrides.isIncludeMetastore() ) {
-        try {
-          importMetaStore( manifest.getMetaStore(), bundle.overwriteInRepository() );
-        } catch ( Exception e ) {
-          if ( isPerformingRestore ) {
-            getLogger().error( "Failed to import metastore: " + e.getMessage() );
-            getLogger().debug( "Metastore import error", e );
-          }
-        }
-      }
-
-      // Import JDBC datasources only if included
-      if ( componentOverrides == null || componentOverrides.isIncludeDatasources() ) {
-        try {
-          importJDBCDataSource( manifest );
-        } catch ( Exception e ) {
-          if ( isPerformingRestore ) {
-            getLogger().error( "Failed to import JDBC datasources: " + e.getMessage() );
-            getLogger().debug( "JDBC datasource import error", e );
-          }
-        }
-      }
-    } else {
-      if ( isPerformingRestore ) {
-        getLogger().error( "Manifest is null - no content to import" );
-      }
-    }
-    
-    // Import files and folders if:
-    // 1. Content is included in component overrides (normal case), OR
-    // 2. Manifest has files (for schedule dependencies and other helpers)
-    // Note: Schedule helpers will import missing dependencies as needed via importFileFromBundle()
-    boolean hasFilesInManifest = manifest != null && manifest.getExportManifestEntities() != null 
-      && !manifest.getExportManifestEntities().isEmpty();
-    
-    if ( componentOverrides == null || componentOverrides.isIncludeContent() || hasFilesInManifest ) {
-      try {
-        importRepositoryFilesAndFolders( manifest, bundle );
-      } catch ( Exception e ) {
-        if ( isPerformingRestore ) {
-          getLogger().error( "Failed to import repository files and folders: " + e.getMessage() );
-          getLogger().debug( "Repository files import error", e );
-        }
+      if ( helper instanceof MetastoreImportHelper ) {
+        ( (MetastoreImportHelper) helper ).setOverwriteFile( bundle.overwriteInRepository() );
       }
     }
 
-    // Validate schedule times before running import helpers
-    // FIX: Remove endTime for one-time schedules (repeatCount < 0) to prevent validation errors
-    // NOTE: Schedule validation is now handled by ScheduleImportUtil in the scheduler-plugin
-    // This ensures all scheduler-related logic is in one place
-    
-    // Run import helpers (e.g., schedule import from scheduler-plugin)
+    // Run all import helpers (core + plugins)
+    // Each helper handles its own profile filtering via shouldExecute()
     if ( !importHelpers.isEmpty() ) {
       try {
         runImportHelpers();
