@@ -136,9 +136,19 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   public void runImportHelpers() {
     int successfulHelpers = 0;
     int totalHelpers = importHelpers.size();
+    Object componentOverrides = getImportSession().getComponentOverrides();
     
     for ( IImportHelper helper : importHelpers ) {
       try {
+        // Check if helper should execute for this restore profile
+        if ( !helper.shouldExecute( componentOverrides ) ) {
+          if ( isPerformingRestore ) {
+            STATIC_LOGGER.debug( "Skipping import helper: " + helper.getName() + 
+              " (not applicable for current restore profile)" );
+          }
+          continue;
+        }
+        
         // Use static SLF4J logger - not Log4JRepositoryImportLogger
         // because job context may not be initialized yet
         STATIC_LOGGER.info( "Running import helper: " + helper.getName() );
