@@ -106,373 +106,6 @@ public class SolutionImportHandlerTest {
   }
 
   @Test
-  public void testImportUsers_oneUserManyRoles() {
-    List<UserExport> users = new ArrayList<>();
-    UserExport user = new UserExport();
-    user.setUsername( "scrum master" );
-    user.setRole( "coder" );
-    user.setRole( "product owner" );
-    user.setRole( "cat herder" );
-    user.setPassword( "password" );
-    users.add( user );
-
-    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
-
-    Assert.assertEquals( 3, rolesToUsers.size() );
-    Assert.assertEquals( "scrum master", rolesToUsers.get( "coder" ).get( 0 ) );
-    Assert.assertEquals( "scrum master", rolesToUsers.get( "product owner" ).get( 0 ) );
-    Assert.assertEquals( "scrum master", rolesToUsers.get( "cat herder" ).get( 0 ) );
-
-    String[] strings = {};
-
-    verify( userRoleDao ).createUser(
-      ArgumentMatchers.any( ITenant.class ),
-      ArgumentMatchers.eq( "scrum master" ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.any( strings.getClass() ) );
-
-    // should not set the password or roles explicitly if the createUser worked
-    verify( userRoleDao, never() )
-      .setUserRoles( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( strings.getClass() ) );
-    verify( userRoleDao, never() )
-      .setPassword( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ) );
-  }
-
-  @Test
-  public void testImportUsers_manyUserManyRoles() {
-    List<UserExport> users = new ArrayList<>();
-    UserExport user = new UserExport();
-    user.setUsername( "scrum master" );
-    user.setRole( "coder" );
-    user.setRole( "product owner" );
-    user.setRole( "cat herder" );
-    user.setPassword( "password" );
-    users.add( user );
-
-    UserExport user2 = new UserExport();
-    user2.setUsername( "the dude" );
-    user2.setRole( "coder" );
-    user2.setRole( "awesome" );
-    user2.setPassword( "password" );
-    users.add( user2 );
-
-    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
-
-    Assert.assertEquals( 4, rolesToUsers.size() );
-    Assert.assertEquals( 2, rolesToUsers.get( "coder" ).size() );
-    Assert.assertEquals( 1, rolesToUsers.get( "product owner" ).size() );
-    Assert.assertEquals( "scrum master", rolesToUsers.get( "product owner" ).get( 0 ) );
-    Assert.assertEquals( 1, rolesToUsers.get( "cat herder" ).size() );
-    Assert.assertEquals( "scrum master", rolesToUsers.get( "cat herder" ).get( 0 ) );
-    Assert.assertEquals( 1, rolesToUsers.get( "awesome" ).size() );
-    Assert.assertEquals( "the dude", rolesToUsers.get( "awesome" ).get( 0 ) );
-
-    String[] strings = {};
-
-    verify( userRoleDao ).createUser(
-      ArgumentMatchers.any( ITenant.class ),
-      ArgumentMatchers.eq( "scrum master" ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.any( strings.getClass() ) );
-
-    verify( userRoleDao ).createUser(
-      ArgumentMatchers.any( ITenant.class ),
-      ArgumentMatchers.eq( "the dude" ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.any( strings.getClass() ) );
-
-    // should not set the password or roles explicitly if the createUser worked
-    verify( userRoleDao, never() )
-      .setUserRoles( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( strings.getClass() ) );
-    verify( userRoleDao, never() )
-      .setPassword( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ) );
-  }
-
-  @Test
-  public void testImportUsers_userAlreadyExists() {
-    List<UserExport> users = new ArrayList<>();
-    UserExport user = new UserExport();
-    user.setUsername( "scrum master" );
-    user.setRole( "coder" );
-    user.setPassword( "password" );
-    users.add( user );
-    String[] strings = {};
-
-    // User already exists (proactive check)
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoUser existingUser = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoUser.class );
-    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "scrum master" ) ) )
-      .thenReturn( existingUser );
-
-    importHandler.setOverwriteFile( true );
-    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
-
-    Assert.assertEquals( 1, rolesToUsers.size() );
-    Assert.assertEquals( "scrum master", rolesToUsers.get( "coder" ).get( 0 ) );
-
-    // With proactive checking, createUser should NOT be called (user already exists)
-    verify( userRoleDao, never() ).createUser(
-      ArgumentMatchers.any( ITenant.class ),
-      ArgumentMatchers.eq( "scrum master" ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.any( strings.getClass() ) );
-
-    // User should not have roles/password set (existing user, only mapped to roles)
-    verify( userRoleDao, never() )
-      .setUserRoles( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( strings.getClass() ) );
-    verify( userRoleDao, never() )
-      .setPassword( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ) );
-  }
-
-  @Test
-  public void testImportUsers_userAlreadyExists_overwriteFalse() {
-    List<UserExport> users = new ArrayList<>();
-    UserExport user = new UserExport();
-    user.setUsername( "scrum master" );
-    user.setRole( "coder" );
-    user.setPassword( "password" );
-    users.add( user );
-    String[] strings = {};
-
-    // User already exists (proactive check)
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoUser existingUser = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoUser.class );
-    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "scrum master" ) ) )
-      .thenReturn( existingUser );
-
-    importHandler.setOverwriteFile( false );
-    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
-
-    Assert.assertEquals( 1, rolesToUsers.size() );
-    Assert.assertEquals( "scrum master", rolesToUsers.get( "coder" ).get( 0 ) );
-
-    // With proactive checking, createUser should NOT be called
-    verify( userRoleDao, never() ).createUser(
-      ArgumentMatchers.any( ITenant.class ),
-      ArgumentMatchers.eq( "scrum master" ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.any( strings.getClass() ) );
-
-    // User should not have roles/password set (existing user, skipped)
-    verify( userRoleDao, never() )
-      .setUserRoles( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( strings.getClass() ) );
-    verify( userRoleDao, never() )
-      .setPassword( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ) );
-  }
-
-  @Test
-  public void testImportRoles() {
-    String roleName = "ADMIN";
-    List<String> permissions = new ArrayList<>();
-
-    RoleExport role = new RoleExport();
-    role.setRolename( roleName );
-    role.setPermission( permissions );
-
-    List<RoleExport> roles = new ArrayList<>();
-    roles.add( role );
-
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-    final List<String> adminUsers = new ArrayList<>();
-    adminUsers.add( "admin" );
-    adminUsers.add( "root" );
-    roleToUserMap.put( roleName, adminUsers );
-
-    String[] userStrings = adminUsers.toArray( new String[] {} );
-
-    importHandler.importRoles( roles, roleToUserMap );
-
-    verify( userRoleDao ).createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.any( userStrings.getClass() ) );
-    verify( roleAuthorizationPolicyRoleBindingDao )
-      .setRoleBindings( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ),
-        ArgumentMatchers.eq( permissions ) );
-  }
-
-  @Test
-  public void testImportRoles_roleAlreadyExists() {
-    String roleName = "ADMIN";
-    List<String> permissions = new ArrayList<>();
-
-    RoleExport role = new RoleExport();
-    role.setRolename( roleName );
-    role.setPermission( permissions );
-
-    List<RoleExport> roles = new ArrayList<>();
-    roles.add( role );
-
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-    final List<String> adminUsers = new ArrayList<>();
-    adminUsers.add( "admin" );
-    adminUsers.add( "root" );
-    roleToUserMap.put( roleName, adminUsers );
-
-    String[] userStrings = adminUsers.toArray( new String[] {} );
-
-    // Role already exists (proactive check)
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoRole existingRole = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoRole.class );
-    when( userRoleDao.getRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ) ) )
-      .thenReturn( existingRole );
-
-    importHandler.setOverwriteFile( true );
-    importHandler.importRoles( roles, roleToUserMap );
-
-    // With proactive checking, createRole should NOT be called (role already exists)
-    verify( userRoleDao, never() ).createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.any( userStrings.getClass() ) );
-
-    // even if the role exists, with overwrite=true, permissions should be set
-    verify( roleAuthorizationPolicyRoleBindingDao )
-      .setRoleBindings( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), ArgumentMatchers.eq(
-        permissions ) );
-
-  }
-
-  @Test
-  public void testImportRoles_roleAlreadyExists_overwriteFalse() {
-    String roleName = "ADMIN";
-    List<String> permissions = new ArrayList<>();
-
-    RoleExport role = new RoleExport();
-    role.setRolename( roleName );
-    role.setPermission( permissions );
-
-    List<RoleExport> roles = new ArrayList<>();
-    roles.add( role );
-
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-    final List<String> adminUsers = new ArrayList<>();
-    adminUsers.add( "admin" );
-    adminUsers.add( "root" );
-    roleToUserMap.put( roleName, adminUsers );
-
-    String[] userStrings = adminUsers.toArray( new String[] {} );
-
-    // Role already exists (proactive check)
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoRole existingRole = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoRole.class );
-    when( userRoleDao.getRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ) ) )
-      .thenReturn( existingRole );
-
-    importHandler.setOverwriteFile( false );
-    importHandler.importRoles( roles, roleToUserMap );
-
-    // With proactive checking, createRole should NOT be called
-    verify( userRoleDao, never() ).createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.any( userStrings.getClass() ) );
-
-    // with overwrite=false, permissions should NOT be set
-    verify( roleAuthorizationPolicyRoleBindingDao, never() )
-      .setRoleBindings( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), ArgumentMatchers.eq(
-        permissions ) );
-
-  }
-
-  @Test
-  public void testImportMetaStore() {
-    String path = "/path/to/file.zip";
-    ExportManifestMetaStore manifestMetaStore = new ExportManifestMetaStore( path,
-      "metastore",
-      "description of the metastore" );
-    importHandler.cachedImports = new HashMap<>();
-
-    importHandler.importMetaStore( manifestMetaStore, true );
-    Assert.assertEquals( 1, importHandler.cachedImports.size() );
-    Assert.assertNotNull( importHandler.cachedImports.get( path ) );
-  }
-
-  @Test
-  public void testImportMetaStore_nullMetastoreManifest() {
-    ExportManifest manifest = spy( new ExportManifest() );
-
-    importHandler.cachedImports = new HashMap<>();
-    importHandler.importMetaStore( manifest.getMetaStore(), true );
-    Assert.assertEquals( 0, importHandler.cachedImports.size() );
-  }
-
-  @Test
-  public void testImportUserSettings() throws Exception {
-    UserExport user = new UserExport();
-    user.setUsername( "pentaho" );
-    user.addUserSetting( new ExportManifestUserSetting( "theme", "crystal" ) );
-    user.addUserSetting( new ExportManifestUserSetting( "language", "en_US" ) );
-    IAnyUserSettingService userSettingService = mock( IAnyUserSettingService.class );
-    PentahoSystem.registerObject( userSettingService );
-    importHandler.setOverwriteFile( true );
-
-    importHandler.importUserSettings( user );
-    verify( userSettingService ).setUserSetting( "pentaho", "theme", "crystal" );
-    verify( userSettingService ).setUserSetting( "pentaho", "language", "en_US" );
-  }
-
-  @Test
-  public void testImportUserSettings_NoOverwrite() {
-    UserExport user = new UserExport();
-    user.setUsername( "pentaho" );
-    user.addUserSetting( new ExportManifestUserSetting( "theme", "crystal" ) );
-    user.addUserSetting( new ExportManifestUserSetting( "language", "en_US" ) );
-    IAnyUserSettingService userSettingService = mock( IAnyUserSettingService.class );
-    PentahoSystem.registerObject( userSettingService );
-    importHandler.setOverwriteFile( false );
-
-    IUserSetting existingSetting = mock( IUserSetting.class );
-    when( userSettingService.getUserSetting( "pentaho", "theme", null ) ).thenReturn( existingSetting );
-    when( userSettingService.getUserSetting( "pentaho", "language", null ) ).thenReturn( null );
-
-    importHandler.importUserSettings( user );
-    verify( userSettingService, never() ).setUserSetting( "pentaho", "theme", "crystal" );
-    verify( userSettingService ).setUserSetting( "pentaho", "language", "en_US" );
-    verify( userSettingService ).getUserSetting( "pentaho", "theme", null );
-    verify( userSettingService ).getUserSetting( "pentaho", "language", null );
-  }
-
-  @Test
-  public void testImportGlobalUserSetting() {
-    importHandler.setOverwriteFile( true );
-    List<ExportManifestUserSetting> settings = new ArrayList<>();
-    settings.add( new ExportManifestUserSetting( "language", "en_US" ) );
-    settings.add( new ExportManifestUserSetting( "showHiddenFiles", "false" ) );
-    IUserSettingService userSettingService = mock( IUserSettingService.class );
-    PentahoSystem.registerObject( userSettingService );
-
-    importHandler.importGlobalUserSettings( settings );
-
-    verify( userSettingService ).setGlobalUserSetting( "language", "en_US" );
-    verify( userSettingService ).setGlobalUserSetting( "showHiddenFiles", "false" );
-    verify( userSettingService, never() )
-      .getGlobalUserSetting( ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ) );
-  }
-
-  @Test
-  public void testImportGlobalUserSetting_noOverwrite() {
-    importHandler.setOverwriteFile( false );
-    List<ExportManifestUserSetting> settings = new ArrayList<>();
-    settings.add( new ExportManifestUserSetting( "language", "en_US" ) );
-    settings.add( new ExportManifestUserSetting( "showHiddenFiles", "false" ) );
-    IUserSettingService userSettingService = mock( IUserSettingService.class );
-    PentahoSystem.registerObject( userSettingService );
-    IUserSetting setting = mock( IUserSetting.class );
-    when( userSettingService.getGlobalUserSetting( "language", null ) ).thenReturn( null );
-    when( userSettingService.getGlobalUserSetting( "showHiddenFiles", null ) ).thenReturn( setting );
-
-    importHandler.importGlobalUserSettings( settings );
-
-    verify( userSettingService ).setGlobalUserSetting( "language", "en_US" );
-    verify( userSettingService, never() )
-      .setGlobalUserSetting( ArgumentMatchers.eq( "showHiddenFiles" ), ArgumentMatchers.nullable( String.class ) );
-    verify( userSettingService ).getGlobalUserSetting( "language", null );
-    verify( userSettingService ).getGlobalUserSetting( "showHiddenFiles", null );
-
-  }
-
-  @Test
-  @Ignore
   public void testImportSchedules() throws Exception {
     // DEPRECATED - Schedule import testing moved to pentaho-scheduler-plugin
     // The importSchedules() method is no longer called directly
@@ -721,11 +354,373 @@ public class SolutionImportHandlerTest {
     Assert.assertTrue( importHandler.fileIsScheduleInputSource( manifest, "/public/test/file3" ) );
     Assert.assertTrue( importHandler.fileIsScheduleInputSource( manifest, "public/test/file3" ) );
   }
-  @After
-  public void tearDown() throws Exception {
-    ImportSession.getSession().getImportedScheduleJobIds().clear();
-    PentahoSystem.clearObjectFactory();
+
+  @Test
+  public void testImportUsers_oneUserManyRoles() throws Exception {
+    List<UserExport> users = new ArrayList<>();
+    UserExport user = new UserExport();
+    user.setUsername( "scrum master" );
+    user.setRole( "coder" );
+    user.setRole( "product owner" );
+    user.setRole( "cat herder" );
+    user.setPassword( "password" );
+    users.add( user );
+
+    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
+
+    Assert.assertEquals( 3, rolesToUsers.size() );
+    Assert.assertEquals( "scrum master", rolesToUsers.get( "coder" ).get( 0 ) );
+    Assert.assertEquals( "scrum master", rolesToUsers.get( "product owner" ).get( 0 ) );
+    Assert.assertEquals( "scrum master", rolesToUsers.get( "cat herder" ).get( 0 ) );
+
+    String[] strings = {};
+
+    verify( userRoleDao ).createUser(
+      ArgumentMatchers.any( ITenant.class ),
+      ArgumentMatchers.eq( "scrum master" ),
+      ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.any( strings.getClass() ) );
+
+    // should not set the password or roles explicitly if the createUser worked
+    verify( userRoleDao, never() )
+      .setUserRoles( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( strings.getClass() ) );
+    verify( userRoleDao, never() )
+      .setPassword( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ) );
   }
+
+  @Test
+  public void testImportUsers_manyUserManyRoles() throws Exception {
+    List<UserExport> users = new ArrayList<>();
+    UserExport user = new UserExport();
+    user.setUsername( "scrum master" );
+    user.setRole( "coder" );
+    user.setRole( "product owner" );
+    user.setRole( "cat herder" );
+    user.setPassword( "password" );
+    users.add( user );
+
+    UserExport user2 = new UserExport();
+    user2.setUsername( "the dude" );
+    user2.setRole( "coder" );
+    user2.setRole( "awesome" );
+    user2.setPassword( "password" );
+    users.add( user2 );
+
+    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
+
+    Assert.assertEquals( 4, rolesToUsers.size() );
+    Assert.assertEquals( 2, rolesToUsers.get( "coder" ).size() );
+    Assert.assertEquals( 1, rolesToUsers.get( "product owner" ).size() );
+    Assert.assertEquals( "scrum master", rolesToUsers.get( "product owner" ).get( 0 ) );
+    Assert.assertEquals( 1, rolesToUsers.get( "cat herder" ).size() );
+    Assert.assertEquals( "scrum master", rolesToUsers.get( "cat herder" ).get( 0 ) );
+    Assert.assertEquals( 1, rolesToUsers.get( "awesome" ).size() );
+    Assert.assertEquals( "the dude", rolesToUsers.get( "awesome" ).get( 0 ) );
+
+    String[] strings = {};
+
+    verify( userRoleDao ).createUser(
+      ArgumentMatchers.any( ITenant.class ),
+      ArgumentMatchers.eq( "scrum master" ),
+      ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.any( strings.getClass() ) );
+
+    verify( userRoleDao ).createUser(
+      ArgumentMatchers.any( ITenant.class ),
+      ArgumentMatchers.eq( "the dude" ),
+      ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.any( strings.getClass() ) );
+
+    // should not set the password or roles explicitly if the createUser worked
+    verify( userRoleDao, never() )
+      .setUserRoles( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( strings.getClass() ) );
+    verify( userRoleDao, never() )
+      .setPassword( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ) );
+  }
+
+  @Test
+  public void testImportUsers_userAlreadyExists() throws Exception {
+    List<UserExport> users = new ArrayList<>();
+    UserExport user = new UserExport();
+    user.setUsername( "scrum master" );
+    user.setRole( "coder" );
+    user.setPassword( "password" );
+    users.add( user );
+    String[] strings = {};
+
+    // User already exists (proactive check)
+    org.pentaho.platform.api.engine.security.userroledao.IPentahoUser existingUser = 
+      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoUser.class );
+    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "scrum master" ) ) )
+      .thenReturn( existingUser );
+
+    importHandler.setOverwriteFile( true );
+    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
+
+    Assert.assertEquals( 1, rolesToUsers.size() );
+    Assert.assertEquals( "scrum master", rolesToUsers.get( "coder" ).get( 0 ) );
+
+    // With proactive checking, createUser should NOT be called (user already exists)
+    verify( userRoleDao, never() ).createUser(
+      ArgumentMatchers.any( ITenant.class ),
+      ArgumentMatchers.eq( "scrum master" ),
+      ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.any( strings.getClass() ) );
+
+    // User should not have roles/password set (existing user, only mapped to roles)
+    verify( userRoleDao, never() )
+      .setUserRoles( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( strings.getClass() ) );
+    verify( userRoleDao, never() )
+      .setPassword( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ) );
+  }
+
+  @Test
+  public void testImportUsers_userAlreadyExists_overwriteFalse() throws Exception {
+    List<UserExport> users = new ArrayList<>();
+    UserExport user = new UserExport();
+    user.setUsername( "scrum master" );
+    user.setRole( "coder" );
+    user.setPassword( "password" );
+    users.add( user );
+    String[] strings = {};
+
+    // User already exists (proactive check)
+    org.pentaho.platform.api.engine.security.userroledao.IPentahoUser existingUser = 
+      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoUser.class );
+    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "scrum master" ) ) )
+      .thenReturn( existingUser );
+
+    importHandler.setOverwriteFile( false );
+    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
+
+    Assert.assertEquals( 1, rolesToUsers.size() );
+    Assert.assertEquals( "scrum master", rolesToUsers.get( "coder" ).get( 0 ) );
+
+    // With proactive checking, createUser should NOT be called
+    verify( userRoleDao, never() ).createUser(
+      ArgumentMatchers.any( ITenant.class ),
+      ArgumentMatchers.eq( "scrum master" ),
+      ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.any( strings.getClass() ) );
+
+    // User should not have roles/password set (existing user, skipped)
+    verify( userRoleDao, never() )
+      .setUserRoles( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( strings.getClass() ) );
+    verify( userRoleDao, never() )
+      .setPassword( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ) );
+  }
+
+  @Test
+  public void testImportRoles() throws Exception {
+    String roleName = "ADMIN";
+    List<String> permissions = new ArrayList<>();
+
+    RoleExport role = new RoleExport();
+    role.setRolename( roleName );
+    role.setPermission( permissions );
+
+    List<RoleExport> roles = new ArrayList<>();
+    roles.add( role );
+
+    Map<String, List<String>> roleToUserMap = new HashMap<>();
+    final List<String> adminUsers = new ArrayList<>();
+    adminUsers.add( "admin" );
+    adminUsers.add( "root" );
+    roleToUserMap.put( roleName, adminUsers );
+
+    String[] userStrings = adminUsers.toArray( new String[] {} );
+
+    importHandler.importRoles( roles, roleToUserMap );
+
+    verify( userRoleDao ).createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.any( userStrings.getClass() ) );
+    verify( roleAuthorizationPolicyRoleBindingDao )
+      .setRoleBindings( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ),
+        ArgumentMatchers.eq( permissions ) );
+  }
+
+  @Test
+  public void testImportRoles_roleAlreadyExists() throws Exception {
+    String roleName = "ADMIN";
+    List<String> permissions = new ArrayList<>();
+
+    RoleExport role = new RoleExport();
+    role.setRolename( roleName );
+    role.setPermission( permissions );
+
+    List<RoleExport> roles = new ArrayList<>();
+    roles.add( role );
+
+    Map<String, List<String>> roleToUserMap = new HashMap<>();
+    final List<String> adminUsers = new ArrayList<>();
+    adminUsers.add( "admin" );
+    adminUsers.add( "root" );
+    roleToUserMap.put( roleName, adminUsers );
+
+    String[] userStrings = adminUsers.toArray( new String[] {} );
+
+    // Role already exists (proactive check)
+    org.pentaho.platform.api.engine.security.userroledao.IPentahoRole existingRole = 
+      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoRole.class );
+    when( userRoleDao.getRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ) ) )
+      .thenReturn( existingRole );
+
+    importHandler.setOverwriteFile( true );
+    importHandler.importRoles( roles, roleToUserMap );
+
+    // With proactive checking, createRole should NOT be called (role already exists)
+    verify( userRoleDao, never() ).createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.any( userStrings.getClass() ) );
+
+    // even if the role exists, with overwrite=true, permissions should be set
+    verify( roleAuthorizationPolicyRoleBindingDao )
+      .setRoleBindings( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), ArgumentMatchers.eq(
+        permissions ) );
+
+  }
+
+  @Test
+  public void testImportRoles_roleAlreadyExists_overwriteFalse() throws Exception {
+    String roleName = "ADMIN";
+    List<String> permissions = new ArrayList<>();
+
+    RoleExport role = new RoleExport();
+    role.setRolename( roleName );
+    role.setPermission( permissions );
+
+    List<RoleExport> roles = new ArrayList<>();
+    roles.add( role );
+
+    Map<String, List<String>> roleToUserMap = new HashMap<>();
+    final List<String> adminUsers = new ArrayList<>();
+    adminUsers.add( "admin" );
+    adminUsers.add( "root" );
+    roleToUserMap.put( roleName, adminUsers );
+
+    String[] userStrings = adminUsers.toArray( new String[] {} );
+
+    // Role already exists (proactive check)
+    org.pentaho.platform.api.engine.security.userroledao.IPentahoRole existingRole = 
+      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoRole.class );
+    when( userRoleDao.getRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ) ) )
+      .thenReturn( existingRole );
+
+    importHandler.setOverwriteFile( false );
+    importHandler.importRoles( roles, roleToUserMap );
+
+    // With proactive checking, createRole should NOT be called
+    verify( userRoleDao, never() ).createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ),
+      ArgumentMatchers.any( userStrings.getClass() ) );
+
+    // with overwrite=false, permissions should NOT be set
+    verify( roleAuthorizationPolicyRoleBindingDao, never() )
+      .setRoleBindings( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), ArgumentMatchers.eq(
+        permissions ) );
+
+  }
+
+  @Test
+  public void testImportMetaStore() throws Exception {
+    String path = "/path/to/file.zip";
+    ExportManifestMetaStore manifestMetaStore = new ExportManifestMetaStore( path,
+      "metastore",
+      "description of the metastore" );
+    importHandler.cachedImports = new HashMap<>();
+
+    importHandler.importMetaStore( manifestMetaStore, true );
+    Assert.assertEquals( 1, importHandler.cachedImports.size() );
+    Assert.assertNotNull( importHandler.cachedImports.get( path ) );
+  }
+
+  @Test
+  public void testImportMetaStore_nullMetastoreManifest() throws Exception {
+    ExportManifest manifest = spy( new ExportManifest() );
+
+    importHandler.cachedImports = new HashMap<>();
+    importHandler.importMetaStore( manifest.getMetaStore(), true );
+    Assert.assertEquals( 0, importHandler.cachedImports.size() );
+  }
+
+  @Test
+  public void testImportUserSettings() throws Exception {
+    UserExport user = new UserExport();
+    user.setUsername( "pentaho" );
+    user.addUserSetting( new ExportManifestUserSetting( "theme", "crystal" ) );
+    user.addUserSetting( new ExportManifestUserSetting( "language", "en_US" ) );
+    IAnyUserSettingService userSettingService = mock( IAnyUserSettingService.class );
+    PentahoSystem.registerObject( userSettingService );
+    importHandler.setOverwriteFile( true );
+
+    importHandler.importUserSettings( user );
+    verify( userSettingService ).setUserSetting( "pentaho", "theme", "crystal" );
+    verify( userSettingService ).setUserSetting( "pentaho", "language", "en_US" );
+  }
+
+  @Test
+  public void testImportUserSettings_NoOverwrite() throws Exception {
+    UserExport user = new UserExport();
+    user.setUsername( "pentaho" );
+    user.addUserSetting( new ExportManifestUserSetting( "theme", "crystal" ) );
+    user.addUserSetting( new ExportManifestUserSetting( "language", "en_US" ) );
+    IAnyUserSettingService userSettingService = mock( IAnyUserSettingService.class );
+    PentahoSystem.registerObject( userSettingService );
+    importHandler.setOverwriteFile( false );
+
+    IUserSetting existingSetting = mock( IUserSetting.class );
+    when( userSettingService.getUserSetting( "pentaho", "theme", null ) ).thenReturn( existingSetting );
+    when( userSettingService.getUserSetting( "pentaho", "language", null ) ).thenReturn( null );
+
+    importHandler.importUserSettings( user );
+    verify( userSettingService, never() ).setUserSetting( "pentaho", "theme", "crystal" );
+    verify( userSettingService ).setUserSetting( "pentaho", "language", "en_US" );
+    verify( userSettingService ).getUserSetting( "pentaho", "theme", null );
+    verify( userSettingService ).getUserSetting( "pentaho", "language", null );
+  }
+
+  @Test
+  public void testImportGlobalUserSetting() {
+    importHandler.setOverwriteFile( true );
+    List<ExportManifestUserSetting> settings = new ArrayList<>();
+    settings.add( new ExportManifestUserSetting( "language", "en_US" ) );
+    settings.add( new ExportManifestUserSetting( "showHiddenFiles", "false" ) );
+    IUserSettingService userSettingService = mock( IUserSettingService.class );
+    PentahoSystem.registerObject( userSettingService );
+
+    importHandler.importGlobalUserSettings( settings );
+
+    verify( userSettingService ).setGlobalUserSetting( "language", "en_US" );
+    verify( userSettingService ).setGlobalUserSetting( "showHiddenFiles", "false" );
+    verify( userSettingService, never() )
+      .getGlobalUserSetting( ArgumentMatchers.nullable( String.class ), ArgumentMatchers.nullable( String.class ) );
+  }
+
+  @Test
+  public void testImportGlobalUserSetting_noOverwrite() {
+    importHandler.setOverwriteFile( false );
+    List<ExportManifestUserSetting> settings = new ArrayList<>();
+    settings.add( new ExportManifestUserSetting( "language", "en_US" ) );
+    settings.add( new ExportManifestUserSetting( "showHiddenFiles", "false" ) );
+    IUserSettingService userSettingService = mock( IUserSettingService.class );
+    PentahoSystem.registerObject( userSettingService );
+    IUserSetting setting = mock( IUserSetting.class );
+    when( userSettingService.getGlobalUserSetting( "language", null ) ).thenReturn( null );
+    when( userSettingService.getGlobalUserSetting( "showHiddenFiles", null ) ).thenReturn( setting );
+
+    importHandler.importGlobalUserSettings( settings );
+
+    verify( userSettingService ).setGlobalUserSetting( "language", "en_US" );
+    verify( userSettingService, never() )
+      .setGlobalUserSetting( ArgumentMatchers.eq( "showHiddenFiles" ), ArgumentMatchers.nullable( String.class ) );
+    verify( userSettingService ).getGlobalUserSetting( "language", null );
+    verify( userSettingService ).getGlobalUserSetting( "showHiddenFiles", null );
+
+  }
+
   private class FakeJobSchedluerRequest implements IJobScheduleRequest {
     private String inputFile;
     @Override public void setJobId( String jobId ) {
@@ -825,455 +820,9 @@ public class SolutionImportHandlerTest {
     }
   }
 
-  // ========== NEW TESTS FOR EXISTENCE CHECKS AND TRACKING ==========
-
-  /**
-   * Test scenario: User does not exist - should be created
-   */
-  @Test
-  public void testImportUserAndRole_userDoesNotExist() {
-    List<UserExport> users = new ArrayList<>();
-    UserExport user = new UserExport();
-    user.setUsername( "newuser" );
-    user.setRole( "admin" );
-    user.setPassword( "password123" );
-    users.add( user );
-
-    String[] strings = {};
-
-    // User doesn't exist (getUser returns null)
-    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "newuser" ) ) )
-      .thenReturn( null );
-
-    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
-
-    // Verify user was created
-    verify( userRoleDao ).createUser(
-      ArgumentMatchers.any( ITenant.class ),
-      ArgumentMatchers.eq( "newuser" ),
-      ArgumentMatchers.eq( "password123" ),
-      ArgumentMatchers.nullable( String.class ),
-      ArgumentMatchers.any( strings.getClass() ) );
-
-    // Verify user mapped to role
-    Assert.assertEquals( 1, rolesToUsers.size() );
-    Assert.assertEquals( "newuser", rolesToUsers.get( "admin" ).get( 0 ) );
-  }
-
-  /**
-   * Test scenario: User already exists - should be skipped with proactive check
-   */
-  @Test
-  public void testImportUserAndRole_userAlreadyExists_proactiveCheck() {
-    List<UserExport> users = new ArrayList<>();
-    UserExport user = new UserExport();
-    user.setUsername( "existinguser" );
-    user.setRole( "admin" );
-    user.setPassword( "password123" );
-    users.add( user );
-
-    String[] strings = {};
-
-    // User exists (getUser returns a user)
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoUser existingUser = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoUser.class );
-    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "existinguser" ) ) )
-      .thenReturn( existingUser );
-
-    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
-
-    // Verify createUser was NEVER called (proactive check prevented it)
-    verify( userRoleDao, never() ).createUser(
-      ArgumentMatchers.any( ITenant.class ),
-      ArgumentMatchers.eq( "existinguser" ),
-      ArgumentMatchers.any(),
-      ArgumentMatchers.any(),
-      ArgumentMatchers.any( strings.getClass() ) );
-
-    // Verify user was still mapped to role
-    Assert.assertEquals( 1, rolesToUsers.size() );
-    Assert.assertEquals( "existinguser", rolesToUsers.get( "admin" ).get( 0 ) );
-  }
-
-  /**
-   * Test scenario: System default user already exists - should be skipped
-   */
-  @Test
-  public void testImportUserAndRole_systemUserExists() {
-    List<UserExport> users = new ArrayList<>();
-    UserExport user = new UserExport();
-    user.setUsername( "admin" );  // System user
-    user.setRole( "admin" );
-    user.setPassword( "password123" );
-    users.add( user );
-
-    String[] strings = {};
-
-    // Admin user exists
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoUser adminUser = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoUser.class );
-    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "admin" ) ) )
-      .thenReturn( adminUser );
-
-    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
-
-    // Verify createUser was NEVER called
-    verify( userRoleDao, never() ).createUser(
-      ArgumentMatchers.any( ITenant.class ),
-      ArgumentMatchers.eq( "admin" ),
-      ArgumentMatchers.any(),
-      ArgumentMatchers.any(),
-      ArgumentMatchers.any( strings.getClass() ) );
-
-    // Verify user mapped to role
-    Assert.assertEquals( 1, rolesToUsers.size() );
-    Assert.assertEquals( "admin", rolesToUsers.get( "admin" ).get( 0 ) );
-  }
-
-  /**
-   * Test scenario: importUserAndRoleWithTracking returns 1 for newly created user
-   */
-  @Test
-  public void testImportUserAndRoleWithTracking_newUser() {
-    UserExport user = new UserExport();
-    user.setUsername( "newuser" );
-    user.setRole( "admin" );
-    user.setPassword( "password123" );
-
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-
-    // User doesn't exist
-    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "newuser" ) ) )
-      .thenReturn( null );
-
-    int result = importHandler.importUserAndRoleWithTracking( "newuser", user, roleToUserMap );
-
-    // Should return 1 for newly created user
-    Assert.assertEquals( 1, result );
-
-    // Verify createUser was called
-    verify( userRoleDao ).createUser(
-      ArgumentMatchers.any( ITenant.class ),
-      ArgumentMatchers.eq( "newuser" ),
-      ArgumentMatchers.any(),
-      ArgumentMatchers.any(),
-      ArgumentMatchers.any( String[].class ) );
-  }
-
-  /**
-   * Test scenario: importUserAndRoleWithTracking returns 2 for existing user
-   */
-  @Test
-  public void testImportUserAndRoleWithTracking_existingUser() {
-    UserExport user = new UserExport();
-    user.setUsername( "existinguser" );
-    user.setRole( "admin" );
-    user.setPassword( "password123" );
-
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-
-    // User exists
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoUser existingUser = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoUser.class );
-    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "existinguser" ) ) )
-      .thenReturn( existingUser );
-
-    int result = importHandler.importUserAndRoleWithTracking( "existinguser", user, roleToUserMap );
-
-    // Should return 2 for existing user
-    Assert.assertEquals( 2, result );
-
-    // Verify createUser was NEVER called
-    verify( userRoleDao, never() ).createUser(
-      ArgumentMatchers.any( ITenant.class ),
-      ArgumentMatchers.eq( "existinguser" ),
-      ArgumentMatchers.any(),
-      ArgumentMatchers.any(),
-      ArgumentMatchers.any( String[].class ) );
-  }
-
-  /**
-   * Test scenario: importUserAndRoleWithTracking returns 0 for failed import
-   */
-  @Test
-  public void testImportUserAndRoleWithTracking_failedImport() {
-    UserExport user = new UserExport();
-    user.setUsername( "failuser" );
-    user.setRole( "admin" );
-    user.setPassword( "password123" );
-
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-
-    // User doesn't exist but createUser fails
-    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "failuser" ) ) )
-      .thenReturn( null );
-    when( userRoleDao.createUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "failuser" ), 
-      ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any( String[].class ) ) )
-      .thenThrow( new RuntimeException( "Creation failed" ) );
-
-    int result = importHandler.importUserAndRoleWithTracking( "failuser", user, roleToUserMap );
-
-    // Should return 0 for failed import
-    Assert.assertEquals( 0, result );
-  }
-
-  /**
-   * Test scenario: Role does not exist - should be created
-   */
-  @Test
-  public void testImportRoles_roleDoesNotExist() {
-    String roleName = "NEW_ROLE";
-    List<String> permissions = new ArrayList<>();
-
-    RoleExport role = new RoleExport();
-    role.setRolename( roleName );
-    role.setPermission( permissions );
-
-    List<RoleExport> roles = new ArrayList<>();
-    roles.add( role );
-
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-    final List<String> users = new ArrayList<>();
-    users.add( "user1" );
-    roleToUserMap.put( roleName, users );
-
-    String[] userStrings = users.toArray( new String[] {} );
-
-    // Role doesn't exist
-    when( userRoleDao.getRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ) ) )
-      .thenReturn( null );
-
-    importHandler.importRoles( roles, roleToUserMap );
-
-    // Verify createRole was called
-    verify( userRoleDao ).createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), 
-      ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( userStrings.getClass() ) );
-
-    // Verify permissions were set
-    verify( roleAuthorizationPolicyRoleBindingDao ).setRoleBindings( 
-      ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), ArgumentMatchers.eq( permissions ) );
-  }
-
-  /**
-   * Test scenario: Role already exists - should be skipped with proactive check
-   */
-  @Test
-  public void testImportRoles_roleAlreadyExists_proactiveCheck() {
-    String roleName = "EXISTING_ROLE";
-    List<String> permissions = new ArrayList<>();
-
-    RoleExport role = new RoleExport();
-    role.setRolename( roleName );
-    role.setPermission( permissions );
-
-    List<RoleExport> roles = new ArrayList<>();
-    roles.add( role );
-
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-    final List<String> users = new ArrayList<>();
-    users.add( "user1" );
-    roleToUserMap.put( roleName, users );
-
-    String[] userStrings = users.toArray( new String[] {} );
-
-    // Role exists
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoRole existingRole = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoRole.class );
-    when( userRoleDao.getRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ) ) )
-      .thenReturn( existingRole );
-
-    importHandler.setOverwriteFile( true );
-    importHandler.importRoles( roles, roleToUserMap );
-
-    // Verify createRole was NEVER called (proactive check prevented it)
-    verify( userRoleDao, never() ).createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), 
-      ArgumentMatchers.any(), ArgumentMatchers.any( userStrings.getClass() ) );
-
-    // But permissions should still be updated (overwrite=true)
-    verify( roleAuthorizationPolicyRoleBindingDao ).setRoleBindings( 
-      ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), ArgumentMatchers.eq( permissions ) );
-  }
-
-  /**
-   * Test scenario: Multiple roles - mix of new and existing
-   */
-  @Test
-  public void testImportRoles_multipleRoles_mixedExisting() {
-    String newRoleName = "NEW_ROLE";
-    String existingRoleName = "EXISTING_ROLE";
-    List<String> permissions = new ArrayList<>();
-
-    RoleExport newRole = new RoleExport();
-    newRole.setRolename( newRoleName );
-    newRole.setPermission( permissions );
-
-    RoleExport existingRole = new RoleExport();
-    existingRole.setRolename( existingRoleName );
-    existingRole.setPermission( permissions );
-
-    List<RoleExport> roles = new ArrayList<>();
-    roles.add( newRole );
-    roles.add( existingRole );
-
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-    roleToUserMap.put( newRoleName, new ArrayList<>() );
-    roleToUserMap.put( existingRoleName, new ArrayList<>() );
-
-    // New role doesn't exist
-    when( userRoleDao.getRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( newRoleName ) ) )
-      .thenReturn( null );
-
-    // Existing role exists
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoRole existingRoleObj = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoRole.class );
-    when( userRoleDao.getRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( existingRoleName ) ) )
-      .thenReturn( existingRoleObj );
-
-    importHandler.setOverwriteFile( true );  // Enable overwrite so existing role permissions are updated
-    importHandler.importRoles( roles, roleToUserMap );
-
-    // Verify only new role was created
-    verify( userRoleDao, times( 1 ) ).createRole( ArgumentMatchers.any( ITenant.class ), 
-      ArgumentMatchers.eq( newRoleName ), ArgumentMatchers.any(), ArgumentMatchers.any( String[].class ) );
-    verify( userRoleDao, never() ).createRole( ArgumentMatchers.any( ITenant.class ), 
-      ArgumentMatchers.eq( existingRoleName ), ArgumentMatchers.any(), ArgumentMatchers.any( String[].class ) );
-
-    // Both should have permissions set (overwrite=true)
-    verify( roleAuthorizationPolicyRoleBindingDao, times( 2 ) ).setRoleBindings( 
-      ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.any( String.class ), 
-      ArgumentMatchers.eq( permissions ) );
-  }
-
-  /**
-   * Test scenario: Track users - created vs existing breakdown
-   */
-  @Test
-  public void testImportUsers_tracking_newVsExisting() {
-    List<UserExport> users = new ArrayList<>();
-    
-    // New user
-    UserExport newUser = new UserExport();
-    newUser.setUsername( "newuser" );
-    newUser.setRole( "admin" );
-    newUser.setPassword( "pwd1" );
-    users.add( newUser );
-
-    // Existing user
-    UserExport existingUser = new UserExport();
-    existingUser.setUsername( "existinguser" );
-    existingUser.setRole( "admin" );
-    existingUser.setPassword( "pwd2" );
-    users.add( existingUser );
-
-    // New user doesn't exist
-    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "newuser" ) ) )
-      .thenReturn( null );
-
-    // Existing user exists
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoUser existingUserObj = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoUser.class );
-    when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "existinguser" ) ) )
-      .thenReturn( existingUserObj );
-
-    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
-
-    // Verify new user was created
-    verify( userRoleDao ).createUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "newuser" ), 
-      ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any( String[].class ) );
-
-    // Verify existing user was not created
-    verify( userRoleDao, never() ).createUser( ArgumentMatchers.any( ITenant.class ), 
-      ArgumentMatchers.eq( "existinguser" ), ArgumentMatchers.any(), ArgumentMatchers.any(), 
-      ArgumentMatchers.any( String[].class ) );
-
-    // Both users should be in role map
-    Assert.assertEquals( 1, rolesToUsers.size() );
-    Assert.assertEquals( 2, rolesToUsers.get( "admin" ).size() );
-  }
-
-  /**
-   * Test scenario: Track roles - created vs existing breakdown
-   */
-  @Test
-  public void testImportRoles_tracking_newVsExisting() {
-    String newRoleName = "NEW_ROLE";
-    String existingRoleName = "EXISTING_ROLE";
-    List<String> permissions = new ArrayList<>();
-
-    RoleExport newRole = new RoleExport();
-    newRole.setRolename( newRoleName );
-    newRole.setPermission( permissions );
-
-    RoleExport existingRole = new RoleExport();
-    existingRole.setRolename( existingRoleName );
-    existingRole.setPermission( permissions );
-
-    List<RoleExport> roles = new ArrayList<>();
-    roles.add( newRole );
-    roles.add( existingRole );
-
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-    roleToUserMap.put( newRoleName, new ArrayList<>() );
-    roleToUserMap.put( existingRoleName, new ArrayList<>() );
-
-    // New role doesn't exist
-    when( userRoleDao.getRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( newRoleName ) ) )
-      .thenReturn( null );
-
-    // Existing role exists
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoRole existingRoleObj = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoRole.class );
-    when( userRoleDao.getRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( existingRoleName ) ) )
-      .thenReturn( existingRoleObj );
-
-    importHandler.importRoles( roles, roleToUserMap );
-
-    // Verify new role was created, existing was not
-    verify( userRoleDao, times( 1 ) ).createRole( ArgumentMatchers.any( ITenant.class ), 
-      ArgumentMatchers.eq( newRoleName ), ArgumentMatchers.any(), ArgumentMatchers.any( String[].class ) );
-    verify( userRoleDao, never() ).createRole( ArgumentMatchers.any( ITenant.class ), 
-      ArgumentMatchers.eq( existingRoleName ), ArgumentMatchers.any(), ArgumentMatchers.any( String[].class ) );
-  }
-
-  /**
-   * Test scenario: Full manifest import - all users checked before creation
-   */
-  @Test
-  public void testImportUsers_fullManifest_allChecked() {
-    List<UserExport> users = new ArrayList<>();
-    
-    // Create 5 users: 2 new, 3 existing
-    for ( int i = 1; i <= 5; i++ ) {
-      UserExport user = new UserExport();
-      user.setUsername( "user" + i );
-      user.setRole( "admin" );
-      user.setPassword( "pwd" + i );
-      users.add( user );
-    }
-
-    // First 2 users don't exist (new)
-    for ( int i = 1; i <= 2; i++ ) {
-      when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "user" + i ) ) )
-        .thenReturn( null );
-    }
-
-    // Last 3 users exist (existing)
-    org.pentaho.platform.api.engine.security.userroledao.IPentahoUser existingUser = 
-      mock( org.pentaho.platform.api.engine.security.userroledao.IPentahoUser.class );
-    for ( int i = 3; i <= 5; i++ ) {
-      when( userRoleDao.getUser( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( "user" + i ) ) )
-        .thenReturn( existingUser );
-    }
-
-    Map<String, List<String>> rolesToUsers = importHandler.importUsers( users );
-
-    // Verify only 2 new users were created (not the 3 existing ones)
-    verify( userRoleDao, times( 2 ) ).createUser( ArgumentMatchers.any( ITenant.class ), 
-      ArgumentMatchers.any( String.class ), ArgumentMatchers.any(), ArgumentMatchers.any(), 
-      ArgumentMatchers.any( String[].class ) );
-
-    // All 5 users should be in the role map
-    Assert.assertEquals( 1, rolesToUsers.size() );
-    Assert.assertEquals( 5, rolesToUsers.get( "admin" ).size() );
+  @After
+  public void tearDown() throws Exception {
+    ImportSession.getSession().getImportedScheduleJobIds().clear();
+    PentahoSystem.clearObjectFactory();
   }
 }

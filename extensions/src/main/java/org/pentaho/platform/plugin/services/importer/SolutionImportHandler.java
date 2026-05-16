@@ -67,6 +67,12 @@ import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings
 import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMetadata;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMondrian;
 import org.pentaho.platform.plugin.services.importexport.legacy.MondrianCatalogRepositoryHelper;
+import org.pentaho.platform.plugin.services.importer.helper.UsersAndRolesImportHelper;
+import org.pentaho.platform.plugin.services.importer.helper.MetadataImportHelper;
+import org.pentaho.platform.plugin.services.importer.helper.MondrianImportHelper;
+import org.pentaho.platform.plugin.services.importer.helper.MetastoreImportHelper;
+import org.pentaho.platform.plugin.services.importer.helper.JdbcDatasourceImportHelper;
+import org.pentaho.platform.plugin.services.importer.helper.RepositoryFilesImportHelper;
 import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.repository.RepositoryFilenameUtils;
 import org.pentaho.platform.security.policy.rolebased.IRoleAuthorizationPolicyRoleBindingDao;
@@ -147,6 +153,36 @@ public class SolutionImportHandler implements IPlatformImportHandler {
 
   public void addImportHelper( IImportHelper helper ) {
     importHelpers.add( helper );
+  }
+
+  /**
+   * Get the cached imports map (for helpers that need to access cached bundles)
+   */
+  public Map<String, RepositoryFileImportBundle.Builder> getCachedImports() {
+    return cachedImports;
+  }
+
+  /**
+   * Get the files list (for helpers that need to iterate over extracted files)
+   */
+  public List<IRepositoryFileBundle> getFiles() {
+    return files;
+  }
+
+  /**
+   * Get the metrics collector (for helpers that need to record import metrics)
+   */
+  public ImportExportMetrics getMetrics() {
+    return metrics;
+  }
+
+  /**
+   * Get the file from the repository using the bundle info
+   */
+  public RepositoryFile getFile( IPlatformImportBundle importBundle, IRepositoryFileBundle fileBundle ) {
+    String repositoryFilePath =
+        repositoryPathConcat( importBundle.getPath(), fileBundle.getPath(), fileBundle.getFile().getName() );
+    return repository.getFile( repositoryFilePath );
   }
 
   public void runImportHelpers() {
@@ -252,277 +288,6 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     if ( isPerformingRestore && metrics != null ) {
       getLogger().info( metrics.generateDetailedReport() );
     }
-  }
-
-  protected void importRepositoryFilesAndFolders( ExportManifest manifest, IPlatformImportBundle bundle ) throws IOException {
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_FILEFOLDER" ) );
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_FILEFOLDER", files.size() ) );
-    }
-    Integer successfulFilesImportCount = 0;
-    String manifestVersion = null;
-    if ( manifest != null ) {
-      manifestVersion = manifest.getManifestInformation().getManifestVersion();
-    }
-    RepositoryFileImportBundle importBundle = (RepositoryFileImportBundle) bundle;
-
-    LocaleFilesProcessor localeFilesProcessor = new LocaleFilesProcessor();
-    IPlatformImporter importer = PentahoSystem.get( IPlatformImporter.class );
-
-    for ( IRepositoryFileBundle fileBundle : files ) {
-      String fileName = fileBundle.getFile().getName();
-      String actualFilePath = fileBundle.getPath();
-      if ( manifestVersion != null ) {
-        fileName = ExportFileNameEncoder.decodeZipFileName( fileName );
-        actualFilePath = ExportFileNameEncoder.decodeZipFileName( actualFilePath );
-      }
-      String repositoryFilePath =
-          RepositoryFilenameUtils.concat( PentahoPlatformImporter.computeBundlePath( actualFilePath ), fileName );
-
-      if ( cachedImports.containsKey( repositoryFilePath ) ) {
-        getLogger().debug( "Repository object with path [ " + repositoryFilePath + " ] found in the cache" );
-        byte[] bytes = IOUtils.toByteArray( fileBundle.getInputStream() );
-        RepositoryFileImportBundle.Builder builder = cachedImports.get( repositoryFilePath );
-        builder.input( new ByteArrayInputStream( bytes ) );
-
-        try {
-          importer.importFile( build( builder ) );
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ] from the cache" );
-          }
-          successfulFilesImportCount++;
-          continue;
-        } catch ( PlatformImportException e ) {
-          if ( isPerformingRestore ) {
-            getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_REPOSITORY_OBJECT", repositoryFilePath, e.getLocalizedMessage() ) );
-          }
-        }
-      }
-
-      RepositoryFileImportBundle.Builder bundleBuilder = new RepositoryFileImportBundle.Builder();
-      InputStream bundleInputStream = null;
-
-      String decodedFilePath = fileBundle.getPath();
-      RepositoryFile decodedFile = fileBundle.getFile();
-      if ( manifestVersion != null ) {
-        decodedFile = new RepositoryFile.Builder( decodedFile ).path( decodedFilePath ).name( fileName ).title( fileName ).build();
-        decodedFilePath = ExportFileNameEncoder.decodeZipFileName( fileBundle.getPath() );
-      }
-
-      if ( fileBundle.getFile().isFolder() ) {
-        bundleBuilder.mime( "text/directory" );
-        bundleBuilder.file( decodedFile );
-        fileName = repositoryFilePath;
-        repositoryFilePath = importBundle.getPath();
-      } else {
-        byte[] bytes = IOUtils.toByteArray( fileBundle.getInputStream() );
-        bundleInputStream = new ByteArrayInputStream( bytes );
-        // If is locale file store it for later processing.
-        if ( localeFilesProcessor.isLocaleFile( fileBundle, importBundle.getPath(), bytes ) ) {
-          getLogger().trace( Messages.getInstance()
-              .getString( "SolutionImportHandler.SkipLocaleFile", repositoryFilePath ) );
-          continue;
-        }
-        bundleBuilder.input( bundleInputStream );
-        bundleBuilder.mime( solutionHelper.getMime( fileName ) );
-
-        String filePath =
-            ( decodedFilePath.equals( "/" ) || decodedFilePath.equals( "\\" ) ) ? "" : decodedFilePath;
-        repositoryFilePath = RepositoryFilenameUtils.concat( importBundle.getPath(), filePath );
-      }
-
-      bundleBuilder.name( fileName );
-      bundleBuilder.path( repositoryFilePath );
-
-      String sourcePath;
-      if ( fileBundle.getFile().isFolder() ) {
-        sourcePath = fileName;
-      } else {
-        sourcePath =
-            RepositoryFilenameUtils.concat( PentahoPlatformImporter.computeBundlePath( actualFilePath ), fileName );
-      }
-
-      //This clause was added for processing ivb files so that it would not try process acls on folders that the user
-      //may not have rights to such as /home or /public
-      if ( manifest != null && manifest.getExportManifestEntity( sourcePath ) == null && fileBundle.getFile()
-          .isFolder() ) {
-        continue;
-      }
-
-      RepositoryFileExtraMetaData repositoryFileExtraMetaData = getImportSession().processExtraMetaDataForFile( sourcePath );
-      if ( repositoryFileExtraMetaData != null ) {
-        // If the user specifically request to not restore the generated content during the restore process, we need to skip the import
-        Map<String, Serializable> metadata = repositoryFileExtraMetaData.getExtraMetaData();
-        boolean isFileAGC = metadata.containsKey( IScheduler.RESERVEDMAPKEY_LINEAGE_ID );
-        BackupComponentConfig componentOverrides = getImportSession().getComponentOverrides();
-        if ( componentOverrides != null && !componentOverrides.isIncludeGeneratedContent() && isFileAGC ) {
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Skipping generated content file during restore: " + sourcePath
-              + " (includeGeneratedContent=" + componentOverrides.isIncludeGeneratedContent() + ")" );
-          }
-          continue;
-        }
-      }
-
-      getImportSession().setCurrentManifestKey( sourcePath );
-
-      bundleBuilder.charSet( bundle.getCharSet() );
-      bundleBuilder.overwriteFile( bundle.overwriteInRepository() );
-      bundleBuilder.applyAclSettings( bundle.isApplyAclSettings() );
-      bundleBuilder.retainOwnership( bundle.isRetainOwnership() );
-      bundleBuilder.overwriteAclSettings( bundle.isOverwriteAclSettings() );
-      bundleBuilder.acl( getImportSession().processAclForFile( sourcePath ) );
-      bundleBuilder.extraMetaData( repositoryFileExtraMetaData );
-
-      RepositoryFile file = getFile( importBundle, fileBundle );
-      ManifestFile manifestFile = getImportSession().getManifestFile( sourcePath, file != null );
-
-      bundleBuilder.hidden( isFileHidden( file, manifestFile, sourcePath ) );
-      boolean isSchedulable = isSchedulable( file, manifestFile );
-
-      if ( isSchedulable ) {
-        bundleBuilder.schedulable( isSchedulable );
-      } else {
-        bundleBuilder.schedulable( fileIsScheduleInputSource( manifest, sourcePath ) );
-      }
-
-      IPlatformImportBundle platformImportBundle = build( bundleBuilder );
-      try {
-        // Skip metadata files if datasources are not included in selective restore
-        BackupComponentConfig componentOverrides = getImportSession().getComponentOverrides();
-        if ( componentOverrides != null && !componentOverrides.isIncludeDatasources() ) {
-          String bundlePath = platformImportBundle.getPath() + platformImportBundle.getName();
-          if ( bundlePath != null && bundlePath.endsWith( ".xmi" ) ) {
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Skipping metadata file during restore: " + bundlePath + " (datasources not included)" );
-            }
-            continue;
-          }
-        }
-
-        // Note: Generated content filtering during restore is limited - it would require reading metadata 
-        // from the backup file bundle which may not be readily available. The includeGeneratedContent 
-        // flag is primarily useful during backup operations to exclude transient scheduler output files.
-        // During restore, users should exclude generated content at the backup stage.
-        
-        importer.importFile( platformImportBundle );
-        successfulFilesImportCount++;
-        if ( isPerformingRestore ) {
-          getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ]" );
-        }
-      } catch ( PlatformImportException e ) {
-        if ( isPerformingRestore ) {
-          getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_REPOSITORY_OBJECT", repositoryFilePath, e.getLocalizedMessage() ) );
-        }
-      }
-
-      if ( bundleInputStream != null ) {
-        bundleInputStream.close();
-        bundleInputStream = null;
-      }
-    }
-
-    // Process locale files.
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_LOCALEFILE" ) );
-    }
-    int successfulLocaleFilesProcessed = 0;
-    try {
-      successfulLocaleFilesProcessed = localeFilesProcessor.processLocaleFiles( importer );
-    } catch ( PlatformImportException e ) {
-      if ( isPerformingRestore ) {
-        getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_LOCALE_FILE", e.getLocalizedMessage() ) );
-      }
-    } finally {
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_LOCALEFILE" ) );
-      }
-    }
-
-    if ( isPerformingRestore ) {
-      int totalFileCount = successfulFilesImportCount + successfulLocaleFilesProcessed;
-      int totalAttempted = files.size();
-      int failedCount = totalAttempted - totalFileCount;
-      
-      // Track file imports in metrics
-      if ( metrics != null ) {
-        for ( int i = 0; i < totalFileCount; i++ ) {
-          metrics.recordSuccess( ImportExportMetrics.Category.FILES );
-        }
-        for ( int i = 0; i < failedCount; i++ ) {
-          metrics.recordFailure( ImportExportMetrics.Category.FILES, "file", "Import failed" );
-        }
-      }
-      
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_REPOSITORY_IMPORT_COUNT", successfulFilesImportCount + successfulLocaleFilesProcessed, files.size() ) );
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_FILEFOLDER" ) );
-    }
-  }
-
-  protected void importJDBCDataSource( ExportManifest manifest ) {
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_DATASOURCE" ) );
-    }
-    // Add DB Connections
-    List<org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.DatabaseConnection> datasourceList = manifest.getDatasourceList();
-    if ( datasourceList != null ) {
-      int successfulDatasourceImportCount = 0;
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_DATASOURCE", datasourceList.size() ) );
-      }
-      IDatasourceMgmtService datasourceMgmtSvc = PentahoSystem.get( IDatasourceMgmtService.class );
-      for ( org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.DatabaseConnection databaseConnection : datasourceList ) {
-        if ( databaseConnection.getDatabaseType() == null ) {
-          // don't try to import the connection if there is no type it will cause an error
-          // However, if this is the DI Server, and the connection is defined in a ktr, it will import automatically
-          getLogger().warn( Messages.getInstance()
-              .getString( "SolutionImportHandler.ConnectionWithoutDatabaseType", databaseConnection.getName() ) );
-          continue;
-        }
-        try {
-          IDatabaseConnection existingDBConnection =
-              datasourceMgmtSvc.getDatasourceByName( databaseConnection.getName() );
-          if ( existingDBConnection != null && existingDBConnection.getName() != null ) {
-            if ( isOverwriteFile() ) {
-              databaseConnection.setId( existingDBConnection.getId() );
-              datasourceMgmtSvc.updateDatasourceByName( databaseConnection.getName(),
-                  DatabaseConnectionConverter.export2model( databaseConnection ) );
-            }
-          } else {
-            datasourceMgmtSvc.createDatasource( DatabaseConnectionConverter.export2model( databaseConnection ) );
-          }
-          successfulDatasourceImportCount++;
-        } catch ( Exception e ) {
-          if ( isPerformingRestore ) {
-            getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_JDBC_DATASOURCE", databaseConnection.getName(), e.getLocalizedMessage() ) );
-          }
-        }
-      }
-      if ( isPerformingRestore ) {
-        int datasourceFailedCount = datasourceList.size() - successfulDatasourceImportCount;
-        
-        // Track datasource imports in metrics
-        if ( metrics != null ) {
-          for ( int i = 0; i < successfulDatasourceImportCount; i++ ) {
-            metrics.recordSuccess( ImportExportMetrics.Category.DATASOURCES );
-          }
-          for ( int i = 0; i < datasourceFailedCount; i++ ) {
-            metrics.recordFailure( ImportExportMetrics.Category.DATASOURCES, "datasource", "Import failed" );
-          }
-        }
-        
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_DATASOURCE_IMPORT_COUNT", successfulDatasourceImportCount, datasourceList.size() ) );
-      }
-    }
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_DATASOURCE" ) );
-    }
-  }
-
-  private RepositoryFile getFile( IPlatformImportBundle importBundle, IRepositoryFileBundle fileBundle ) {
-    String repositoryFilePath =
-        repositoryPathConcat( importBundle.getPath(), fileBundle.getPath(), fileBundle.getFile().getName() );
-    return repository.getFile( repositoryFilePath );
   }
 
   /**
@@ -741,814 +506,23 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   }
 
   /**
-   * Ensures that the file referenced by a schedule input path exists in the repository.
-   * For selective restores, files are only in the bundle if they're schedule dependencies,
-   * so we must import them before schedule creation.
-   * 
-   * @param inputFilePath the repository path of the file referenced by the schedule
-   * @return true if the file exists or was successfully imported, false otherwise
+   * Import global user settings into the platform.
+   * Delegates to UsersAndRolesImportHelper
    */
-  protected boolean ensureScheduleInputFileExists( String inputFilePath ) {
-    // Normalize the path to use forward slashes
-    String normalizedPath = inputFilePath.replace( File.separator, RepositoryFile.SEPARATOR );
-    
-    // Check if the file already exists in the repository
-    RepositoryFile existingFile = repository.getFile( normalizedPath );
-    if ( existingFile != null ) {
-      if ( isPerformingRestore ) {
-        getLogger().debug( "Schedule input file [ " + normalizedPath + " ] already exists in repository" );
-      }
-      return true;
-    }
-    
-    if ( isPerformingRestore ) {
-      getLogger().debug( "Schedule input file [ " + normalizedPath + " ] does not exist in repository, searching in backup files..." );
-    }
-    
-    // File doesn't exist, try to find and import it from the backup
-    if ( CollectionUtils.isEmpty( files ) ) {
-      if ( isPerformingRestore ) {
-        getLogger().warn( "No backup files available to import missing schedule input file [ " + normalizedPath + " ]" );
-      }
-      return false;
-    }
-    
-    ExportManifest manifest = getImportSession().getManifest();
-    
-    // Search for the file in the extracted files list
-    // Strategy: First try exact path match, then try filename match as fallback
-    IRepositoryFileBundle matchedBundle = null;
-    String normalizedInputPath = normalizePath( normalizedPath );
-    String inputFileName = normalizedPath.substring( normalizedPath.lastIndexOf( "/" ) + 1 ).toLowerCase();
-    
-    // Pass 1: Try exact path matching
-    for ( IRepositoryFileBundle fileBundle : files ) {
-      String fileName = fileBundle.getFile().getName();
-      String filePath = fileBundle.getPath();
-      
-      // Build the full repository path for this file
-      String repositoryPath = RepositoryFilenameUtils.concat( filePath, fileName );
-      
-      // Normalize both paths for comparison
-      String normalizedRepositoryPath = normalizePath( repositoryPath );
-      
-      // Also check if this is a locale file for the file we're looking for
-      // Locale files have format: "path/filename.locale" 
-      String baseFileNameWithoutLocale = normalizedRepositoryPath;
-      if ( normalizedRepositoryPath.endsWith( ".locale" ) ) {
-        // Remove the .locale suffix for comparison
-        baseFileNameWithoutLocale = normalizedRepositoryPath.substring( 0, normalizedRepositoryPath.lastIndexOf( ".locale" ) );
-      }
-      
-      if ( isPerformingRestore ) {
-        getLogger().trace( "Comparing Input: [ " + normalizedInputPath + " ] vs Repo: [ " + normalizedRepositoryPath + " ]" );
-      }
-      
-      // Check if this is the file we're looking for (exact path or locale file match)
-      if ( normalizedRepositoryPath.equalsIgnoreCase( normalizedInputPath ) ||
-           baseFileNameWithoutLocale.equalsIgnoreCase( normalizedInputPath ) ) {
-        if ( isPerformingRestore ) {
-          getLogger().debug( "✓ EXACT MATCH FOUND - Input: [ " + normalizedPath + " ] matches Backup: [ " + repositoryPath + " ]" );
-        }
-        matchedBundle = fileBundle;
-        break;
-      }
-      
-      // Also check suffix match (last parts of path)
-      // This helps when bundle path structure differs (e.g., "/input/file.ktr" vs "/schedules/input/file.ktr")
-      String normalizedRepoFileName = normalizedRepositoryPath.substring( normalizedRepositoryPath.lastIndexOf( "/" ) + 1 ).toLowerCase();
-      if ( normalizedInputPath.endsWith( normalizedRepositoryPath ) || 
-           normalizedRepositoryPath.endsWith( normalizedInputPath ) ) {
-        if ( isPerformingRestore ) {
-          getLogger().debug( "✓ SUFFIX MATCH FOUND - Input: [ " + normalizedPath + " ] partially matches Backup: [ " + repositoryPath + " ]" );
-        }
-        matchedBundle = fileBundle;
-        break;
-      }
-    }
-    
-    // Pass 2: If no exact match, try filename-only matching as fallback
-    if ( matchedBundle == null ) {
-      if ( isPerformingRestore ) {
-        getLogger().debug( "No exact path match found for [ " + normalizedPath + " ], trying filename-only match..." );
-      }
-      
-      for ( IRepositoryFileBundle fileBundle : files ) {
-        String fileName = fileBundle.getFile().getName();
-        String bundleFileNameLower = fileName.toLowerCase();
-        
-        // Remove .locale suffix if present for comparison
-        String bundleFileNameBase = bundleFileNameLower;
-        if ( bundleFileNameLower.endsWith( ".locale" ) ) {
-          bundleFileNameBase = bundleFileNameLower.substring( 0, bundleFileNameLower.lastIndexOf( ".locale" ) );
-        }
-        
-        // Match filename (case-insensitive)
-        if ( inputFileName.equalsIgnoreCase( bundleFileNameBase ) || 
-             inputFileName.equalsIgnoreCase( bundleFileNameLower ) ) {
-          if ( isPerformingRestore ) {
-            getLogger().debug( "✓ FILENAME MATCH FOUND - [ " + inputFileName + " ] matches Bundle file: [ " + fileName + " ]" );
-          }
-          matchedBundle = fileBundle;
-          break;
-        }
-      }
-    }
-    
-    // If we found a match, import it
-    if ( matchedBundle != null ) {
-      if ( isPerformingRestore ) {
-        getLogger().info( "✓ MATCH FOUND - Schedule input file [ " + normalizedPath + " ] found in backup bundle" );
-      }
-      
-      // Use the proper import mechanism that mirrors importRepositoryFilesAndFolders
-      if ( importFileBundle( matchedBundle, manifest ) ) {
-        if ( isPerformingRestore ) {
-          getLogger().info( "✓ Successfully imported schedule input file: [ " + normalizedPath + " ]" );
-        }
-        return true;
-      } else {
-        if ( isPerformingRestore ) {
-          getLogger().error( "✗ Failed to import schedule input file: [ " + normalizedPath + " ]" );
-        }
-        return false;
-      }
-    }
-    
-    if ( isPerformingRestore ) {
-      getLogger().warn( "✗ NO MATCH - Schedule file [ " + normalizedPath + " ] not found in backup files. Searched " + files.size() + " files." );
-      getLogger().info( "Available files in backup:" );
-      for ( IRepositoryFileBundle fb : files ) {
-        String fName = fb.getFile().getName();
-        String fPath = fb.getPath();
-        String fullPath = RepositoryFilenameUtils.concat( fPath, fName );
-        getLogger().info( "  - [ " + normalizePath( fullPath ) + " ]" );
-      }
-    }
-    return false;
-  }
-
-  // MOVED TO: pentaho-scheduler-plugin/ScheduleImportUtil.java via IImportHelper pattern
-  // This method is no longer used - schedule imports are now handled via the IImportHelper plugin mechanism
-  // The ScheduleImportUtil class in the scheduler-plugin implements IImportHelper and handles all schedule imports
-  //
-  // @Deprecated - Use ScheduleImportUtil in scheduler-plugin instead
-  protected void importSchedules( List<IJobScheduleRequest> scheduleList ) throws PlatformImportException {
-    // This method is deprecated and should not be called
-    // Schedule imports are now handled by ScheduleImportUtil which is registered as an IImportHelper
-    getLogger().warn( "importSchedules() is deprecated. Schedule imports should be handled by ScheduleImportUtil via IImportHelper." );
-  }
-
-  protected void importMetaStore( ExportManifestMetaStore manifestMetaStore, boolean overwrite ) {
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_METASTORE" ) );
-    }
-    if ( manifestMetaStore != null ) {
-      // get the zipped metastore from the export bundle
-      RepositoryFileImportBundle.Builder bundleBuilder =
-          new RepositoryFileImportBundle.Builder()
-              .path( manifestMetaStore.getFile() )
-              .name( manifestMetaStore.getName() )
-              .withParam( "description", manifestMetaStore.getDescription() )
-              .charSet( UTF_8 )
-              .overwriteFile( overwrite )
-              .mime( "application/vnd.pentaho.metastore" );
-
-      cachedImports.put( manifestMetaStore.getFile(), bundleBuilder );
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_IMPORT_METASTORE" ) );
-        // Track metastore import as success in metrics
-        if ( metrics != null ) {
-          metrics.recordSuccess( ImportExportMetrics.Category.METASTORE );
-        }
-      }
-    } else {
-      // Metastore was not included in export
-      if ( metrics != null ) {
-        metrics.recordSkip( ImportExportMetrics.Category.METASTORE, "metastore", "Not included in export" );
-      }
-    }
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_METASTORE" ) );
-    }
-  }
-
-  /**
-   * Imports UserExport objects into the platform as users.
-   * Tracks whether each user was newly created or already existed in the system.
-   *
-   * @param users the list of users to import
-   * @return A map of role names to list of users in that role
-   */
-  protected Map<String, List<String>> importUsers( List<UserExport> users ) {
-    Map<String, List<String>> roleToUserMap = new HashMap<>();
-    int successFullUserImportCount = 0;
-    int newUsersCreated = 0;
-    int existingUsersSkipped = 0;
-    int userFailedCount = 0;
-    
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_USER" ) );
-    }
-    if ( users != null ) {
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_USER", users.size() ) );
-      }
-      for ( UserExport user : users ) {
-        int importResult = importUserAndRoleWithTracking( user.getUsername(), user, roleToUserMap );
-        if ( importResult > 0 ) {
-          successFullUserImportCount++;
-          if ( importResult == 1 ) {
-            // User was newly created
-            newUsersCreated++;
-          } else if ( importResult == 2 ) {
-            // User already existed and was skipped
-            existingUsersSkipped++;
-          }
-        } else {
-          // User import failed
-          userFailedCount++;
-        }
-      }
-    }
-    
-    if ( isPerformingRestore ) {
-      getLogger().info( "User import summary - Total: " + (users != null ? users.size() : 0) + 
-        ", Created: " + newUsersCreated + ", Existing (skipped): " + existingUsersSkipped + ", Failed: " + userFailedCount );
-      
-      // Track user imports in metrics with detailed breakdown
-      if ( metrics != null ) {
-        for ( int i = 0; i < newUsersCreated; i++ ) {
-          metrics.recordSuccess( ImportExportMetrics.Category.USERS );
-        }
-        for ( int i = 0; i < existingUsersSkipped; i++ ) {
-          metrics.recordSuccess( ImportExportMetrics.Category.USERS );
-        }
-        for ( int i = 0; i < userFailedCount; i++ ) {
-          metrics.recordFailure( ImportExportMetrics.Category.USERS, "user", "Import failed" );
-        }
-      }
-      
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_USER_COUNT", successFullUserImportCount, users != null ? users.size() : 0 ) );
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_USER" ) );
-    }
-    return roleToUserMap;
-  }
-  
-  /**
-  /**
-   * Import a single user with tracking of whether it was newly created or already existed.
-   * 
-   * @param username the username of the user to import
-   * @param user the UserExport object containing user data
-   * @param roleToUserMap the map to populate with user-to-role mappings
-   * @return 1 if user was newly created, 2 if user already existed (skipped), 0 if import failed
-   */
-  protected int importUserAndRoleWithTracking( String username, UserExport user, Map<String, List<String>> roleToUserMap ) {
-    // Check if user exists BEFORE import attempt
-    boolean userExistedBeforeImport = false;
-    IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
-    if ( roleDao != null ) {
-      try {
-        ITenant tenant = new Tenant( "/pentaho/" + TenantUtils.getDefaultTenant(), true );
-        IPentahoUser existingUser = roleDao.getUser( tenant, username );
-        if ( existingUser != null ) {
-          userExistedBeforeImport = true;
-        }
-      } catch ( Exception e ) {
-        // If we can't check, assume user doesn't exist
-        if ( isPerformingRestore ) {
-          getLogger().debug( "Could not check if user [ " + username + " ] existed before import: " + e.getMessage() );
-        }
-      }
-    }
-    
-    // Attempt import
-    boolean result = importUserAndRole( username, user, roleToUserMap );
-    
-    if ( result ) {
-      if ( userExistedBeforeImport ) {
-        // User already existed, so it was skipped
-        if ( isPerformingRestore ) {
-          getLogger().debug( "User [ " + username + " ] already existed, skipped import" );
-        }
-        return 2; // Existing (skipped)
-      } else {
-        // User did not exist before, so it was newly created
-        if ( isPerformingRestore ) {
-          getLogger().debug( "User [ " + username + " ] was newly created" );
-        }
-        return 1; // Newly created
-      }
-    } else {
-      // Import failed
-      if ( isPerformingRestore ) {
-        getLogger().debug( "User [ " + username + " ] import failed" );
-      }
-      return 0; // Failed
-    }
-  }
-
-  /**
-   * Import a single user with their roles and settings
-   * 
-   * @param username the username of the user to import
-   * @param user the UserExport object containing user data (password, roles, settings)
-   * @param roleToUserMap the map to populate with user-to-role mappings for later role import
-   * @return true if user was successfully imported, false otherwise
-   */
-  public boolean importUserAndRole( String username, UserExport user, Map<String, List<String>> roleToUserMap ) {
-    IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
-    if ( roleDao == null ) {
-      getLogger().warn( "Unable to import user [ " + username + " ] - IUserRoleDao not available" );
-      return false;
-    }
-    
-    ITenant tenant = new Tenant( "/pentaho/" + TenantUtils.getDefaultTenant(), true );
-    
-    // Check if user already exists
-    try {
-      IPentahoUser existingUser = roleDao.getUser( tenant, username );
-      if ( existingUser != null ) {
-        if ( isPerformingRestore ) {
-          getLogger().debug( "User [ " + username + " ] already exists, skipping import" );
-        }
-        
-        // Still need to map the user to their roles for role binding later
-        for ( String role : user.getRoles() ) {
-          List<String> userList;
-          if ( !roleToUserMap.containsKey( role ) ) {
-            userList = new ArrayList<>();
-            roleToUserMap.put( role, userList );
-          } else {
-            userList = roleToUserMap.get( role );
-          }
-          userList.add( username );
-        }
-        return true; // User exists, treat as success
-      }
-    } catch ( Exception e ) {
-      // User doesn't exist, proceed with import
-      if ( isPerformingRestore ) {
-        getLogger().debug( "User [ " + username + " ] does not exist or error checking existence: " + e.getMessage() );
-      }
-    }
-    
-    // User doesn't exist, import it
-    String password = user.getPassword();
-    getLogger().debug( Messages.getInstance().getString( "USER.importing", username ) );
-
-    // map the user to the roles he/she is in
-    for ( String role : user.getRoles() ) {
-      List<String> userList;
-      if ( !roleToUserMap.containsKey( role ) ) {
-        userList = new ArrayList<>();
-        roleToUserMap.put( role, userList );
-      } else {
-        userList = roleToUserMap.get( role );
-      }
-      userList.add( username );
-    }
-
-    String[] userRoles = user.getRoles().toArray( new String[] {} );
-    try {
-      if ( isPerformingRestore ) {
-        getLogger().debug( "Restoring user [ " + username + " ] " );
-      }
-      roleDao.createUser( tenant, username, password, null, userRoles );
-      if ( isPerformingRestore ) {
-        getLogger().debug( "Successfully restored user [ " + username + " ]" );
-      }
-    } catch ( AlreadyExistsException e ) {
-      // it's ok if the user already exists, it is probably a default user
-      getLogger().debug( Messages.getInstance().getString( "USER.Already.Exists", username ) );
-      // User was just created but this exception thrown anyway - still treat as success
-      return true;
-    } catch ( Exception e ) {
-      getLogger().debug( Messages.getInstance()
-          .getString( "ERROR.OverridingExistingUser", username ), e );
-      getLogger().error( Messages.getInstance()
-          .getString( "ERROR.OverridingExistingUser", username ) );
-      return false;
-    }
-    if ( isPerformingRestore ) {
-      getLogger().debug( "Restoring user [ " + username + " ] specific settings" );
-    }
-    importUserSettings( user );
-    if ( isPerformingRestore ) {
-      getLogger().debug( "Successfully restored user [ " + username + " ] specific settings" );
-    }
-    return true;
-  }
-
-  /**
-   * Import only selected users and their roles (used by plugins like scheduler to import dependencies)
-   * 
-   * This is typically called by plugins (e.g., scheduler) to import individual users as needed.
-   * The import flow is:
-   * 1. Main import: all users/roles imported first (lines 203-207)
-   * 2. Helpers run: plugins can import additional users for dependencies via this method
-   * 
-   * @param username the username to import
-   * @param user the UserExport containing user data
-   * @param roleToUserMap map to populate for role binding
-   * @return true if successfully imported, false otherwise
-   */
-  public boolean importScheduleOwnerUser( String username, UserExport user, Map<String, List<String>> roleToUserMap ) {
-    return importUserAndRole( username, user, roleToUserMap );
-  }
-
   protected void importGlobalUserSettings( List<ExportManifestUserSetting> globalSettings ) {
-    if ( isPerformingRestore ) {
-      getLogger().debug( "[Start: Restore global user settings]" );
-    }
-    IUserSettingService settingService = PentahoSystem.get( IUserSettingService.class );
-    int successfulGlobalSettingsCount = 0;
-    int totalGlobalSettingsCount = globalSettings != null ? globalSettings.size() : 0;
-    
-    if ( settingService != null && globalSettings != null ) {
-      for ( ExportManifestUserSetting globalSetting : globalSettings ) {
+    // Find and delegate to the UsersAndRolesImportHelper
+    for ( IImportHelper helper : importHelpers ) {
+      if ( helper instanceof UsersAndRolesImportHelper ) {
         try {
-          if ( isOverwriteFile() ) {
-            if ( isPerformingRestore ) {
-              getLogger().trace( "Overwrite flag is set to true. Setting global user setting [ " + globalSetting.getName() + " ]" );
-            }
-            settingService.setGlobalUserSetting( globalSetting.getName(), globalSetting.getValue() );
-            successfulGlobalSettingsCount++;
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Successfully set global user setting [ " + globalSetting.getName() + " ]" );
-            }
-          } else {
-            if ( isPerformingRestore ) {
-              getLogger().trace( "Overwrite flag is set to false. Only setting [ " + globalSetting.getName() + " ] if does not exist" );
-            }
-            IUserSetting userSetting = settingService.getGlobalUserSetting( globalSetting.getName(), null );
-            if ( userSetting == null ) {
-              settingService.setGlobalUserSetting( globalSetting.getName(), globalSetting.getValue() );
-              successfulGlobalSettingsCount++;
-              if ( isPerformingRestore ) {
-                getLogger().debug( "Successfully set global user setting [ " + globalSetting.getName() + " ]" );
-              }
-            }
-          }
+          ( (UsersAndRolesImportHelper) helper ).importGlobalUserSettings( globalSettings, this );
+          return;
         } catch ( Exception e ) {
-          getLogger().warn( "Failed to set global user setting [ " + globalSetting.getName() + " ]: " + e.getMessage() );
-          getLogger().debug( "Global setting error", e );
-          // Continue with next setting even if this one fails
+          getLogger().error( "Failed to import global user settings via helper: " + e.getMessage() );
+          throw new RuntimeException( "Global user settings import failed", e );
         }
       }
     }
-    if ( isPerformingRestore ) {
-      if ( totalGlobalSettingsCount > 0 ) {
-        getLogger().debug( "Completed restore of global user settings: " + successfulGlobalSettingsCount + "/" + totalGlobalSettingsCount + " successful" );
-      }
-      getLogger().debug( "[End: Restore global user settings]" );
-    }
-  }
-
-  protected void importUserSettings( UserExport user ) {
-    IUserSettingService settingService = PentahoSystem.get( IUserSettingService.class );
-    IAnyUserSettingService userSettingService = null;
-    int userSettingsListSize = 0;
-    int successfulUserSettingsImportCount = 0;
-    if ( settingService != null && settingService instanceof IAnyUserSettingService ) {
-      userSettingService = (IAnyUserSettingService) settingService;
-    }
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_USER_SETTING" ) );
-    }
-    if ( userSettingService != null ) {
-      List<ExportManifestUserSetting> exportedSettings = user.getUserSettings();
-      userSettingsListSize = user.getUserSettings().size();
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_USER_SETTING", userSettingsListSize, user.getUsername() ) );
-      }
-      for ( ExportManifestUserSetting exportedSetting : exportedSettings ) {
-        try {
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Restore user specific setting  [ " + exportedSetting.getName() + " ]" );
-          }
-          if ( isOverwriteFile() ) {
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Overwrite is set to true. So restoring setting  [ " + exportedSetting.getName() + " ]" );
-            }
-            userSettingService.setUserSetting( user.getUsername(),
-                exportedSetting.getName(), exportedSetting.getValue() );
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Finished restore of user specific setting with name [ " + exportedSetting.getName() + " ]" );
-            }
-            successfulUserSettingsImportCount++;
-          } else {
-            // see if it's there first before we set this setting
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Overwrite is set to false. Only restore setting  [ " + exportedSetting.getName() + " ] if is does not exist" );
-            }
-            IUserSetting userSetting =
-                userSettingService.getUserSetting( user.getUsername(), exportedSetting.getName(), null );
-            if ( userSetting == null ) {
-              // only set it if we didn't find that it exists already
-              userSettingService.setUserSetting( user.getUsername(), exportedSetting.getName(), exportedSetting.getValue() );
-              if ( isPerformingRestore ) {
-                getLogger().debug( "Finished restore of user specific setting with name [ " + exportedSetting.getName() + " ]" );
-              }
-              successfulUserSettingsImportCount++;
-            }
-          }
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Successfully restored setting  [ " + exportedSetting.getName() + " ]" );
-          }
-        } catch ( Exception e ) {
-          getLogger().warn( "Failed to import user setting [ " + exportedSetting.getName() + " ] for user [ " + user.getUsername() + " ]: " + e.getMessage() );
-          getLogger().debug( "User setting error", e );
-          // Continue with next setting even if this one fails
-        }
-      }
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance()
-            .getString( "SolutionImportHandler.INFO_SUCCESSFUL_USER_SETTING_IMPORT_COUNT", successfulUserSettingsImportCount, userSettingsListSize ) );
-        getLogger().info( Messages.getInstance()
-            .getString( "SolutionImportHandler.INFO_END_IMPORT_USER_SETTING" ) );
-      }
-    }
-  }
-
-  protected void importRoles( List<RoleExport> roles, Map<String, List<String>> roleToUserMap ) {
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_ROLE" ) );
-    }
-    if ( roles != null ) {
-      IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
-      ITenant tenant = new Tenant( "/pentaho/" + TenantUtils.getDefaultTenant(), true );
-      IRoleAuthorizationPolicyRoleBindingDao roleBindingDao = PentahoSystem.get(
-          IRoleAuthorizationPolicyRoleBindingDao.class );
-
-      Set<String> existingRoles = new HashSet<>();
-      int newRolesCreated = 0;
-      int existingRolesSkipped = 0;
-      int rolesWithPermissionsUpdated = 0;
-      int roleFailedCount = 0;
-      
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_ROLE", roles.size() ) );
-      }
-      int successFullRoleImportCount = 0;
-      for ( RoleExport role : roles ) {
-        getLogger().debug( Messages.getInstance().getString( "ROLE.importing", role.getRolename() ) );
-        
-        // Check if role already exists before attempting to create
-        boolean roleExists = false;
-        try {
-          IPentahoRole existingRole = roleDao.getRole( tenant, role.getRolename() );
-          if ( existingRole != null ) {
-            roleExists = true;
-            existingRoles.add( role.getRolename() );
-            existingRolesSkipped++;
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Role [ " + role.getRolename() + " ] already exists (will skip creation)" );
-            }
-          }
-        } catch ( Exception e ) {
-          // Role doesn't exist, proceed with creation
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Role [ " + role.getRolename() + " ] does not exist or error checking existence: " + e.getMessage() );
-          }
-        }
-        
-        // Only create role if it doesn't already exist
-        if ( !roleExists ) {
-          try {
-            List<String> users = roleToUserMap.get( role.getRolename() );
-            String[] userarray = users == null ? new String[] {} : users.toArray( new String[] {} );
-            IPentahoRole role1 = roleDao.createRole( tenant, role.getRolename(), null, userarray );
-            newRolesCreated++;
-            successFullRoleImportCount++;
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Role [ " + role.getRolename() + " ] created successfully" );
-            }
-          } catch ( AlreadyExistsException e ) {
-            existingRoles.add( role.getRolename() );
-            existingRolesSkipped++;
-            successFullRoleImportCount++; // Treat existing role as successful
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Role [ " + role.getRolename() + " ] already exists (caught as AlreadyExistsException)" );
-            }
-          } catch ( Exception e ) {
-            roleFailedCount++;
-            getLogger().error( "Failed to create role [ " + role.getRolename() + " ]: " + e.getMessage(), e );
-            // Continue with next role even if creation fails
-            continue;
-          }
-        } else {
-          // Role already exists, count it as processed
-          successFullRoleImportCount++;
-        }
-        try {
-          if ( existingRoles.contains( role.getRolename() ) ) {
-            //Only update an existing role if the overwrite flag is set
-            if ( isOverwriteFile() ) {
-              if ( isPerformingRestore ) {
-                getLogger().debug( "Overwrite is set to true. Updating permissions for role [ " + role.getRolename() + "]" );
-              }
-              roleBindingDao.setRoleBindings( tenant, role.getRolename(), role.getPermissions() );
-              rolesWithPermissionsUpdated++;
-              if ( isPerformingRestore ) {
-                getLogger().debug( "Permissions updated for role [ " + role.getRolename() + "]" );
-              }
-            } else {
-              if ( isPerformingRestore ) {
-                getLogger().debug( "Overwrite is false. Skipping permission update for existing role [ " + role.getRolename() + "]" );
-              }
-            }
-          } else {
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Updating role mapping from runtime roles to logical roles for [ " + role.getRolename() + "]" );
-            }
-            //Always write a roles permissions that were not previously existing
-            roleBindingDao.setRoleBindings( tenant, role.getRolename(), role.getPermissions() );
-            if ( isPerformingRestore ) {
-              getLogger().debug( "Permissions set for new role [ " + role.getRolename() + "]" );
-            }
-          }
-        } catch ( Exception e ) {
-          getLogger().error( Messages.getInstance()
-              .getString( "ERROR.SettingRolePermissions", role.getRolename() ), e );
-          // Continue with next role even if permission setting fails
-        }
-      }
-      if ( isPerformingRestore ) {
-        getLogger().info( "Role import summary - Total: " + roles.size() + 
-          ", Created: " + newRolesCreated + ", Existing (skipped): " + existingRolesSkipped + 
-          ", Permissions Updated: " + rolesWithPermissionsUpdated + ", Failed: " + roleFailedCount );
-        
-        // Track role imports in metrics with detailed breakdown
-        if ( metrics != null ) {
-          for ( int i = 0; i < newRolesCreated; i++ ) {
-            metrics.recordSuccess( ImportExportMetrics.Category.ROLES );
-          }
-          for ( int i = 0; i < existingRolesSkipped; i++ ) {
-            metrics.recordSuccess( ImportExportMetrics.Category.ROLES );
-          }
-          for ( int i = 0; i < roleFailedCount; i++ ) {
-            metrics.recordFailure( ImportExportMetrics.Category.ROLES, "role", "Import failed" );
-          }
-        }
-        
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_ROLE_COUNT", successFullRoleImportCount, roles.size() ) );
-      }
-    }
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_ROLE" ) );
-    }
-  }
-
-  /**
-   * <p>Import the Metadata</p>
-   *
-   * @param metadataList metadata to be imported
-   * @param preserveDsw  whether or not to preserve DSW settings
-   */
-  protected void importMetadata( List<ExportManifestMetadata> metadataList, boolean preserveDsw ) {
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_METADATA_DATASOURCE" ) );
-    }
-    if ( null != metadataList ) {
-      int successfulMetadataModelImport = 0;
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_METADATA_DATASOURCE", metadataList.size() ) );
-      }
-      for ( ExportManifestMetadata exportManifestMetadata : metadataList ) {
-        try {
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Restoring  [ " + exportManifestMetadata.getDomainId() + " ] datasource" );
-          }
-          String domainId = exportManifestMetadata.getDomainId();
-          if ( domainId != null && !domainId.endsWith( XMI_EXTENSION ) ) {
-            domainId = domainId + XMI_EXTENSION;
-          }
-          // Validate required fields
-          if ( domainId == null || exportManifestMetadata.getFile() == null ) {
-            getLogger().warn( "Skipping metadata import - missing domainId or file path" );
-            continue;
-          }
-          RepositoryFileImportBundle.Builder bundleBuilder =
-              new RepositoryFileImportBundle.Builder().charSet( UTF_8 )
-                  .hidden( RepositoryFile.HIDDEN_BY_DEFAULT ).schedulable( RepositoryFile.SCHEDULABLE_BY_DEFAULT )
-                  // let the parent bundle control whether or not to preserve DSW settings
-                  .preserveDsw( preserveDsw )
-                  .overwriteFile( isOverwriteFile() )
-                  .mime( "text/xmi+xml" )
-                  .withParam( DOMAIN_ID, domainId );
-
-          cachedImports.put( exportManifestMetadata.getFile(), bundleBuilder );
-          if ( isPerformingRestore ) {
-            getLogger().debug( " Successfully prepared  [ " + exportManifestMetadata.getDomainId() + " ] datasource for import" );
-          }
-          successfulMetadataModelImport++;
-        } catch ( Exception e ) {
-          getLogger().warn( "Failed to prepare metadata [ " + exportManifestMetadata.getDomainId() + " ] for import: " + e.getMessage() );
-          getLogger().debug( "Metadata preparation error", e );
-          // Continue with next metadata even if this one fails
-        }
-      }
-      if ( isPerformingRestore ) {
-        int metadataFailedCount = metadataList.size() - successfulMetadataModelImport;
-        
-        // Track metadata imports in metrics
-        if ( metrics != null ) {
-          for ( int i = 0; i < successfulMetadataModelImport; i++ ) {
-            metrics.recordSuccess( ImportExportMetrics.Category.METADATA );
-          }
-          for ( int i = 0; i < metadataFailedCount; i++ ) {
-            metrics.recordFailure( ImportExportMetrics.Category.METADATA, "metadata", "Import failed" );
-          }
-        }
-        
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_METDATA_DATASOURCE_COUNT", successfulMetadataModelImport, metadataList.size() ) );
-      }
-    }
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_METADATA_DATASOURCE" ) );
-    }
-  }
-
-  protected void importMondrian( List<ExportManifestMondrian> mondrianList ) {
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_MONDRIAN_DATASOURCE" ) );
-    }
-    if ( null != mondrianList ) {
-      int successfulMondrianSchemaImport = 0;
-      if ( isPerformingRestore ) {
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_MONDRIAN_DATASOURCE", mondrianList.size() ) );
-      }
-      for ( ExportManifestMondrian exportManifestMondrian : mondrianList ) {
-        try {
-          if ( isPerformingRestore ) {
-            getLogger().debug( "Restoring  [ " + exportManifestMondrian.getCatalogName() + " ] mondrian datasource" );
-          }
-          String catName = exportManifestMondrian.getCatalogName();
-          // Validate required fields
-          if ( catName == null || catName.trim().isEmpty() ) {
-            getLogger().warn( "Skipping Mondrian schema import - missing catalog name" );
-            continue;
-          }
-          Parameters parametersMap = exportManifestMondrian.getParameters();
-          StringBuilder parametersStr = new StringBuilder();
-          if ( parametersMap != null ) {
-            for ( Map.Entry<String, String> e : parametersMap.entrySet() ) {
-              parametersStr.append( e.getKey() ).append( '=' ).append( e.getValue() ).append( ';' );
-            }
-          }
-
-          RepositoryFileImportBundle.Builder bundleBuilder =
-              new RepositoryFileImportBundle.Builder().charSet( UTF_8 ).hidden( RepositoryFile.HIDDEN_BY_DEFAULT )
-                  .schedulable( RepositoryFile.SCHEDULABLE_BY_DEFAULT ).name( catName ).overwriteFile(
-                  isOverwriteFile() ).mime( "application/vnd.pentaho.mondrian+xml" )
-                  .withParam( "parameters", parametersStr.toString() )
-                  .withParam( DOMAIN_ID, catName ); // TODO: this is definitely named wrong at the very least.
-          // pass as param if not in parameters string
-          String xmlaEnabled = "" + exportManifestMondrian.isXmlaEnabled();
-          bundleBuilder.withParam( "EnableXmla", xmlaEnabled );
-
-          cachedImports.put( exportManifestMondrian.getFile(), bundleBuilder );
-
-          String annotationsFile = exportManifestMondrian.getAnnotationsFile();
-          if ( annotationsFile != null ) {
-            RepositoryFileImportBundle.Builder annotationsBundle =
-                new RepositoryFileImportBundle.Builder().path( MondrianCatalogRepositoryHelper.ETC_MONDRIAN_JCR_FOLDER
-                    + RepositoryFile.SEPARATOR + catName ).name( "annotations.xml" ).charSet( UTF_8 ).overwriteFile(
-                    isOverwriteFile() ).mime( "text/xml" ).hidden( RepositoryFile.HIDDEN_BY_DEFAULT ).schedulable(
-                    RepositoryFile.SCHEDULABLE_BY_DEFAULT ).withParam( DOMAIN_ID, catName );
-            cachedImports.put( annotationsFile, annotationsBundle );
-          }
-          successfulMondrianSchemaImport++;
-          if ( isPerformingRestore ) {
-            getLogger().debug( " Successfully prepared  [ " + exportManifestMondrian.getCatalogName() + " ] mondrian datasource for import" );
-          }
-        } catch ( Exception e ) {
-          getLogger().warn( "Failed to prepare Mondrian schema [ " + exportManifestMondrian.getCatalogName() + " ] for import: " + e.getMessage() );
-          getLogger().debug( "Mondrian preparation error", e );
-          // Continue with next schema even if this one fails
-        }
-      }
-      if ( isPerformingRestore ) {
-        int mondrianFailedCount = mondrianList.size() - successfulMondrianSchemaImport;
-        
-        // Track Mondrian imports in metrics
-        if ( metrics != null ) {
-          for ( int i = 0; i < successfulMondrianSchemaImport; i++ ) {
-            metrics.recordSuccess( ImportExportMetrics.Category.MONDRIAN );
-          }
-          for ( int i = 0; i < mondrianFailedCount; i++ ) {
-            metrics.recordFailure( ImportExportMetrics.Category.MONDRIAN, "schema", "Import failed" );
-          }
-        }
-        
-        getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_MONDRIAN_DATASOURCE_IMPORT_COUNT", successfulMondrianSchemaImport, mondrianList.size() ) );
-      }
-    }
-    if ( isPerformingRestore ) {
-      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_MONDRIAN_DATASOURCE" ) );
-    }
+    getLogger().warn( "UsersAndRolesImportHelper not found - cannot import global user settings" );
   }
 
   /**
@@ -1556,7 +530,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
    * which refers to this file. If yes make this file schedulable
    */
   @VisibleForTesting
-  boolean fileIsScheduleInputSource( ExportManifest manifest, String sourcePath ) {
+  public boolean fileIsScheduleInputSource( ExportManifest manifest, String sourcePath ) {
     boolean isSchedulable = false;
     if ( sourcePath != null && manifest != null
         && manifest.getScheduleList() != null ) {
@@ -1575,7 +549,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   }
 
   @VisibleForTesting
-  protected boolean isFileHidden( RepositoryFile file, ManifestFile manifestFile, String sourcePath ) {
+  public boolean isFileHidden( RepositoryFile file, ManifestFile manifestFile, String sourcePath ) {
     Boolean result = manifestFile.isFileHidden();
     if ( result != null ) {
       return result; // file absent or must receive a new setting and the setting is exist
@@ -1590,7 +564,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   }
 
   @VisibleForTesting
-  protected boolean isSchedulable( RepositoryFile file, ManifestFile manifestFile ) {
+  public boolean isSchedulable( RepositoryFile file, ManifestFile manifestFile ) {
     Boolean result = manifestFile.isFileSchedulable();
     if ( result != null ) {
       return result; // file absent or must receive a new setting and the setting is exist
@@ -1727,5 +701,95 @@ public class SolutionImportHandler implements IPlatformImportHandler {
 
   public boolean isPerformingRestore() {
     return isPerformingRestore;
+  }
+
+  /**
+   * Get the UsersAndRolesImportHelper from the list of import helpers.
+   * @return UsersAndRolesImportHelper or null if not found
+   */
+  @VisibleForTesting
+  protected UsersAndRolesImportHelper getUsersAndRolesImportHelper() {
+    for ( IImportHelper helper : importHelpers ) {
+      if ( helper instanceof UsersAndRolesImportHelper ) {
+        return (UsersAndRolesImportHelper) helper;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get the MetastoreImportHelper from the list of import helpers.
+   * @return MetastoreImportHelper or null if not found
+   */
+  @VisibleForTesting
+  protected MetastoreImportHelper getMetastoreImportHelper() {
+    for ( IImportHelper helper : importHelpers ) {
+      if ( helper instanceof MetastoreImportHelper ) {
+        return (MetastoreImportHelper) helper;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Delegation method for backward compatibility with tests.
+   * Delegates to UsersAndRolesImportHelper.importUsers()
+   */
+  @VisibleForTesting
+  public Map<String, List<String>> importUsers( List<UserExport> users ) throws Exception {
+    UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
+    if ( helper != null ) {
+      return helper.importUsers( users );
+    }
+    return new HashMap<>();
+  }
+
+  /**
+   * Delegation method for backward compatibility with tests.
+   * Delegates to UsersAndRolesImportHelper.importRoles()
+   */
+  @VisibleForTesting
+  public void importRoles( List<RoleExport> roles, Map<String, List<String>> roleToUserMap ) throws Exception {
+    UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
+    if ( helper != null ) {
+      helper.importRoles( roles, roleToUserMap );
+    }
+  }
+
+  /**
+   * Delegation method for backward compatibility with tests.
+   * Delegates to MetastoreImportHelper.importMetaStore()
+   */
+  @VisibleForTesting
+  public void importMetaStore( ExportManifestMetaStore metaStore, boolean provideReplaceContentOption ) throws Exception {
+    MetastoreImportHelper helper = getMetastoreImportHelper();
+    if ( helper != null ) {
+      helper.setOverwriteFile( provideReplaceContentOption );
+      helper.importMetaStore( metaStore );
+    }
+  }
+
+  /**
+   * Delegation method for backward compatibility with tests.
+   * Delegates to UsersAndRolesImportHelper.importUserSettings()
+   */
+  @VisibleForTesting
+  public void importUserSettings( UserExport user ) throws Exception {
+    UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
+    if ( helper != null ) {
+      helper.importUserSettings( user );
+    }
+  }
+
+  /**
+   * Delegation method for backward compatibility with tests.
+   * Delegates to UsersAndRolesImportHelper.importUserAndRoleWithTracking()
+   */
+  @VisibleForTesting
+  public void importUserAndRoleWithTracking( String tenantPath, UserExport user, Map<String, List<String>> roleToUserMap ) throws Exception {
+    UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
+    if ( helper != null ) {
+      helper.importUserAndRoleWithTracking( tenantPath, user, roleToUserMap );
+    }
   }
 }
