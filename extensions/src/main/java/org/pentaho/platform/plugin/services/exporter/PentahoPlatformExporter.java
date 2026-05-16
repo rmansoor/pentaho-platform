@@ -956,6 +956,11 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     }
   }
 
+  /**
+   * Export file/folder content from the repository.
+   * Refactored to handle folder exports independently with their own metadata.
+   * Each folder is exported with its own ownership and ACLs, separate from files.
+   */
   protected void exportFileContent( RepositoryFile exportRepositoryFile ) throws IOException, ExportException {
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_REPOSITORY_OBJECT" ) );
     // get the file path
@@ -970,20 +975,12 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       throw new FileNotFoundException( "JCR file not found: " + this.path );
     }
 
-
     if ( exportRepositoryFile.isFolder() ) { // Handle recursive export
       getRepositoryExportLogger().trace( "Repository object [ " + exportRepositoryFile.getName() + "] is a folder" );
       getExportManifest().getManifestInformation().setRootFolder( path.substring( 0, path.lastIndexOf( "/" ) + 1 ) );
 
-      // don't zip root folder without name
-      if ( !ClientRepositoryPaths.getRootFolderPath().equals( exportRepositoryFile.getPath() ) ) {
-        getRepositoryExportLogger().trace( "Adding a name to the root folder" );
-        String folderZipEntry = getFixedZipEntryName( exportRepositoryFile, filePath );
-        zos.putNextEntry( new ZipEntry( folderZipEntry ) );
-        trackFolderAdded( folderZipEntry );
-      }
       getRepositoryExportLogger().debug( "Starting recursive backup of a folder [ " + exportRepositoryFile.getName() + " ]" );
-      exportDirectory( exportRepositoryFile, zos, filePath );
+      exportFolderHierarchyWithMetadata( exportRepositoryFile, zos, filePath );
 
     } else {
       getRepositoryExportLogger().trace( "Repository object [ " + exportRepositoryFile.getName() + "] is a file" );
@@ -999,6 +996,123 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       }
     }
     getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_END_EXPORT_REPOSITORY_OBJECT" ) );
+  }
+
+  /**
+   * Export folder hierarchy with independent metadata for each folder.
+   * This ensures each folder retains its own ownership and ACLs,
+   * separate from the files it contains.
+   * 
+   * @param folder the folder to export
+   * @param zos the zip output stream
+   * @param basePath the base path for export
+   * @throws IOException if I/O error occurs
+   * @throws ExportException if export error occurs
+   */
+  protected void exportFolderHierarchyWithMetadata( RepositoryFile folder, ZipOutputStream zos, String basePath ) 
+      throws IOException, ExportException {
+    
+    if ( !folder.isFolder() ) {
+      return;
+    }
+    
+    // Export the current folder's metadata independently
+    exportFolderMetadata( folder, zos, basePath );
+    
+    // Get all children of this folder
+    List<RepositoryFile> children = getUnifiedRepository().getChildren( folder.getId() );
+    
+    if ( children != null ) {
+      for ( RepositoryFile child : children ) {
+        if ( child.isFolder() ) {
+          // Recursively export subfolders with their own metadata
+          // This ensures each folder has independent ownership and ACLs
+          try {
+            getRepositoryExportLogger().debug( "Starting backup of subfolder [ " + child.getPath() + " ]" );
+            exportFolderHierarchyWithMetadata( child, zos, basePath );
+            getRepositoryExportLogger().debug( "Finished backup of subfolder [ " + child.getPath() + " ]" );
+          } catch ( Exception e ) {
+            getRepositoryExportLogger().error( "Error exporting subfolder [ " + child.getPath() + " ]: " + e.getMessage(), e );
+            if ( exportMetrics != null ) {
+              exportMetrics.recordFailure( ImportExportMetrics.Category.FILES, child.getPath(), e );
+            }
+            // Continue with next folder
+          }
+        } else {
+          // Export files
+          try {
+            getRepositoryExportLogger().debug( "Starting backup of file [ " + child.getPath() + " ]" );
+            exportFile( child, zos, basePath );
+            getRepositoryExportLogger().debug( "Finished backup of file [ " + child.getPath() + " ]" );
+          } catch ( ExportException | IOException e ) {
+            getRepositoryExportLogger().error( "Error exporting file [ " + child.getPath() + " ]: " + e.getMessage(), e );
+            if ( exportMetrics != null ) {
+              exportMetrics.recordFailure( ImportExportMetrics.Category.FILES, child.getPath(), e );
+            }
+            // Continue with next file
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Export a single folder's metadata including its ownership and ACLs.
+   * This creates a zip entry for the folder and records its metadata in the export manifest,
+   * independent of any files it may contain.
+   * 
+   * @param folder the folder to export metadata for
+   * @param zos the zip output stream
+   * @param basePath the base path for export
+   * @throws IOException if I/O error occurs
+   */
+  protected void exportFolderMetadata( RepositoryFile folder, ZipOutputStream zos, String basePath ) 
+      throws IOException {
+    
+    try {
+      // Don't export root folder without name
+      if ( ClientRepositoryPaths.getRootFolderPath().equals( folder.getPath() ) ) {
+        getRepositoryExportLogger().trace( "Skipping root folder from explicit export" );
+        return;
+      }
+      
+      // Create zip entry for the folder
+      String folderZipEntry = getFixedZipEntryName( folder, basePath );
+      getRepositoryExportLogger().trace( "Creating folder entry in ZIP: [ " + folderZipEntry + " ]" );
+      
+      zos.putNextEntry( new ZipEntry( folderZipEntry ) );
+      trackFolderAdded( folderZipEntry );
+      zos.closeEntry();
+      
+      // Export folder metadata through the parent class method
+      // This handles capturing ACLs and ownership information
+      exportFolderAcls( folder );
+      
+      getRepositoryExportLogger().debug( "Successfully exported folder metadata for [ " + folder.getPath() + " ]" );
+      
+    } catch ( IOException e ) {
+      getRepositoryExportLogger().error( "Error exporting folder metadata for [ " + folder.getPath() + " ]: " + e.getMessage(), e );
+      throw e;
+    }
+  }
+
+  /**
+   * Export folder ACLs and ownership information to the manifest.
+   * This ensures folder permissions are captured independently from file permissions.
+   * 
+   * @param folder the folder whose ACLs should be exported
+   */
+  protected void exportFolderAcls( RepositoryFile folder ) {
+    try {
+      // Add folder metadata and ACLs to the manifest
+      // This captures the folder's ACLs separately from file permissions
+      addToManifest( folder );
+      
+      getRepositoryExportLogger().trace( "ACLs exported for folder [ " + folder.getPath() + " ]" );
+    } catch ( Exception e ) {
+      getRepositoryExportLogger().warn( "Could not export ACLs for folder [ " + folder.getPath() + " ]: " + e.getMessage(), e );
+      // Continue - folder will still be exported even if ACLs fail
+    }
   }
 
   protected Map<String, InputStream> getDomainFilesData( String domainId ) {
