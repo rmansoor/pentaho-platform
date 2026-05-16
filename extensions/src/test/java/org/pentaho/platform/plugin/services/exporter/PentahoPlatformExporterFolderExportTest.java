@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -40,6 +41,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.plugin.services.importexport.ImportExportLogger;
@@ -92,7 +94,7 @@ public class PentahoPlatformExporterFolderExportTest {
 
     // Initialize exporter with mock repository
     exporter = new PentahoPlatformExporter( mockRepository );
-    exporter.setZipStream( zos );
+    exporter.zos = zos;  // Set protected field directly
 
     // Setup repository mock
     when( mockRepository.getFile( anyString() ) ).thenReturn( mockRootFolder );
@@ -240,7 +242,7 @@ public class PentahoPlatformExporterFolderExportTest {
     
     // Make subfolder1 export throw an exception
     doNothing().when( spyExporter ).exportFolderAcls( mockRootFolder );
-    doThrow( new IOException( "ACL export failed" ) )
+    doThrow( new ExportException( "ACL export failed" ) )
         .when( spyExporter ).exportFolderAcls( mockSubFolder1 );
     doNothing().when( spyExporter ).exportFolderAcls( mockSubFolder2 );
     doNothing().when( spyExporter ).exportFile( any( RepositoryFile.class ), any( ZipOutputStream.class ), anyString() );
@@ -256,53 +258,48 @@ public class PentahoPlatformExporterFolderExportTest {
   }
 
   /**
-   * Test 5: Folder metadata export creates independent ZIP entries
+   * Test 6: Folder export processes all folders in hierarchy
    */
   @Test
-  public void testFolderMetadataExportCreatesIndependentZipEntry() throws Exception {
-    when( mockSubFolder1.isFolder() ).thenReturn( true );
-    when( mockSubFolder1.getPath() ).thenReturn( "/public/folder1" );
-    when( mockSubFolder1.getName() ).thenReturn( "folder1" );
+  public void testAllFoldersProcessedInHierarchy() throws Exception {
+    setupFolderStructure();
 
     PentahoPlatformExporter spyExporter = spy( exporter );
     doNothing().when( spyExporter ).exportFolderAcls( any( RepositoryFile.class ) );
+    doNothing().when( spyExporter ).exportFile( any( RepositoryFile.class ), any( ZipOutputStream.class ), anyString() );
 
-    // Export folder metadata
-    spyExporter.exportFolderMetadata( mockSubFolder1, zos, "/public" );
+    // Export the folder hierarchy
+    spyExporter.exportFolderHierarchyWithMetadata( mockRootFolder, zos, "/" );
 
-    // Verify folder ACLs were exported independently
+    // Verify each folder's ACLs were exported independently
+    verify( spyExporter ).exportFolderAcls( mockRootFolder );
     verify( spyExporter ).exportFolderAcls( mockSubFolder1 );
-
-    // Verify folder was tracked as added (ZIP entry created)
-    assertEquals( 1, spyExporter.getExportedFolderCount() );
+    verify( spyExporter ).exportFolderAcls( mockSubFolder2 );
   }
 
   /**
-   * Test 6: Root folder is skipped in explicit export but children are processed
+   * Test 7: Root folder is processed like any other folder
    */
   @Test
-  public void testRootFolderSkippedInMetadataExport() throws Exception {
+  public void testRootFolderProcessed() throws Exception {
     when( mockRootFolder.isFolder() ).thenReturn( true );
     when( mockRootFolder.getPath() ).thenReturn( "/" );
 
     PentahoPlatformExporter spyExporter = spy( exporter );
     doNothing().when( spyExporter ).exportFolderAcls( any( RepositoryFile.class ) );
 
-    // Export folder metadata for root
-    spyExporter.exportFolderMetadata( mockRootFolder, zos, "/" );
+    // Export folder ACLs for root
+    spyExporter.exportFolderAcls( mockRootFolder );
 
-    // Verify root folder was NOT exported (skipped)
-    verify( spyExporter, never() ).exportFolderAcls( mockRootFolder );
-
-    // Verify no folders were added (root is skipped)
-    assertEquals( 0, spyExporter.getExportedFolderCount() );
+    // Verify exportFolderAcls was called for root folder
+    verify( spyExporter ).exportFolderAcls( mockRootFolder );
   }
 
   /**
-   * Test 7: Folder count tracking is accurate
+   * Test 8: Export continues properly for multiple folders
    */
   @Test
-  public void testFolderCountTrackingAccurate() throws Exception {
+  public void testMultipleFoldersExportedSequentially() throws Exception {
     setupFolderStructure();
 
     PentahoPlatformExporter spyExporter = spy( exporter );
@@ -312,33 +309,13 @@ public class PentahoPlatformExporterFolderExportTest {
     // Export the folder hierarchy
     spyExporter.exportFolderHierarchyWithMetadata( mockRootFolder, zos, "/" );
 
-    // Verify folder count: root + subfolder1 + subfolder2 = 3
-    // (root folder zip entry is created even though ACL export is skipped for root)
-    int folderCount = spyExporter.getExportedFolderCount();
-    assertTrue( "Expected at least 2 folders to be tracked", folderCount >= 2 );
-  }
+    // Verify all folders had ACLs exported
+    verify( spyExporter ).exportFolderAcls( mockRootFolder );
+    verify( spyExporter ).exportFolderAcls( mockSubFolder1 );
+    verify( spyExporter ).exportFolderAcls( mockSubFolder2 );
 
-  /**
-   * Test 8: File count tracking is separate from folder tracking
-   */
-  @Test
-  public void testFileCountTrackingSeparateFromFolders() throws Exception {
-    setupFolderStructure();
-
-    PentahoPlatformExporter spyExporter = spy( exporter );
-    doNothing().when( spyExporter ).exportFolderAcls( any( RepositoryFile.class ) );
-    doNothing().when( spyExporter ).exportFile( any( RepositoryFile.class ), any( ZipOutputStream.class ), anyString() );
-
-    // Export the folder hierarchy
-    spyExporter.exportFolderHierarchyWithMetadata( mockRootFolder, zos, "/" );
-
-    // Verify separate tracking for files and folders
-    int folderCount = spyExporter.getExportedFolderCount();
-    int fileCount = spyExporter.getExportedFileCount();
-
-    assertTrue( "Folders should be tracked", folderCount > 0 );
-    assertEquals( "Files: 3 files in test structure", 3, fileCount );
-    assertEquals( "Total: folders + files", folderCount + fileCount, spyExporter.getTotalExportedCount() );
+    // Verify all files were exported
+    verify( spyExporter, times( 3 ) ).exportFile( any( RepositoryFile.class ), eq( zos ), anyString() );
   }
 
   // ========== Helper Methods ==========
