@@ -234,10 +234,51 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     return exportHelpers;
   }
 
+  // ========== Public Accessors for Helper Use ==========
+
   /**
-   * Run all registered export helpers with profile-based filtering and metrics tracking.
-   * Each helper determines if it should execute based on component configuration.
+   * Public accessor for metrics collector.
    */
+  public ImportExportMetricsCollector getMetricsCollector() {
+    return metricsCollector;
+  }
+
+  /**
+   * Public accessor for export metrics.
+   */
+  public ImportExportMetrics getExportMetrics() {
+    return exportMetrics;
+  }
+
+  /**
+   * Public accessor for import/export logger.
+   */
+  public ImportExportLogger getImportExportLogger() {
+    return importExportLogger;
+  }
+
+  /**
+   * Public accessor for inventory logger.
+   */
+  public InventoryLogger getInventoryLogger() {
+    return inventoryLogger;
+  }
+
+  /**
+   * Public accessor for backup inventory.
+   */
+  public BackupInventory getBackupInventory() {
+    return backupInventory;
+  }
+
+  /**
+   * Public accessor for metastore.
+   */
+  public IMetaStore getMetastore() {
+    return metastore;
+  }
+
+  // ========== Run All Export Helpers ==========
   public void runComponentExportHelpers() {
     for ( IExportHelper helper : exportHelpers ) {
       try {

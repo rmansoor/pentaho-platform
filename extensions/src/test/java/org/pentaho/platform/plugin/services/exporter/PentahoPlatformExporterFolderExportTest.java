@@ -53,8 +53,9 @@ import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
  * Test class for PentahoPlatformExporter folder export functionality and helper architecture.
  * Tests that:
  * 1. Folders are exported independently with their own metadata
- * 2. Export helpers are properly registered and invoked
+ * 2. Export helpers are properly registered and contain actual export logic
  * 3. Selective export based on BackupComponentConfig works correctly
+ * 4. Helpers are invoked during export with proper delegation
  */
 public class PentahoPlatformExporterFolderExportTest {
 
@@ -422,57 +423,39 @@ public class PentahoPlatformExporterFolderExportTest {
 
   // ========== Export Helper Architecture Reference ==========
   /**
-   * EXPORT HELPER ARCHITECTURE OVERVIEW
+   * EXPORT HELPER ARCHITECTURE REFACTORING
    * 
-   * The PentahoPlatformExporter now uses a modular export helper pattern where each
-   * export component has its own dedicated helper class in the helper subdirectory:
+   * COMPLETED: Helpers now contain actual export logic instead of thin wrappers
    * 
-   * Located at: org/pentaho/platform/plugin/services/exporter/helper/
+   * Pattern Established with DatasourcesExportHelper:
+   * ✓ All export logic moved from PentahoPlatformExporter.exportDatasources() 
+   *   into DatasourcesExportHelper.doExport()
+   * ✓ Helper uses exporter accessors to get services and utilities
+   * ✓ Helper calls getComponentConfig() to check if export should occur
+   * ✓ Helper directly uses metrics, inventory, and manifest services
+   * ✓ Full separation of concerns - helper is independently testable
    * 
-   * Built-in Helpers:
-   * 1. RepositoryContentExportHelper
-   *    - Exports repository files and folder hierarchy
-   *    - Handles file content and folder metadata
-   *    - Respects includeRepository config flag
+   * Remaining Helpers to Complete (same pattern):
+   * [ ] MetadataExportHelper - move exportMetadataModels() logic
+   * [ ] MondrianExportHelper - move exportMondrianSchemas() logic  
+   * [ ] UsersAndRolesExportHelper - move exportUsersAndRoles() & exportRoles() logic
+   * [ ] MetastoreExportHelper - move exportMetastore() logic
+   * [ ] RepositoryContentExportHelper - move exportFileContent() logic
    * 
-   * 2. DatasourcesExportHelper
-   *    - Exports datasource connections
-   *    - Respects includeDatasources config flag
+   * For each remaining helper:
+   * 1. Read the corresponding export method from PentahoPlatformExporter
+   * 2. Move all logic into the helper's doExport() method
+   * 3. Replace direct field access with exporter getter calls
+   * 4. Update imports in the helper class
+   * 5. Add public accessors to exporter if helper needs them
    * 
-   * 3. MetadataExportHelper
-   *    - Exports metadata domain models
-   *    - Respects includeMetadata config flag
-   * 
-   * 4. MondrianExportHelper
-   *    - Exports Mondrian OLAP schemas
-   *    - Respects includeMondrianSchemas config flag
-   * 
-   * 5. UsersAndRolesExportHelper
-   *    - Exports users and their role assignments
-   *    - Respects includeUsers config flag
-   * 
-   * 6. MetastoreExportHelper
-   *    - Exports metastore configuration
-   *    - Respects includeMetastore config flag
-   * 
-   * Helper Pattern:
-   * - Each helper implements IExportHelper interface
-   * - Provides getName() for helper identification
-   * - Implements shouldExecute(BackupComponentConfig) for conditional execution
-   * - Executes doExport(Object) which delegates to PentahoPlatformExporter
-   * 
-   * Registration Flow:
-   * 1. PentahoPlatformExporter constructor calls registerBuiltInExportHelpers()
-   * 2. Each helper is instantiated and registered via addExportHelper()
-   * 3. Helpers are available via getExportHelpers()
-   * 4. Custom helpers can be added dynamically via addExportHelper()
-   * 
-   * Benefits:
-   * - Separation of concerns: each export type isolated
-   * - Selective exports: only enabled components are processed
-   * - Extensibility: new helpers can be added without modifying core exporter
-   * - Testability: helpers can be tested independently
-   * - Maintainability: code organization follows module boundaries
+   * Architecture Benefits:
+   * - Helpers are now independently unit testable
+   * - Each helper is responsible for one export component
+   * - Easy to add new helpers or modify existing ones
+   * - Selective export based on BackupComponentConfig
+   * - Clean delegation pattern instead of thin wrappers
+   * - Metrics and logging are encapsulated per helper
    */
 
   // ========== Helper Methods ==========
