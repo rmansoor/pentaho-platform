@@ -10,40 +10,32 @@
  * Change Date: 2028-08-13
  ******************************************************************************/
 
-package org.pentaho.platform.plugin.services.exporter;
+package org.pentaho.platform.plugin.services.exporter.helper;
 
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
-import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
-import org.pentaho.platform.api.repository2.unified.RepositoryFile;
+import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 
 /**
- * Export helper for repository content (files and folders).
- * Handles conditional export based on backup component configuration.
+ * Export helper for metadata models.
  */
-public class RepositoryContentExportHelper implements IExportHelper {
-  
+public class MetadataExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
-  private IUnifiedRepository repository;
   private BackupComponentConfig componentConfig;
 
-  public RepositoryContentExportHelper( PentahoPlatformExporter exporter, IUnifiedRepository repository ) {
+  public MetadataExportHelper( PentahoPlatformExporter exporter ) {
     this.exporter = exporter;
-    this.repository = repository;
   }
 
   @Override
   public String getName() {
-    return "RepositoryContentExporter";
+    return "MetadataExporter";
   }
 
-  /**
-   * Determine if repository content export should be performed.
-   */
   public boolean shouldExecute( BackupComponentConfig config ) {
     this.componentConfig = config;
-    return config != null && config.isIncludeContent();
+    return config != null && config.isIncludeDatasources();
   }
 
   @Override
@@ -51,12 +43,10 @@ public class RepositoryContentExportHelper implements IExportHelper {
     if ( !shouldExecute( componentConfig ) ) {
       return;
     }
-
     try {
-      RepositoryFile rootFolder = repository.getFile( "/" );
-      exporter.exportFileContent( rootFolder );
+      exporter.delegateExportMetadataModels();
     } catch ( Exception e ) {
-      throw new ExportException( "Failed to export repository content: " + e.getMessage(), e );
+      throw new ExportException( "Failed to export metadata models: " + e.getMessage(), e );
     }
   }
 }

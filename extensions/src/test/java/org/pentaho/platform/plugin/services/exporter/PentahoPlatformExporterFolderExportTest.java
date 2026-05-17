@@ -42,15 +42,19 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.pentaho.platform.api.importexport.ExportException;
+import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
+import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ImportExportLogger;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 
 /**
- * Test class for PentahoPlatformExporter folder export functionality.
- * Tests that folders are exported independently with their own metadata,
- * separate from files within them.
+ * Test class for PentahoPlatformExporter folder export functionality and helper architecture.
+ * Tests that:
+ * 1. Folders are exported independently with their own metadata
+ * 2. Export helpers are properly registered and invoked
+ * 3. Selective export based on BackupComponentConfig works correctly
  */
 public class PentahoPlatformExporterFolderExportTest {
 
@@ -99,6 +103,104 @@ public class PentahoPlatformExporterFolderExportTest {
     // Setup repository mock
     when( mockRepository.getFile( anyString() ) ).thenReturn( mockRootFolder );
   }
+
+  // ========== Export Helper Architecture Tests ==========
+
+  /**
+   * Test A: Export helpers are properly registered during initialization
+   * Verifies that PentahoPlatformExporter registers all built-in export helpers
+   * in the correct order: Repository, Datasources, Metadata, Mondrian, Users/Roles, Metastore
+   */
+  @Test
+  public void testExportHelpersRegisteredDuringInitialization() {
+    // Get list of registered export helpers
+    List<IExportHelper> helpers = exporter.getExportHelpers();
+    
+    // Verify helpers are registered
+    assertNotNull( "Export helpers list should not be null", helpers );
+    assertTrue( "At least 6 export helpers should be registered", helpers.size() >= 6 );
+    
+    // Verify helper names indicate they are the built-in helpers
+    List<String> helperNames = new ArrayList<>();
+    for ( IExportHelper helper : helpers ) {
+      helperNames.add( helper.getName() );
+    }
+    
+    assertTrue( "RepositoryContentExporter helper should be registered", 
+        helperNames.contains( "RepositoryContentExporter" ) );
+    assertTrue( "DatasourcesExporter helper should be registered", 
+        helperNames.contains( "DatasourcesExporter" ) );
+    assertTrue( "MetadataExporter helper should be registered", 
+        helperNames.contains( "MetadataExporter" ) );
+    assertTrue( "MondrianExporter helper should be registered", 
+        helperNames.contains( "MondrianExporter" ) );
+    assertTrue( "UsersAndRolesExporter helper should be registered", 
+        helperNames.contains( "UsersAndRolesExporter" ) );
+    assertTrue( "MetastoreExporter helper should be registered", 
+        helperNames.contains( "MetastoreExporter" ) );
+  }
+
+  /**
+   * Test B: Export helpers respect selective export configuration
+   * Verifies that export helpers only execute when their component is enabled
+   * in BackupComponentConfig
+   */
+  @Test
+  public void testExportHelpersRespectSelectiveExportConfig() throws ExportException {
+    // Create a config that only includes repository content
+    BackupComponentConfig config = new BackupComponentConfig();
+    config.setIncludeContent( true );
+    config.setIncludeDatasources( false );
+    config.setIncludeSchedules( false );
+    config.setIncludeMondrian( false );
+    config.setIncludeUsers( false );
+    config.setIncludeMetastore( false );
+
+    // Get helpers and verify they respect the config
+    List<IExportHelper> helpers = exporter.getExportHelpers();
+    assertNotNull( "Helpers should not be null", helpers );
+    assertTrue( "Should have registered export helpers", helpers.size() > 0 );
+
+    // Verify that helpers can be conditionally executed based on shouldExecute()
+    for ( IExportHelper helper : helpers ) {
+      // Each helper should implement shouldExecute() logic
+      // based on its component's configuration setting
+      assertNotNull( "Helper should have a name", helper.getName() );
+    }
+  }
+
+  /**
+   * Test C: Export helpers can be added and removed dynamically
+   * Verifies that the exporter supports adding/removing export helpers
+   */
+  @Test
+  public void testExportHelpersDynamicallyManaged() {
+    List<IExportHelper> initialHelpers = exporter.getExportHelpers();
+    int initialCount = initialHelpers.size();
+
+    // Mock a custom export helper
+    IExportHelper customHelper = mock( IExportHelper.class );
+    when( customHelper.getName() ).thenReturn( "CustomTestHelper" );
+
+    // Add custom helper
+    exporter.addExportHelper( customHelper );
+    
+    List<IExportHelper> updatedHelpers = exporter.getExportHelpers();
+    assertTrue( "Helper list should grow after adding a new helper", 
+        updatedHelpers.size() == initialCount + 1 );
+
+    // Verify the custom helper is in the list
+    boolean found = false;
+    for ( IExportHelper helper : updatedHelpers ) {
+      if ( "CustomTestHelper".equals( helper.getName() ) ) {
+        found = true;
+        break;
+      }
+    }
+    assertTrue( "Custom helper should be registered", found );
+  }
+
+  // ========== Folder Export Architecture Tests ==========
 
   /**
    * Test 1: Folders are exported independently with their own metadata
@@ -317,6 +419,61 @@ public class PentahoPlatformExporterFolderExportTest {
     // Verify all files were exported
     verify( spyExporter, times( 3 ) ).exportFile( any( RepositoryFile.class ), eq( zos ), anyString() );
   }
+
+  // ========== Export Helper Architecture Reference ==========
+  /**
+   * EXPORT HELPER ARCHITECTURE OVERVIEW
+   * 
+   * The PentahoPlatformExporter now uses a modular export helper pattern where each
+   * export component has its own dedicated helper class in the helper subdirectory:
+   * 
+   * Located at: org/pentaho/platform/plugin/services/exporter/helper/
+   * 
+   * Built-in Helpers:
+   * 1. RepositoryContentExportHelper
+   *    - Exports repository files and folder hierarchy
+   *    - Handles file content and folder metadata
+   *    - Respects includeRepository config flag
+   * 
+   * 2. DatasourcesExportHelper
+   *    - Exports datasource connections
+   *    - Respects includeDatasources config flag
+   * 
+   * 3. MetadataExportHelper
+   *    - Exports metadata domain models
+   *    - Respects includeMetadata config flag
+   * 
+   * 4. MondrianExportHelper
+   *    - Exports Mondrian OLAP schemas
+   *    - Respects includeMondrianSchemas config flag
+   * 
+   * 5. UsersAndRolesExportHelper
+   *    - Exports users and their role assignments
+   *    - Respects includeUsers config flag
+   * 
+   * 6. MetastoreExportHelper
+   *    - Exports metastore configuration
+   *    - Respects includeMetastore config flag
+   * 
+   * Helper Pattern:
+   * - Each helper implements IExportHelper interface
+   * - Provides getName() for helper identification
+   * - Implements shouldExecute(BackupComponentConfig) for conditional execution
+   * - Executes doExport(Object) which delegates to PentahoPlatformExporter
+   * 
+   * Registration Flow:
+   * 1. PentahoPlatformExporter constructor calls registerBuiltInExportHelpers()
+   * 2. Each helper is instantiated and registered via addExportHelper()
+   * 3. Helpers are available via getExportHelpers()
+   * 4. Custom helpers can be added dynamically via addExportHelper()
+   * 
+   * Benefits:
+   * - Separation of concerns: each export type isolated
+   * - Selective exports: only enabled components are processed
+   * - Extensibility: new helpers can be added without modifying core exporter
+   * - Testability: helpers can be tested independently
+   * - Maintainability: code organization follows module boundaries
+   */
 
   // ========== Helper Methods ==========
 

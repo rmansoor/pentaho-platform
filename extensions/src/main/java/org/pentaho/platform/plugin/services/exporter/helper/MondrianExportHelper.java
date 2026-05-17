@@ -10,10 +10,11 @@
  * Change Date: 2028-08-13
  ******************************************************************************/
 
-package org.pentaho.platform.plugin.services.exporter;
+package org.pentaho.platform.plugin.services.exporter.helper;
 
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
+import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 
 /**
@@ -43,7 +44,7 @@ public class MondrianExportHelper implements IExportHelper {
       return;
     }
     try {
-      exporter.exportMondrianSchemas();
+      exporter.delegateExportMondrianSchemas();
     } catch ( Exception e ) {
       throw new ExportException( "Failed to export Mondrian schemas: " + e.getMessage(), e );
     }

@@ -10,31 +10,32 @@
  * Change Date: 2028-08-13
  ******************************************************************************/
 
-package org.pentaho.platform.plugin.services.exporter;
+package org.pentaho.platform.plugin.services.exporter.helper;
 
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
+import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 
 /**
- * Export helper for metastore configuration.
+ * Export helper for users and roles.
  */
-public class MetastoreExportHelper implements IExportHelper {
+public class UsersAndRolesExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
   private BackupComponentConfig componentConfig;
 
-  public MetastoreExportHelper( PentahoPlatformExporter exporter ) {
+  public UsersAndRolesExportHelper( PentahoPlatformExporter exporter ) {
     this.exporter = exporter;
   }
 
   @Override
   public String getName() {
-    return "MetastoreExporter";
+    return "UsersAndRolesExporter";
   }
 
   public boolean shouldExecute( BackupComponentConfig config ) {
     this.componentConfig = config;
-    return config != null && config.isIncludeMetastore();
+    return config != null && config.isIncludeUsers();
   }
 
   @Override
@@ -43,9 +44,9 @@ public class MetastoreExportHelper implements IExportHelper {
       return;
     }
     try {
-      exporter.exportMetastore();
+      exporter.delegateExportUsersAndRoles();
     } catch ( Exception e ) {
-      throw new ExportException( "Failed to export metastore: " + e.getMessage(), e );
+      throw new ExportException( "Failed to export users and roles: " + e.getMessage(), e );
     }
   }
 }

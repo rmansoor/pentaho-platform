@@ -10,26 +10,27 @@
  * Change Date: 2028-08-13
  ******************************************************************************/
 
-package org.pentaho.platform.plugin.services.exporter;
+package org.pentaho.platform.plugin.services.exporter.helper;
 
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
+import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 
 /**
- * Export helper for metadata models.
+ * Export helper for JDBC datasources.
  */
-public class MetadataExportHelper implements IExportHelper {
+public class DatasourcesExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
   private BackupComponentConfig componentConfig;
 
-  public MetadataExportHelper( PentahoPlatformExporter exporter ) {
+  public DatasourcesExportHelper( PentahoPlatformExporter exporter ) {
     this.exporter = exporter;
   }
 
   @Override
   public String getName() {
-    return "MetadataExporter";
+    return "DatasourcesExporter";
   }
 
   public boolean shouldExecute( BackupComponentConfig config ) {
@@ -43,9 +44,9 @@ public class MetadataExportHelper implements IExportHelper {
       return;
     }
     try {
-      exporter.exportMetadataModels();
+      exporter.delegateExportDatasources();
     } catch ( Exception e ) {
-      throw new ExportException( "Failed to export metadata models: " + e.getMessage(), e );
+      throw new ExportException( "Failed to export datasources: " + e.getMessage(), e );
     }
   }
 }

@@ -39,12 +39,12 @@ import org.pentaho.platform.engine.core.system.TenantUtils;
 import org.pentaho.platform.plugin.action.mondrian.catalog.IMondrianCatalogService;
 import org.pentaho.platform.plugin.action.mondrian.catalog.MondrianCatalog;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
-import org.pentaho.platform.plugin.services.exporter.DatasourcesExportHelper;
-import org.pentaho.platform.plugin.services.exporter.MetadataExportHelper;
-import org.pentaho.platform.plugin.services.exporter.MetastoreExportHelper;
-import org.pentaho.platform.plugin.services.exporter.MondrianExportHelper;
-import org.pentaho.platform.plugin.services.exporter.RepositoryContentExportHelper;
-import org.pentaho.platform.plugin.services.exporter.UsersAndRolesExportHelper;
+import org.pentaho.platform.plugin.services.exporter.helper.DatasourcesExportHelper;
+import org.pentaho.platform.plugin.services.exporter.helper.MetadataExportHelper;
+import org.pentaho.platform.plugin.services.exporter.helper.MetastoreExportHelper;
+import org.pentaho.platform.plugin.services.exporter.helper.MondrianExportHelper;
+import org.pentaho.platform.plugin.services.exporter.helper.RepositoryContentExportHelper;
+import org.pentaho.platform.plugin.services.exporter.helper.UsersAndRolesExportHelper;
 import org.pentaho.platform.plugin.services.importexport.DatabaseConnectionConverter;
 import org.pentaho.platform.plugin.services.importexport.DefaultExportHandler;
 import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
@@ -146,6 +146,58 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     addExportHelper( new MetastoreExportHelper( this ) );
   }
 
+  // ========== Public Delegation Methods for Export Helpers ==========
+
+  /**
+   * Public delegation method for export helpers to export repository content.
+   * @param repositoryFile the root file/folder to export
+   * @throws IOException if I/O error occurs
+   * @throws ExportException if export error occurs
+   */
+  public void delegateExportFileContent( RepositoryFile repositoryFile ) throws IOException, ExportException {
+    exportFileContent( repositoryFile );
+  }
+
+  /**
+   * Public delegation method for export helpers to export datasources.
+   * @throws Exception if export error occurs
+   */
+  public void delegateExportDatasources() throws Exception {
+    exportDatasources();
+  }
+
+  /**
+   * Public delegation method for export helpers to export metadata models.
+   * @throws Exception if export error occurs
+   */
+  public void delegateExportMetadataModels() throws Exception {
+    exportMetadataModels();
+  }
+
+  /**
+   * Public delegation method for export helpers to export Mondrian schemas.
+   * @throws Exception if export error occurs
+   */
+  public void delegateExportMondrianSchemas() throws Exception {
+    exportMondrianSchemas();
+  }
+
+  /**
+   * Public delegation method for export helpers to export users and roles.
+   * @throws Exception if export error occurs
+   */
+  public void delegateExportUsersAndRoles() throws Exception {
+    exportUsersAndRoles();
+  }
+
+  /**
+   * Public delegation method for export helpers to export metastore.
+   * @throws IOException if I/O error occurs
+   */
+  public void delegateExportMetastore() throws IOException {
+    exportMetastore();
+  }
+
   public File performExport() throws ExportException, IOException {
     if ( componentConfig == null ) {
       componentConfig = BackupComponentConfig.fullSystem();
@@ -172,6 +224,14 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
   public void addExportHelper( IExportHelper helper ) {
     exportHelpers.add( helper );
+  }
+
+  /**
+   * Get the list of registered export helpers.
+   * @return list of IExportHelper instances
+   */
+  public List<IExportHelper> getExportHelpers() {
+    return exportHelpers;
   }
 
   /**
