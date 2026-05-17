@@ -17,17 +17,15 @@ import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 
 /**
  * Export helper for repository content (files and folders).
- * Handles conditional export based on backup component configuration.
+ * Coordinates repository file export with configuration-based filtering.
  */
 public class RepositoryContentExportHelper implements IExportHelper {
   
   private PentahoPlatformExporter exporter;
   private IUnifiedRepository repository;
-  private BackupComponentConfig componentConfig;
 
   public RepositoryContentExportHelper( PentahoPlatformExporter exporter, IUnifiedRepository repository ) {
     this.exporter = exporter;
@@ -39,17 +37,11 @@ public class RepositoryContentExportHelper implements IExportHelper {
     return "RepositoryContentExporter";
   }
 
-  /**
-   * Determine if repository content export should be performed.
-   */
-  public boolean shouldExecute( BackupComponentConfig config ) {
-    this.componentConfig = config;
-    return config != null && config.isIncludeContent();
-  }
-
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    if ( !shouldExecute( componentConfig ) ) {
+    // Check if repository content should be exported
+    if ( !exporter.getComponentConfig().isIncludeContent() ) {
+      exporter.getRepositoryExportLogger().debug( "Skipping repository content export (not included in backup configuration)" );
       return;
     }
 

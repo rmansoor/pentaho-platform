@@ -15,14 +15,13 @@ package org.pentaho.platform.plugin.services.exporter.helper;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 
 /**
  * Export helper for users and roles.
+ * Coordinates user and role export with configuration-based filtering.
  */
 public class UsersAndRolesExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
-  private BackupComponentConfig componentConfig;
 
   public UsersAndRolesExportHelper( PentahoPlatformExporter exporter ) {
     this.exporter = exporter;
@@ -33,14 +32,11 @@ public class UsersAndRolesExportHelper implements IExportHelper {
     return "UsersAndRolesExporter";
   }
 
-  public boolean shouldExecute( BackupComponentConfig config ) {
-    this.componentConfig = config;
-    return config != null && config.isIncludeUsers();
-  }
-
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    if ( !shouldExecute( componentConfig ) ) {
+    // Check if users and roles should be exported
+    if ( !exporter.getComponentConfig().isIncludeUsers() ) {
+      exporter.getRepositoryExportLogger().debug( "Skipping users and roles export (not included in backup configuration)" );
       return;
     }
     try {

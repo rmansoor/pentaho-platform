@@ -15,14 +15,13 @@ package org.pentaho.platform.plugin.services.exporter.helper;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 
 /**
  * Export helper for Mondrian OLAP schemas.
+ * Coordinates Mondrian catalog export with configuration-based filtering.
  */
 public class MondrianExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
-  private BackupComponentConfig componentConfig;
 
   public MondrianExportHelper( PentahoPlatformExporter exporter ) {
     this.exporter = exporter;
@@ -33,14 +32,11 @@ public class MondrianExportHelper implements IExportHelper {
     return "MondrianExporter";
   }
 
-  public boolean shouldExecute( BackupComponentConfig config ) {
-    this.componentConfig = config;
-    return config != null && config.isIncludeMondrian();
-  }
-
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    if ( !shouldExecute( componentConfig ) ) {
+    // Check if Mondrian schemas should be exported
+    if ( !exporter.getComponentConfig().isIncludeMondrian() ) {
+      exporter.getRepositoryExportLogger().debug( "Skipping Mondrian schemas export (not included in backup configuration)" );
       return;
     }
     try {

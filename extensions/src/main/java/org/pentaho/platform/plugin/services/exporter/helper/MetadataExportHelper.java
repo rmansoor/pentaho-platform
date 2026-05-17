@@ -15,14 +15,13 @@ package org.pentaho.platform.plugin.services.exporter.helper;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 
 /**
  * Export helper for metadata models.
+ * Coordinates metadata domain model export with configuration-based filtering.
  */
 public class MetadataExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
-  private BackupComponentConfig componentConfig;
 
   public MetadataExportHelper( PentahoPlatformExporter exporter ) {
     this.exporter = exporter;
@@ -33,14 +32,11 @@ public class MetadataExportHelper implements IExportHelper {
     return "MetadataExporter";
   }
 
-  public boolean shouldExecute( BackupComponentConfig config ) {
-    this.componentConfig = config;
-    return config != null && config.isIncludeDatasources();
-  }
-
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    if ( !shouldExecute( componentConfig ) ) {
+    // Check if metadata should be exported (uses datasources flag)
+    if ( !exporter.getComponentConfig().isIncludeDatasources() ) {
+      exporter.getRepositoryExportLogger().debug( "Skipping metadata models export (datasources not included in backup configuration)" );
       return;
     }
     try {

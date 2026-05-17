@@ -15,14 +15,13 @@ package org.pentaho.platform.plugin.services.exporter.helper;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 
 /**
  * Export helper for metastore configuration.
+ * Coordinates metastore export with configuration-based filtering.
  */
 public class MetastoreExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
-  private BackupComponentConfig componentConfig;
 
   public MetastoreExportHelper( PentahoPlatformExporter exporter ) {
     this.exporter = exporter;
@@ -33,14 +32,11 @@ public class MetastoreExportHelper implements IExportHelper {
     return "MetastoreExporter";
   }
 
-  public boolean shouldExecute( BackupComponentConfig config ) {
-    this.componentConfig = config;
-    return config != null && config.isIncludeMetastore();
-  }
-
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    if ( !shouldExecute( componentConfig ) ) {
+    // Check if metastore should be exported
+    if ( !exporter.getComponentConfig().isIncludeMetastore() ) {
+      exporter.getRepositoryExportLogger().debug( "Skipping metastore export (not included in backup configuration)" );
       return;
     }
     try {
