@@ -129,11 +129,14 @@ public class UsersAndRolesExportHelper implements IExportHelper {
   }
 
   /**
-   * Export a single user and their roles
+   * Export a single user and their roles.
+   * Public method to allow external callers (e.g., SchedulerExportHelper, IPentahoPlatformExporter stub)
+   * to export individual users as dependencies.
+   * 
    * @param username the username to export
    * @return true if the user was successfully exported, false otherwise
    */
-  protected boolean exportUserAndRole( String username ) {
+  public boolean exportUserAndRole( String username ) {
     if ( username == null || username.trim().isEmpty() ) {
       return false;
     }

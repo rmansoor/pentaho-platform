@@ -416,7 +416,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   /**
    * Export a single user and their roles.
    * This method is required by the IPentahoPlatformExporter interface.
-   * Actual user export logic has been moved to UsersAndRolesExportHelper.
+   * Delegates to UsersAndRolesExportHelper to perform the actual export.
    * 
    * @param username the username to export
    * @return true if the user was successfully exported, false otherwise
@@ -427,10 +427,20 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       return false;
     }
     
-    getRepositoryExportLogger().debug( "Delegating user export for [ " + username + " ] to UsersAndRolesExportHelper" );
-    // The actual export logic is handled by UsersAndRolesExportHelper during runComponentExportHelpers()
-    // This stub is kept for backward compatibility with the IPentahoPlatformExporter interface
-    // and for any plugins that may call it directly
+    // Find and delegate to the UsersAndRolesExportHelper
+    for ( IExportHelper helper : exportHelpers ) {
+      if ( helper instanceof UsersAndRolesExportHelper ) {
+        try {
+          UsersAndRolesExportHelper usersHelper = (UsersAndRolesExportHelper) helper;
+          return usersHelper.exportUserAndRole( username );
+        } catch ( Exception e ) {
+          getRepositoryExportLogger().error( "Error exporting user [ " + username + " ]: " + e.getMessage(), e );
+          return false;
+        }
+      }
+    }
+    
+    getRepositoryExportLogger().warn( "UsersAndRolesExportHelper not found in registered export helpers" );
     return false;
   }
 
