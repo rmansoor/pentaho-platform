@@ -226,53 +226,23 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   }
 
   // ========== Run All Export Helpers ==========
-  public void runComponentExportHelpers() {
+  /**
+   * Run all registered export helpers.
+   * Each helper is responsible for checking its own configuration and deciding whether to execute.
+   * This removes coupling between the exporter and individual helper implementations.
+   */
+  public void runAllExportHelpers() {
     for ( IExportHelper helper : exportHelpers ) {
       try {
-        String helperName = helper.getName();
-        
-        // Check if this is a built-in component helper (not a schedule/user-settings helper)
-        if ( isComponentExportHelper( helper ) ) {
-          getRepositoryExportLogger().debug( "Running component export helper: " + helperName );
-          // Helper is responsible for recording its own metrics
-          helper.doExport( this );
-        }
+        getRepositoryExportLogger().debug( "Running export helper: " + helper.getName() );
+        // Each helper checks its own configuration in doExport() before executing
+        helper.doExport( this );
       } catch ( ExportException exportException ) {
-        getRepositoryExportLogger().error( "Error performing export of component [ " + helper.getName() + " ] Cause [ " + exportException.getLocalizedMessage() + " ]" );
+        getRepositoryExportLogger().error( "Error in export helper [ " + helper.getName() + " ] Cause [ " + exportException.getLocalizedMessage() + " ]" );
       } catch ( Exception e ) {
         getRepositoryExportLogger().error( "Unexpected error in export helper [ " + helper.getName() + " ]: " + e.getMessage(), e );
       }
     }
-  }
-
-  /**
-   * Run non-component export helpers (schedules, user settings).
-   * Each helper is responsible for checking its own configuration and deciding whether to execute.
-   * This removes coupling between the exporter and individual helper implementations.
-   */
-  public void runExportHelpers() {
-    for ( IExportHelper helper : exportHelpers ) {
-      try {
-        // Filter to only run non-component helpers
-        if ( !isComponentExportHelper( helper ) ) {
-          getRepositoryExportLogger().info( "Running export helper: " + helper.getName() );
-          // Each helper checks its own configuration in doExport() before executing
-          helper.doExport( this );
-        }
-      } catch ( ExportException exportException ) {
-        getRepositoryExportLogger().error( "Error performing backup of component [ " + helper.getName() + " ] Cause [ " + exportException.getLocalizedMessage() + " ]" );
-      }
-    }
-  }
-
-  /**
-   * Determine if a helper is a built-in component helper (not a schedule/user-settings helper).
-   */
-  private boolean isComponentExportHelper( IExportHelper helper ) {
-    String name = helper.getName();
-    return name.contains( "Exporter" ) && 
-           !name.equals( "Scheduler" ) && 
-           !name.equals( "EmailsGroups" );
   }
 
   /**
@@ -357,9 +327,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
     zos = new ZipOutputStream( new FileOutputStream( exportFile ) );
 
-    // Run all component export helpers
+    // Run all export helpers
     try {
-      runComponentExportHelpers();
+      runAllExportHelpers();
     } catch ( Exception e ) {
       getRepositoryExportLogger().error( "Error running export helpers: " + e.getMessage(), e );
     }
