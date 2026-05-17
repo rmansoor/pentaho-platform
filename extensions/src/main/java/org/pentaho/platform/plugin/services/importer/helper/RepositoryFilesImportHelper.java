@@ -137,6 +137,124 @@ public class RepositoryFilesImportHelper implements IImportHelper {
   }
 
   /**
+   * Import folder entities from the manifest before importing files.
+   * This ensures folders are created with correct ACLs and ownership from the manifest
+   * instead of being created implicitly during file import with default (admin) permissions.
+   */
+  protected void importManifestFolderEntities( ExportManifest manifest, IPlatformImportBundle importBundle, IPlatformImporter importer ) {
+    if ( manifest == null || manifest.getExportManifestEntities() == null || manifest.getExportManifestEntities().isEmpty() ) {
+      return;
+    }
+
+    RepositoryFileImportBundle repoBundle = (RepositoryFileImportBundle) importBundle;
+    String manifestVersion = manifest.getManifestInformation().getManifestVersion();
+    
+    int foldersImported = 0;
+    
+    // Process manifest entities in a sorted order (by path depth) to ensure parent folders are created first
+    java.util.List<String> sortedPaths = new java.util.ArrayList<>();
+    java.util.Set<String> processedFolders = new java.util.HashSet<>();
+    
+    // Collect all folder paths from manifest
+    for ( org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifestEntity entity : manifest.getExportManifestEntities().values() ) {
+      if ( entity.getRepositoryFile() != null && entity.getRepositoryFile().isFolder() ) {
+        sortedPaths.add( entity.getPath() );
+      }
+    }
+    
+    // Sort by path depth (number of slashes) to process parent folders first
+    sortedPaths.sort( new java.util.Comparator<String>() {
+      @Override
+      public int compare( String a, String b ) {
+        return Integer.compare( countSlashes( a ), countSlashes( b ) );
+      }
+      
+      private int countSlashes( String path ) {
+        return (int) path.chars().filter( c -> c == '/' ).count();
+      }
+    });
+
+    for ( String folderPath : sortedPaths ) {
+      if ( processedFolders.contains( folderPath ) ) {
+        continue;
+      }
+
+      org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifestEntity manifestEntity = manifest.getExportManifestEntity( folderPath );
+      if ( manifestEntity == null ) {
+        continue;
+      }
+
+      try {
+        // Build folder bundle from manifest entity
+        RepositoryFileImportBundle.Builder folderBundleBuilder = new RepositoryFileImportBundle.Builder();
+        
+        // Decode file name if needed
+        String decodedPath = folderPath;
+        String folderName = new java.io.File( folderPath ).getName();
+        if ( manifestVersion != null ) {
+          decodedPath = ExportFileNameEncoder.decodeZipFileName( folderPath );
+          folderName = ExportFileNameEncoder.decodeZipFileName( folderName );
+        }
+
+        // Create folder file object
+        RepositoryFile folderFile = manifestEntity.getRepositoryFile();
+        if ( folderFile == null ) {
+          continue;
+        }
+
+        // Set up folder bundle
+        folderBundleBuilder.mime( "text/directory" );
+        folderBundleBuilder.file( new RepositoryFile.Builder( folderFile )
+            .path( decodedPath )
+            .name( folderName )
+            .title( folderFile.getTitle() != null ? folderFile.getTitle() : folderName )
+            .build() );
+        folderBundleBuilder.name( folderName );
+
+        String repositoryFolderPath = RepositoryFilenameUtils.concat( repoBundle.getPath(), decodedPath );
+        folderBundleBuilder.path( repositoryFolderPath );
+
+        // Apply ACL settings from manifest
+        folderBundleBuilder.charSet( importBundle.getCharSet() );
+        folderBundleBuilder.overwriteFile( importBundle.overwriteInRepository() );
+        folderBundleBuilder.applyAclSettings( importBundle.isApplyAclSettings() );
+        folderBundleBuilder.retainOwnership( importBundle.isRetainOwnership() );
+        folderBundleBuilder.overwriteAclSettings( importBundle.isOverwriteAclSettings() );
+        
+        // Get ACL from manifest for this folder
+        org.pentaho.platform.api.repository2.unified.RepositoryFileAcl manifestAcl = manifestEntity.getRepositoryFileAcl();
+        folderBundleBuilder.acl( manifestAcl );
+
+        IPlatformImportBundle folderImportBundle = solutionImportHandler.build( folderBundleBuilder );
+        
+        // Import folder with manifest ACL
+        importer.importFile( folderImportBundle );
+        
+        processedFolders.add( folderPath );
+        foldersImported++;
+
+        if ( solutionImportHandler.isPerformingRestore() ) {
+          solutionImportHandler.getLogger().debug( "Successfully imported folder from manifest: " + repositoryFolderPath );
+        }
+      } catch ( PlatformImportException e ) {
+        if ( solutionImportHandler.isPerformingRestore() ) {
+          solutionImportHandler.getLogger().warn( "Failed to import folder from manifest: " + folderPath + " - " + e.getMessage() );
+        }
+        // Continue processing other folders even if one fails
+      } catch ( Exception e ) {
+        if ( solutionImportHandler.isPerformingRestore() ) {
+          solutionImportHandler.getLogger().warn( "Error importing folder from manifest: " + folderPath + " - " + e.getMessage() );
+        }
+        // Continue processing other folders even if one fails
+      }
+    }
+
+    if ( solutionImportHandler.isPerformingRestore() && foldersImported > 0 ) {
+      solutionImportHandler.getLogger().info( "Imported " + foldersImported + " folders from manifest before file import" );
+    }
+  }
+
+  /**
    * Import repository files and folders from the backup bundle.
    * This is the core implementation for file/folder restoration.
    */
@@ -154,6 +272,12 @@ public class RepositoryFilesImportHelper implements IImportHelper {
 
     LocaleFilesProcessor localeFilesProcessor = new LocaleFilesProcessor();
     IPlatformImporter importer = PentahoSystem.get( IPlatformImporter.class );
+
+    // Import manifest folder entities first to ensure correct ACLs before importing files
+    // This prevents parent folders from being created with default (admin) permissions during file import
+    if ( manifest != null && manifest.getExportManifestEntities() != null ) {
+      importManifestFolderEntities( manifest, importBundle, importer );
+    }
 
     for ( IRepositoryFileBundle fileBundle : solutionImportHandler.getFiles() ) {
       String fileName = fileBundle.getFile().getName();
