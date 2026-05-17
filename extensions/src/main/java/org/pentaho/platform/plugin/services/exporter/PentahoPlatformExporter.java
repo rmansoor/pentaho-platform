@@ -1058,8 +1058,8 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
   /**
    * Export a single folder's metadata including its ownership and ACLs.
-   * This creates a zip entry for the folder and records its metadata in the export manifest,
-   * independent of any files it may contain.
+   * This captures the folder's metadata and ACLs independently of any files it may contain.
+   * Does NOT create duplicate ZIP entries - addToManifest() handles ZIP entry creation.
    * 
    * @param folder the folder to export metadata for
    * @param zos the zip output stream
@@ -1070,29 +1070,21 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       throws IOException {
     
     try {
-      // Don't export root folder without name
+      // Don't export root folder 
       if ( ClientRepositoryPaths.getRootFolderPath().equals( folder.getPath() ) ) {
         getRepositoryExportLogger().trace( "Skipping root folder from explicit export" );
         return;
       }
       
-      // Create zip entry for the folder
-      String folderZipEntry = getFixedZipEntryName( folder, basePath );
-      getRepositoryExportLogger().trace( "Creating folder entry in ZIP: [ " + folderZipEntry + " ]" );
-      
-      zos.putNextEntry( new ZipEntry( folderZipEntry ) );
-      trackFolderAdded( folderZipEntry );
-      zos.closeEntry();
-      
       // Export folder metadata through the parent class method
-      // This handles capturing ACLs and ownership information
+      // This handles creating ZIP entry AND capturing ACLs and ownership information
       exportFolderAcls( folder );
       
       getRepositoryExportLogger().debug( "Successfully exported folder metadata for [ " + folder.getPath() + " ]" );
       
-    } catch ( IOException e ) {
+    } catch ( Exception e ) {
       getRepositoryExportLogger().error( "Error exporting folder metadata for [ " + folder.getPath() + " ]: " + e.getMessage(), e );
-      throw e;
+      throw new IOException( e );
     }
   }
 
