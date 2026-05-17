@@ -38,6 +38,13 @@ import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.core.system.TenantUtils;
 import org.pentaho.platform.plugin.action.mondrian.catalog.IMondrianCatalogService;
 import org.pentaho.platform.plugin.action.mondrian.catalog.MondrianCatalog;
+import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
+import org.pentaho.platform.plugin.services.exporter.DatasourcesExportHelper;
+import org.pentaho.platform.plugin.services.exporter.MetadataExportHelper;
+import org.pentaho.platform.plugin.services.exporter.MetastoreExportHelper;
+import org.pentaho.platform.plugin.services.exporter.MondrianExportHelper;
+import org.pentaho.platform.plugin.services.exporter.RepositoryContentExportHelper;
+import org.pentaho.platform.plugin.services.exporter.UsersAndRolesExportHelper;
 import org.pentaho.platform.plugin.services.importexport.DatabaseConnectionConverter;
 import org.pentaho.platform.plugin.services.importexport.DefaultExportHandler;
 import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
@@ -120,6 +127,23 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     super( ROOT, repository, true );
     setUnifiedRepository( repository );
     addExportHandler( new DefaultExportHandler() );
+    
+    // Register built-in export helpers
+    registerBuiltInExportHelpers( repository );
+  }
+
+  /**
+   * Register built-in export helpers for standard components.
+   * These helpers provide profile-based filtering for selective exports.
+   */
+  protected void registerBuiltInExportHelpers( IUnifiedRepository repository ) {
+    // Register helpers in order of typical export flow
+    addExportHelper( new RepositoryContentExportHelper( this, repository ) );
+    addExportHelper( new DatasourcesExportHelper( this ) );
+    addExportHelper( new MetadataExportHelper( this ) );
+    addExportHelper( new MondrianExportHelper( this ) );
+    addExportHelper( new UsersAndRolesExportHelper( this ) );
+    addExportHelper( new MetastoreExportHelper( this ) );
   }
 
   public File performExport() throws ExportException, IOException {
@@ -150,27 +174,106 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     exportHelpers.add( helper );
   }
 
+  /**
+   * Run all registered export helpers with profile-based filtering and metrics tracking.
+   * Each helper determines if it should execute based on component configuration.
+   */
+  public void runComponentExportHelpers() {
+    for ( IExportHelper helper : exportHelpers ) {
+      try {
+        String helperName = helper.getName();
+        
+        // Check if this is a built-in component helper (not a schedule/user-settings helper)
+        if ( isComponentExportHelper( helper ) ) {
+          getRepositoryExportLogger().debug( "Running component export helper: " + helperName );
+          helper.doExport( this );
+          recordComponentExportSuccess( helperName );
+        }
+      } catch ( ExportException exportException ) {
+        getRepositoryExportLogger().error( "Error performing export of component [ " + helper.getName() + " ] Cause [ " + exportException.getLocalizedMessage() + " ]" );
+        recordComponentExportFailure( helper.getName(), exportException );
+      } catch ( Exception e ) {
+        getRepositoryExportLogger().error( "Unexpected error in export helper [ " + helper.getName() + " ]: " + e.getMessage(), e );
+        recordComponentExportFailure( helper.getName(), e );
+      }
+    }
+  }
+
+  /**
+   * Run non-component export helpers (schedules, user settings).
+   * These helpers run only if their specific profile settings are enabled.
+   */
   public void runExportHelpers() {
     for ( IExportHelper helper : exportHelpers ) {
       try {
-        // Filter helpers based on component configuration
         String helperName = helper.getName();
         
-        if ( "Scheduler".equals( helperName ) && !componentConfig.isIncludeSchedules() ) {
-          getRepositoryExportLogger().debug( "Skipping " + helperName + " export (not included in backup configuration)" );
-          continue;
+        // Filter to only run non-component helpers
+        if ( !isComponentExportHelper( helper ) ) {
+          if ( "Scheduler".equals( helperName ) && !componentConfig.isIncludeSchedules() ) {
+            getRepositoryExportLogger().debug( "Skipping " + helperName + " export (not included in backup configuration)" );
+            continue;
+          }
+          
+          if ( "EmailsGroups".equals( helperName ) && !componentConfig.isIncludeUserSettings() ) {
+            getRepositoryExportLogger().debug( "Skipping " + helperName + " export (not included in backup configuration)" );
+            continue;
+          }
+          
+          getRepositoryExportLogger().info( "Running export helper: " + helperName );
+          helper.doExport( this );
         }
-        
-        if ( "EmailsGroups".equals( helperName ) && !componentConfig.isIncludeUserSettings() ) {
-          getRepositoryExportLogger().debug( "Skipping " + helperName + " export (not included in backup configuration)" );
-          continue;
-        }
-        
-        getRepositoryExportLogger().info( "Running export helper: " + helperName );
-        helper.doExport( this );
       } catch ( ExportException exportException ) {
         getRepositoryExportLogger().error( "Error performing backup of component [ " + helper.getName() + " ] Cause [ " + exportException.getLocalizedMessage() + " ]" );
       }
+    }
+  }
+
+  /**
+   * Determine if a helper is a built-in component helper (not a schedule/user-settings helper).
+   */
+  private boolean isComponentExportHelper( IExportHelper helper ) {
+    String name = helper.getName();
+    return name.contains( "Exporter" ) && 
+           !name.equals( "Scheduler" ) && 
+           !name.equals( "EmailsGroups" );
+  }
+
+  /**
+   * Record successful export of a component.
+   */
+  private void recordComponentExportSuccess( String helperName ) {
+    if ( "RepositoryContentExporter".equals( helperName ) ) {
+      exportMetrics.recordSuccess( ImportExportMetrics.Category.FILES );
+    } else if ( "DatasourcesExporter".equals( helperName ) ) {
+      exportMetrics.recordSuccess( ImportExportMetrics.Category.DATASOURCES );
+    } else if ( "MetadataExporter".equals( helperName ) ) {
+      exportMetrics.recordSuccess( ImportExportMetrics.Category.METADATA );
+    } else if ( "MondrianExporter".equals( helperName ) ) {
+      exportMetrics.recordSuccess( ImportExportMetrics.Category.MONDRIAN );
+    } else if ( "UsersAndRolesExporter".equals( helperName ) ) {
+      exportMetrics.recordSuccess( ImportExportMetrics.Category.USERS );
+    } else if ( "MetastoreExporter".equals( helperName ) ) {
+      exportMetrics.recordSuccess( ImportExportMetrics.Category.METASTORE );
+    }
+  }
+
+  /**
+   * Record failed export of a component.
+   */
+  private void recordComponentExportFailure( String helperName, Exception exception ) {
+    if ( "RepositoryContentExporter".equals( helperName ) ) {
+      exportMetrics.recordFailure( ImportExportMetrics.Category.FILES, "repository", exception );
+    } else if ( "DatasourcesExporter".equals( helperName ) ) {
+      exportMetrics.recordFailure( ImportExportMetrics.Category.DATASOURCES, "datasources", exception );
+    } else if ( "MetadataExporter".equals( helperName ) ) {
+      exportMetrics.recordFailure( ImportExportMetrics.Category.METADATA, "models", exception );
+    } else if ( "MondrianExporter".equals( helperName ) ) {
+      exportMetrics.recordFailure( ImportExportMetrics.Category.MONDRIAN, "schemas", exception );
+    } else if ( "UsersAndRolesExporter".equals( helperName ) ) {
+      exportMetrics.recordFailure( ImportExportMetrics.Category.USERS, "users", exception );
+    } else if ( "MetastoreExporter".equals( helperName ) ) {
+      exportMetrics.recordFailure( ImportExportMetrics.Category.METASTORE, "metastore", exception );
     }
   }
 
