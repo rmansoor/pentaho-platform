@@ -16,6 +16,8 @@ import org.pentaho.database.model.IDatabaseConnection;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.api.repository.datasource.DatasourceMgmtServiceException;
+import org.pentaho.platform.api.repository.datasource.IDatasourceMgmtService;
+import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.DatabaseConnectionConverter;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
@@ -29,6 +31,7 @@ import java.util.List;
  */
 public class DatasourcesExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
+  private IDatasourceMgmtService datasourceMgmtService;
 
   public DatasourcesExportHelper( PentahoPlatformExporter exporter ) {
     this.exporter = exporter;
@@ -53,7 +56,7 @@ public class DatasourcesExportHelper implements IExportHelper {
       int failedCount = 0;
       int databaseConnectionsSize = 0;
       
-      List<IDatabaseConnection> databaseConnections = exporter.getDatasourceMgmtService().getDatasources();
+      List<IDatabaseConnection> databaseConnections = getDatasourceMgmtService().getDatasources();
       if ( databaseConnections != null ) {
         databaseConnectionsSize = databaseConnections.size();
         exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_COUNT_JDBC_DATASOURCE_TO_EXPORT", databaseConnectionsSize ) );
@@ -86,5 +89,16 @@ public class DatasourcesExportHelper implements IExportHelper {
       }
       throw new ExportException( "Failed to export datasources: " + e.getMessage(), e );
     }
+  }
+
+  public IDatasourceMgmtService getDatasourceMgmtService() {
+    if ( datasourceMgmtService == null ) {
+      datasourceMgmtService = PentahoSystem.get( IDatasourceMgmtService.class, exporter.getPublicSession() );
+    }
+    return datasourceMgmtService;
+  }
+
+  public void setDatasourceMgmtService( IDatasourceMgmtService datasourceMgmtService ) {
+    this.datasourceMgmtService = datasourceMgmtService;
   }
 }

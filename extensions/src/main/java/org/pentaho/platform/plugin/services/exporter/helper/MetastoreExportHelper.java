@@ -12,11 +12,28 @@
 
 package org.pentaho.platform.plugin.services.exporter.helper;
 
+import org.apache.commons.io.IOUtils;
+import org.pentaho.di.core.exception.KettleException;
+import org.pentaho.metastore.api.IMetaStore;
+import org.pentaho.metastore.stores.xml.XmlMetaStore;
+import org.pentaho.metastore.util.MetaStoreUtil;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
+import org.pentaho.platform.plugin.services.exporter.MetaStoreExportUtil;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
+import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMetaStore;
+import org.pentaho.platform.plugin.services.messages.Messages;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Export helper for metastore configuration.
@@ -45,7 +62,7 @@ public class MetastoreExportHelper implements IExportHelper {
       return;
     }
     try {
-      exporter.delegateExportMetastore();
+      exportMetastore();
       if ( exporter.getExportMetrics() != null ) {
         exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.METASTORE );
       }
@@ -54,6 +71,107 @@ public class MetastoreExportHelper implements IExportHelper {
         exporter.getExportMetrics().recordFailure( ImportExportMetrics.Category.METASTORE, "metastore", e );
       }
       throw new ExportException( "Failed to export metastore: " + e.getMessage(), e );
+    }
+  }
+
+  /**
+   * Export metastore configuration to the export bundle.
+   * This method contains the full export logic for metastore.
+   * 
+   * @throws IOException if I/O error occurs
+   */
+  protected void exportMetastore() throws IOException {
+    exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_METASTORE" ) );
+    try {
+      exporter.getRepositoryExportLogger().debug( "Starting to copy metastore to a temp location" );
+      Path tempDirectory = Files.createTempDirectory( "metastore" );
+      IMetaStore xmlMetaStore = new XmlMetaStore( tempDirectory.toString() );
+      MetaStoreUtil.copy( getRepoMetaStore(), xmlMetaStore );
+      exporter.getRepositoryExportLogger().debug( "Finished to copying metastore to a temp location" );
+      exporter.getRepositoryExportLogger().debug( "Starting to zip the metastore" );
+      File zippedMetastore = Files.createTempFile( "metastore", ".zip" ).toFile();
+      ZipOutputStream zipOutputStream = new ZipOutputStream( new FileOutputStream( zippedMetastore ) );
+      zipFolder( tempDirectory.toFile(), zipOutputStream, tempDirectory.toString() );
+      zipOutputStream.close();
+      exporter.getRepositoryExportLogger().debug( "Finished zipping the metastore" );
+      // now that we have the zipped content of an xml metastore, we need to write that to the export bundle
+      FileInputStream zis = new FileInputStream( zippedMetastore );
+      String zipFileLocation = "metastore" + ".mzip";
+      ZipEntry metastoreZipFileZipEntry = new ZipEntry( zipFileLocation );
+      exporter.getRepositoryExportLogger().debug( "Starting to add the metastore zip to the bundle" );
+      exporter.getZipOutputStream().putNextEntry( metastoreZipFileZipEntry );
+      exporter.trackFileAdded( zipFileLocation );
+      try {
+        IOUtils.copy( zis, exporter.getZipOutputStream() );
+        exporter.getRepositoryExportLogger().debug( "Finished adding the metastore zip to the bundle" );
+      } catch ( IOException e ) {
+        throw e;
+      } finally {
+        zis.close();
+        exporter.getZipOutputStream().closeEntry();
+      }
+      exporter.getRepositoryExportLogger().debug( "Starting to add the metastore to the manifest" );
+      // add an ExportManifest entry for the metastore.
+      ExportManifestMetaStore exportManifestMetaStore = new ExportManifestMetaStore( zipFileLocation,
+          getRepoMetaStore().getName(),
+          getRepoMetaStore().getDescription() );
+
+      exporter.getExportManifest().setMetaStore( exportManifestMetaStore );
+
+      zippedMetastore.deleteOnExit();
+      tempDirectory.toFile().deleteOnExit();
+      exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_SUCCESSFUL_EXPORT_METASTORE" ) );
+    } catch ( Exception e ) {
+      exporter.getRepositoryExportLogger().error( Messages.getInstance().getString( "PentahoPlatformExporter.ERROR.ExportingMetaStore" ) );
+      exporter.getRepositoryExportLogger().debug( Messages.getInstance().getString( "PentahoPlatformExporter.ERROR.ExportingMetaStore" ), e );
+    }
+    exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_END_EXPORT_METASTORE" ) );
+  }
+
+  protected IMetaStore getRepoMetaStore() {
+    IMetaStore metastore = exporter.getMetastore();
+    if ( metastore == null ) {
+      try {
+        metastore = MetaStoreExportUtil.connectToRepository( null ).getRepositoryMetaStore();
+        exporter.setMetastore( metastore );
+      } catch ( KettleException e ) {
+        // can't get the metastore to import into
+        exporter.getRepositoryExportLogger().debug( "Can't get the metastore to import into" );
+      }
+    }
+    return metastore;
+  }
+
+  protected void zipFolder( File file, ZipOutputStream zos, String pathPrefixToRemove ) {
+    if ( file.isDirectory() ) {
+      File[] listFiles = file.listFiles();
+      for ( File listFile : listFiles ) {
+        if ( listFile.isDirectory() ) {
+          zipFolder( listFile, zos, pathPrefixToRemove );
+        } else {
+          if ( !pathPrefixToRemove.endsWith( File.separator ) ) {
+            pathPrefixToRemove += File.separator;
+          }
+          String path = listFile.getPath().replace( pathPrefixToRemove, "" );
+          ZipEntry entry = new ZipEntry( path );
+          FileInputStream fis = null;
+          try {
+            zos.putNextEntry( entry );
+            exporter.trackFileAdded( path );
+            fis = new FileInputStream( listFile );
+            IOUtils.copy( fis, zos );
+          } catch ( IOException e ) {
+            e.printStackTrace();
+          } finally {
+            try {
+              zos.closeEntry();
+            } catch ( IOException e ) {
+              e.printStackTrace();
+            }
+            IOUtils.closeQuietly( fis );
+          }
+        }
+      }
     }
   }
 }
