@@ -330,6 +330,21 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
     zos = new ZipOutputStream( new FileOutputStream( exportFile ) );
 
+    // Initialize rootFolder in manifest at the start, before any helpers run
+    // This ensures it's always available, even if RepositoryContentExportHelper is skipped
+    String rootFolderPath = this.path;
+    if ( rootFolderPath != null && rootFolderPath.length() > 0 ) {
+      int lastSlashIndex = rootFolderPath.lastIndexOf( "/" );
+      if ( lastSlashIndex >= 0 ) {
+        rootFolderPath = rootFolderPath.substring( 0, lastSlashIndex + 1 );
+      } else {
+        rootFolderPath = "/";
+      }
+    } else {
+      rootFolderPath = "/";
+    }
+    getExportManifest().getManifestInformation().setRootFolder( rootFolderPath );
+
     // Run all export helpers
     try {
       runAllExportHelpers();
