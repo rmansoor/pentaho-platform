@@ -37,10 +37,18 @@ import java.util.zip.ZipOutputStream;
 
 /**
  * Export helper for metastore configuration.
+ * Responsible for:
+ * - Lazy-loading and caching the repository metastore
+ * - Exporting metastore configuration to the export bundle
+ * - Handling errors during metastore initialization and export
+ * 
+ * The metastore initialization logic was moved here from PentahoPlatformExporter
+ * to consolidate metastore handling within the helper itself.
  */
 public class MetastoreExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
   private BackupComponentConfig componentConfig;
+  private IMetaStore cachedMetastore;
 
   public MetastoreExportHelper( PentahoPlatformExporter exporter ) {
     this.exporter = exporter;
@@ -128,18 +136,22 @@ public class MetastoreExportHelper implements IExportHelper {
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_END_EXPORT_METASTORE" ) );
   }
 
+  /**
+   * Get or lazy-load the repository metastore.
+   * Caches the metastore locally to ensure consistent instance throughout export.
+   * 
+   * @return IMetaStore instance, or null if unable to initialize
+   */
   protected IMetaStore getRepoMetaStore() {
-    IMetaStore metastore = exporter.getMetastore();
-    if ( metastore == null ) {
+    if ( cachedMetastore == null ) {
       try {
-        metastore = MetaStoreExportUtil.connectToRepository( null ).getRepositoryMetaStore();
-        exporter.setMetastore( metastore );
+        cachedMetastore = MetaStoreExportUtil.connectToRepository( null ).getRepositoryMetaStore();
+        exporter.getRepositoryExportLogger().debug( "Initialized repository metastore" );
       } catch ( KettleException e ) {
-        // can't get the metastore to import into
-        exporter.getRepositoryExportLogger().debug( "Can't get the metastore to import into" );
+        exporter.getRepositoryExportLogger().debug( "Unable to initialize metastore: " + e.getMessage() );
       }
     }
-    return metastore;
+    return cachedMetastore;
   }
 
   protected void zipFolder( File file, ZipOutputStream zos, String pathPrefixToRemove ) {

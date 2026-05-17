@@ -220,6 +220,9 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
   /**
    * Public accessor for metastore.
+   * Note: Metastore initialization/lazy-loading is now managed by MetastoreExportHelper.
+   * This accessor is maintained for backward compatibility and for sharing the instance
+   * across helpers if needed.
    */
   public IMetaStore getMetastore() {
     return metastore;
@@ -476,22 +479,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
 
 
-  protected IMetaStore getRepoMetaStore() {
-    if ( metastore == null ) {
-      try {
-        metastore = MetaStoreExportUtil.connectToRepository( null ).getRepositoryMetaStore();
-      } catch ( KettleException e ) {
-        // can't get the metastore to import into
-        getRepositoryExportLogger().debug( "Can't get the metastore to import into" );
 
-      }
-    }
-    return metastore;
-  }
-
-  protected void setRepoMetaStore( IMetaStore metastore ) {
-    this.metastore = metastore;
-  }
 
   protected void zipFolder( File file, ZipOutputStream zos, String pathPrefixToRemove ) {
     if ( file.isDirectory() ) {
@@ -555,7 +543,10 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   }
 
   /**
-   * Public accessor for setting metastore
+   * Public accessor for setting metastore.
+   * Note: Metastore initialization/lazy-loading is now managed by MetastoreExportHelper.
+   * This setter is maintained for backward compatibility and testing purposes.
+   * Changes made here will be reflected across all helpers that use getMetastore().
    */
   public void setMetastore( IMetaStore metastore ) {
     this.metastore = metastore;

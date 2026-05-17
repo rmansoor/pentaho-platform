@@ -378,7 +378,7 @@ public class PentahoPlatformExporterTest {
   public void testExportMetaStore() throws Exception {
     exporterSpy.zos = mock( ZipOutputStream.class );
     IMetaStore metastore = mock( IMetaStore.class );
-    exporterSpy.setRepoMetaStore( metastore );
+    exporterSpy.setMetastore( metastore );
     ExportManifest manifest = mock( ExportManifest.class );
     exporterSpy.setExportManifest( manifest );
     // mock logger to prevent npe
