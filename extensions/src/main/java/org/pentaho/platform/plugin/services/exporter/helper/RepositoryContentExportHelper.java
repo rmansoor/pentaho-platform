@@ -18,6 +18,7 @@ import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 
 /**
  * Export helper for repository content (files and folders).
@@ -56,7 +57,13 @@ public class RepositoryContentExportHelper implements IExportHelper {
     try {
       RepositoryFile rootFolder = repository.getFile( "/" );
       exporter.delegateExportFileContent( rootFolder );
+      if ( exporter.getExportMetrics() != null ) {
+        exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.FILES );
+      }
     } catch ( Exception e ) {
+      if ( exporter.getExportMetrics() != null ) {
+        exporter.getExportMetrics().recordFailure( ImportExportMetrics.Category.FILES, "repository", e );
+      }
       throw new ExportException( "Failed to export repository content: " + e.getMessage(), e );
     }
   }

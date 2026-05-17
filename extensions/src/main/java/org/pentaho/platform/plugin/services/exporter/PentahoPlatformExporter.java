@@ -287,15 +287,13 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
         // Check if this is a built-in component helper (not a schedule/user-settings helper)
         if ( isComponentExportHelper( helper ) ) {
           getRepositoryExportLogger().debug( "Running component export helper: " + helperName );
+          // Helper is responsible for recording its own metrics
           helper.doExport( this );
-          recordComponentExportSuccess( helperName );
         }
       } catch ( ExportException exportException ) {
         getRepositoryExportLogger().error( "Error performing export of component [ " + helper.getName() + " ] Cause [ " + exportException.getLocalizedMessage() + " ]" );
-        recordComponentExportFailure( helper.getName(), exportException );
       } catch ( Exception e ) {
         getRepositoryExportLogger().error( "Unexpected error in export helper [ " + helper.getName() + " ]: " + e.getMessage(), e );
-        recordComponentExportFailure( helper.getName(), e );
       }
     }
   }
@@ -338,44 +336,6 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
     return name.contains( "Exporter" ) && 
            !name.equals( "Scheduler" ) && 
            !name.equals( "EmailsGroups" );
-  }
-
-  /**
-   * Record successful export of a component.
-   */
-  private void recordComponentExportSuccess( String helperName ) {
-    if ( "RepositoryContentExporter".equals( helperName ) ) {
-      exportMetrics.recordSuccess( ImportExportMetrics.Category.FILES );
-    } else if ( "DatasourcesExporter".equals( helperName ) ) {
-      exportMetrics.recordSuccess( ImportExportMetrics.Category.DATASOURCES );
-    } else if ( "MetadataExporter".equals( helperName ) ) {
-      exportMetrics.recordSuccess( ImportExportMetrics.Category.METADATA );
-    } else if ( "MondrianExporter".equals( helperName ) ) {
-      exportMetrics.recordSuccess( ImportExportMetrics.Category.MONDRIAN );
-    } else if ( "UsersAndRolesExporter".equals( helperName ) ) {
-      exportMetrics.recordSuccess( ImportExportMetrics.Category.USERS );
-    } else if ( "MetastoreExporter".equals( helperName ) ) {
-      exportMetrics.recordSuccess( ImportExportMetrics.Category.METASTORE );
-    }
-  }
-
-  /**
-   * Record failed export of a component.
-   */
-  private void recordComponentExportFailure( String helperName, Exception exception ) {
-    if ( "RepositoryContentExporter".equals( helperName ) ) {
-      exportMetrics.recordFailure( ImportExportMetrics.Category.FILES, "repository", exception );
-    } else if ( "DatasourcesExporter".equals( helperName ) ) {
-      exportMetrics.recordFailure( ImportExportMetrics.Category.DATASOURCES, "datasources", exception );
-    } else if ( "MetadataExporter".equals( helperName ) ) {
-      exportMetrics.recordFailure( ImportExportMetrics.Category.METADATA, "models", exception );
-    } else if ( "MondrianExporter".equals( helperName ) ) {
-      exportMetrics.recordFailure( ImportExportMetrics.Category.MONDRIAN, "schemas", exception );
-    } else if ( "UsersAndRolesExporter".equals( helperName ) ) {
-      exportMetrics.recordFailure( ImportExportMetrics.Category.USERS, "users", exception );
-    } else if ( "MetastoreExporter".equals( helperName ) ) {
-      exportMetrics.recordFailure( ImportExportMetrics.Category.METASTORE, "metastore", exception );
-    }
   }
 
   /**

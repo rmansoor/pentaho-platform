@@ -16,6 +16,7 @@ import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 
 /**
  * Export helper for users and roles.
@@ -45,7 +46,13 @@ public class UsersAndRolesExportHelper implements IExportHelper {
     }
     try {
       exporter.delegateExportUsersAndRoles();
+      if ( exporter.getExportMetrics() != null ) {
+        exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.USERS );
+      }
     } catch ( Exception e ) {
+      if ( exporter.getExportMetrics() != null ) {
+        exporter.getExportMetrics().recordFailure( ImportExportMetrics.Category.USERS, "users", e );
+      }
       throw new ExportException( "Failed to export users and roles: " + e.getMessage(), e );
     }
   }

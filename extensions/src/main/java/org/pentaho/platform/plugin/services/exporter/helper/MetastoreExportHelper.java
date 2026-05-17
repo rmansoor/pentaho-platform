@@ -16,6 +16,7 @@ import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 
 /**
  * Export helper for metastore configuration.
@@ -45,7 +46,13 @@ public class MetastoreExportHelper implements IExportHelper {
     }
     try {
       exporter.delegateExportMetastore();
+      if ( exporter.getExportMetrics() != null ) {
+        exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.METASTORE );
+      }
     } catch ( Exception e ) {
+      if ( exporter.getExportMetrics() != null ) {
+        exporter.getExportMetrics().recordFailure( ImportExportMetrics.Category.METASTORE, "metastore", e );
+      }
       throw new ExportException( "Failed to export metastore: " + e.getMessage(), e );
     }
   }

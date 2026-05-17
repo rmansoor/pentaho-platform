@@ -16,6 +16,7 @@ import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 
 /**
  * Export helper for metadata models.
@@ -45,7 +46,13 @@ public class MetadataExportHelper implements IExportHelper {
     }
     try {
       exporter.delegateExportMetadataModels();
+      if ( exporter.getExportMetrics() != null ) {
+        exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.METADATA );
+      }
     } catch ( Exception e ) {
+      if ( exporter.getExportMetrics() != null ) {
+        exporter.getExportMetrics().recordFailure( ImportExportMetrics.Category.METADATA, "models", e );
+      }
       throw new ExportException( "Failed to export metadata models: " + e.getMessage(), e );
     }
   }

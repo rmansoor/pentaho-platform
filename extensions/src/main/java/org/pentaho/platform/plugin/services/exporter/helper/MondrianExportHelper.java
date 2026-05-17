@@ -16,6 +16,7 @@ import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 
 /**
  * Export helper for Mondrian OLAP schemas.
@@ -45,7 +46,13 @@ public class MondrianExportHelper implements IExportHelper {
     }
     try {
       exporter.delegateExportMondrianSchemas();
+      if ( exporter.getExportMetrics() != null ) {
+        exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.MONDRIAN );
+      }
     } catch ( Exception e ) {
+      if ( exporter.getExportMetrics() != null ) {
+        exporter.getExportMetrics().recordFailure( ImportExportMetrics.Category.MONDRIAN, "schemas", e );
+      }
       throw new ExportException( "Failed to export Mondrian schemas: " + e.getMessage(), e );
     }
   }
