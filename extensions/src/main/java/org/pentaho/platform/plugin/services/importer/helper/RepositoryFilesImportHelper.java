@@ -233,8 +233,20 @@ public class RepositoryFilesImportHelper implements IImportHelper {
 
         IPlatformImportBundle folderImportBundle = solutionImportHandler.build( folderBundleBuilder );
         
-        // Import folder with manifest ACL
-        importer.importFile( folderImportBundle );
+        try {
+          // Import folder with manifest ACL
+          importer.importFile( folderImportBundle );
+        } catch ( Exception e ) {
+          // If folder import fails, log and continue
+          // This can happen if parent doesn't exist yet, but parent folders will be created
+          // as needed during the main file import process
+          if ( solutionImportHandler.isPerformingRestore() ) {
+            solutionImportHandler.getLogger().debug( "Could not import folder from manifest (may be created during file import): " 
+                + repositoryFolderPath + " - " + e.getMessage() );
+          }
+          // Continue to next folder even if this one fails
+          continue;
+        }
         
         processedFolders.add( folderPath );
         foldersImported++;
@@ -242,14 +254,9 @@ public class RepositoryFilesImportHelper implements IImportHelper {
         if ( solutionImportHandler.isPerformingRestore() ) {
           solutionImportHandler.getLogger().debug( "Successfully imported folder from manifest: " + repositoryFolderPath );
         }
-      } catch ( PlatformImportException e ) {
-        if ( solutionImportHandler.isPerformingRestore() ) {
-          solutionImportHandler.getLogger().warn( "Failed to import folder from manifest: " + folderPath + " - " + e.getMessage() );
-        }
-        // Continue processing other folders even if one fails
       } catch ( Exception e ) {
         if ( solutionImportHandler.isPerformingRestore() ) {
-          solutionImportHandler.getLogger().warn( "Error importing folder from manifest: " + folderPath + " - " + e.getMessage() );
+          solutionImportHandler.getLogger().warn( "Could not import folder from manifest: " + folderPath + " - " + e.getMessage() );
         }
         // Continue processing other folders even if one fails
       }
