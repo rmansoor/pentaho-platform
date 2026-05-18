@@ -221,6 +221,11 @@ public class RepositoryFilesImportHelper implements IImportHelper {
         folderBundleBuilder.retainOwnership( importBundle.isRetainOwnership() );
         folderBundleBuilder.overwriteAclSettings( importBundle.isOverwriteAclSettings() );
         
+        // Set required properties from manifest entity to prevent NullPointerException
+        // The hidden and schedulable properties must be set explicitly
+        folderBundleBuilder.hidden( folderFile.isHidden() != null ? folderFile.isHidden() : false );
+        folderBundleBuilder.schedulable( folderFile.isSchedulable() != null ? folderFile.isSchedulable() : false );
+        
         // Get ACL from manifest for this folder
         org.pentaho.platform.api.repository2.unified.RepositoryFileAcl manifestAcl = manifestEntity.getRepositoryFileAcl();
         folderBundleBuilder.acl( manifestAcl );
