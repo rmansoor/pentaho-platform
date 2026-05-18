@@ -36,7 +36,6 @@ import java.util.zip.ZipEntry;
  */
 public class MetadataExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
-  private BackupComponentConfig componentConfig;
   private IMetadataDomainRepository metadataDomainRepository;
 
   public MetadataExportHelper( PentahoPlatformExporter exporter ) {
@@ -49,7 +48,6 @@ public class MetadataExportHelper implements IExportHelper {
   }
 
   public boolean shouldExecute( BackupComponentConfig config ) {
-    this.componentConfig = config;
     return config != null && config.isIncludeDatasources();
   }
 
@@ -79,10 +77,6 @@ public class MetadataExportHelper implements IExportHelper {
    * @throws IOException if I/O error occurs
    */
   protected void exportMetadataModels() throws IOException {
-    if ( !componentConfig.isIncludeDatasources() ) {
-      exporter.getRepositoryExportLogger().debug( "Skipping metadata models export (datasources not included in backup configuration)" );
-      return;
-    }
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_METADATA" ) );
     int successfulExportMetadataDSCount = 0;
     int metadataDSSize = 0;

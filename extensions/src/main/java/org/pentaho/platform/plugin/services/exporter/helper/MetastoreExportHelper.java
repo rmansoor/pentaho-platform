@@ -47,7 +47,6 @@ import java.util.zip.ZipOutputStream;
  */
 public class MetastoreExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
-  private BackupComponentConfig componentConfig;
   private IMetaStore cachedMetastore;
 
   public MetastoreExportHelper( PentahoPlatformExporter exporter ) {
@@ -60,7 +59,6 @@ public class MetastoreExportHelper implements IExportHelper {
   }
 
   public boolean shouldExecute( BackupComponentConfig config ) {
-    this.componentConfig = config;
     return config != null && config.isIncludeMetastore();
   }
 

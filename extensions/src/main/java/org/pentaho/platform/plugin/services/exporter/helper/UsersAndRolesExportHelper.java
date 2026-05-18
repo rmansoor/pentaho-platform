@@ -44,7 +44,6 @@ import java.util.Set;
  */
 public class UsersAndRolesExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
-  private BackupComponentConfig componentConfig;
   private IUserSettingService userSettingService;
 
   public UsersAndRolesExportHelper( PentahoPlatformExporter exporter ) {
@@ -57,7 +56,6 @@ public class UsersAndRolesExportHelper implements IExportHelper {
   }
 
   public boolean shouldExecute( BackupComponentConfig config ) {
-    this.componentConfig = config;
     return config != null && config.isIncludeUsers();
   }
 

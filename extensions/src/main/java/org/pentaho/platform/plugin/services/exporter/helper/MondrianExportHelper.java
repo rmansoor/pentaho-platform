@@ -41,7 +41,6 @@ import java.util.zip.ZipEntry;
  */
 public class MondrianExportHelper implements IExportHelper {
   private PentahoPlatformExporter exporter;
-  private BackupComponentConfig componentConfig;
   private IMondrianCatalogService mondrianCatalogService;
   private MondrianCatalogRepositoryHelper mondrianCatalogRepositoryHelper;
 
@@ -55,7 +54,6 @@ public class MondrianExportHelper implements IExportHelper {
   }
 
   public boolean shouldExecute( BackupComponentConfig config ) {
-    this.componentConfig = config;
     return config != null && config.isIncludeMondrian();
   }
 
