@@ -64,7 +64,8 @@ public class RepositoryFilesImportHelper implements IImportHelper {
   public boolean shouldExecute( Object componentOverrides ) {
     // Execute if:
     // 1. Content is included in the profile, OR
-    // 2. There are files in the manifest (for dependencies like schedule inputs)
+    // 2. Schedules are included in the profile, OR  
+    // 3. There are files in the manifest (for dependencies like schedule inputs)
     if ( componentOverrides == null ) {
       return true; // Full restore, include content
     }
@@ -75,6 +76,11 @@ public class RepositoryFilesImportHelper implements IImportHelper {
 
       // Include if content is explicitly requested
       if ( config.isIncludeContent() ) {
+        return true;
+      }
+      
+      // Include if schedules are explicitly requested (schedule files need to be imported)
+      if ( config.isIncludeSchedules() ) {
         return true;
       }
 
