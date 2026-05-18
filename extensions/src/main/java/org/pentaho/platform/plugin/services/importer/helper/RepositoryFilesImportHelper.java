@@ -234,6 +234,34 @@ public class RepositoryFilesImportHelper implements IImportHelper {
         IPlatformImportBundle folderImportBundle = solutionImportHandler.build( folderBundleBuilder );
         
         try {
+          // Extract parent path from the folder path
+          String parentPath = RepositoryFilenameUtils.getFullPathNoEndSeparator( repositoryFolderPath );
+          
+          if ( parentPath != null && !parentPath.isEmpty() && !parentPath.equals( "/" ) ) {
+            try {
+              // Get repository and verify parent exists
+              org.pentaho.platform.api.repository2.unified.IUnifiedRepository repo = 
+                  PentahoSystem.get( org.pentaho.platform.api.repository2.unified.IUnifiedRepository.class );
+              
+              if ( repo != null ) {
+                RepositoryFile parentFile = repo.getFile( parentPath );
+                if ( parentFile != null && parentFile.getId() != null ) {
+                  if ( solutionImportHandler.isPerformingRestore() ) {
+                    solutionImportHandler.getLogger().debug( "Parent folder found: " + parentPath + " with ID: " + parentFile.getId() );
+                  }
+                } else {
+                  if ( solutionImportHandler.isPerformingRestore() ) {
+                    solutionImportHandler.getLogger().debug( "Parent folder does not exist, will be created JIT: " + parentPath );
+                  }
+                }
+              }
+            } catch ( Exception e ) {
+              if ( solutionImportHandler.isPerformingRestore() ) {
+                solutionImportHandler.getLogger().debug( "Could not verify parent folder: " + e.getMessage() );
+              }
+            }
+          }
+          
           // Import folder with manifest ACL
           importer.importFile( folderImportBundle );
         } catch ( Exception e ) {
