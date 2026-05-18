@@ -273,14 +273,17 @@ public class RepositoryFilesImportHelper implements IImportHelper {
           // Import folder with manifest ACL
           importer.importFile( folderImportBundle );
         } catch ( Exception e ) {
-          // If folder import fails, log and continue
+          // If folder import fails, log the error but continue
           // This can happen if parent doesn't exist yet, but parent folders will be created
           // as needed during the main file import process
           if ( solutionImportHandler.isPerformingRestore() ) {
-            solutionImportHandler.getLogger().debug( "Could not import folder from manifest (may be created during file import): " 
-                + repositoryFolderPath + " - " + e.getMessage() );
+            solutionImportHandler.getLogger().warn( "Could not import folder from manifest: " 
+                + repositoryFolderPath + " - " + e.getMessage() + " (will attempt JIT creation)" );
+            solutionImportHandler.getLogger().debug( "Folder import stack trace", e );
           }
           // Continue to next folder even if this one fails
+          // Mark as processed to avoid duplicate attempts
+          processedFolders.add( folderPath );
           continue;
         }
         
