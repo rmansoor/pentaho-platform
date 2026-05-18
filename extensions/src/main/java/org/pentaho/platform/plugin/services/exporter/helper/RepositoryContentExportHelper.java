@@ -59,7 +59,8 @@ public class RepositoryContentExportHelper implements IExportHelper {
 
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    if ( !shouldExecute( componentConfig ) ) {
+    BackupComponentConfig config = exporter != null ? exporter.getComponentConfig() : null;
+    if ( !shouldExecute( config ) ) {
       return;
     }
 
