@@ -208,6 +208,7 @@ public class RepositoryFilesImportHelper implements IImportHelper {
             .path( decodedPath )
             .name( folderName )
             .title( folderFile.getTitle() != null ? folderFile.getTitle() : folderName )
+            .folder( true )
             .build() );
         folderBundleBuilder.name( folderName );
 
