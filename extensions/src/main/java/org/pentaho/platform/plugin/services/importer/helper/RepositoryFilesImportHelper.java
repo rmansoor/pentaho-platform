@@ -224,9 +224,12 @@ public class RepositoryFilesImportHelper implements IImportHelper {
         // Apply ACL settings from manifest
         folderBundleBuilder.charSet( importBundle.getCharSet() );
         folderBundleBuilder.overwriteFile( importBundle.overwriteInRepository() );
-        folderBundleBuilder.applyAclSettings( importBundle.isApplyAclSettings() );
-        folderBundleBuilder.retainOwnership( importBundle.isRetainOwnership() );
-        folderBundleBuilder.overwriteAclSettings( importBundle.isOverwriteAclSettings() );
+        
+        // CRITICAL: For manifest-imported folders, we MUST apply and retain the manifest ACLs
+        // This ensures folders inherit their original owner from the export manifest
+        folderBundleBuilder.applyAclSettings( true );
+        folderBundleBuilder.retainOwnership( true );
+        folderBundleBuilder.overwriteAclSettings( true );
         
         // Set required properties from manifest entity to prevent NullPointerException
         // The hidden and schedulable properties must be set explicitly
