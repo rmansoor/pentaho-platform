@@ -41,8 +41,19 @@ public class BackupComponentConfig implements Serializable {
   private boolean includeMetastore = true;
   @JsonProperty("includeSchedules")
   private boolean includeSchedules = true;
+  
+  /**
+   * Include user settings, preferences, email addresses, and group assignments.
+   * When true, the backup will include:
+   * - Email addresses and email group settings
+   * - Group definitions and memberships
+   * - User preferences and personal settings
+   * 
+   * Controlled by the EmailsGroupsExportUtil in the scheduler plugin.
+   */
   @JsonProperty("includeUserSettings")
   private boolean includeUserSettings = true;
+  
   @JsonProperty("includeMondrian")
   private boolean includeMondrian = true;
 
@@ -150,7 +161,16 @@ public class BackupComponentConfig implements Serializable {
   }
 
   /**
-   * Schedules backup - job schedules only
+   * Schedules backup - job schedules and required dependencies only
+   * This profile includes:
+   * - Schedules and scheduled jobs
+   * - Users (as owners of schedules)
+   * 
+   * This profile EXCLUDES:
+   * - User settings (emails/groups are NOT exported)
+   * - Repository content (files/folders are only exported if referenced by schedules)
+   * 
+   * Use SETTINGS or FULL_SYSTEM profile if you need to export emails and groups.
    */
   public static BackupComponentConfig schedules() {
     BackupComponentConfig config = new BackupComponentConfig( "Schedules Backup" );
@@ -166,7 +186,14 @@ public class BackupComponentConfig implements Serializable {
   }
 
   /**
-   * Settings backup - user settings and email configuration only
+   * Settings backup - user settings, email configuration, and group assignments
+   * This profile includes:
+   * - Email addresses and email group settings
+   * - Group definitions and memberships
+   * - User preferences and settings
+   * 
+   * This is separate from USER_SETTINGS flag and is used to control export of
+   * emails/groups by EmailsGroupsExportUtil in the scheduler plugin.
    */
   public static BackupComponentConfig settings() {
     BackupComponentConfig config = new BackupComponentConfig( "Settings Backup" );
