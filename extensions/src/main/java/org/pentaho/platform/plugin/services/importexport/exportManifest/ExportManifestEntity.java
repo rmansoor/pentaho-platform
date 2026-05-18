@@ -33,6 +33,7 @@ import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings
 import org.pentaho.platform.repository.usersettings.UserSettingService;
 import org.pentaho.platform.repository2.messages.Messages;
 import org.pentaho.platform.repository2.unified.jcr.RepositoryFileProxy;
+import org.pentaho.platform.repository.RepositoryFilenameUtils;
 import org.pentaho.platform.security.userroledao.DefaultTenantedPrincipleNameResolver;
 import org.pentaho.platform.util.messages.LocaleHelper;
 
@@ -170,6 +171,19 @@ public class ExportManifestEntity {
     String adjustedPath = repositoryFile.getPath().substring( rootFolder.length() );
     entityMetaData.setPath( adjustedPath );
     entityMetaData.setTitle( repositoryFile.getTitle() );
+    
+    // Store parent path for easier import lookup
+    if ( repositoryFile.isFolder() ) {
+      String parentPath = RepositoryFilenameUtils.getFullPathNoEndSeparator( repositoryFile.getPath() );
+      if ( parentPath != null && !parentPath.isEmpty() && !parentPath.equals( "/" ) ) {
+        String adjustedParentPath = parentPath.substring( rootFolder.length() );
+        if ( adjustedParentPath.isEmpty() ) {
+          adjustedParentPath = "/";
+        }
+        entityMetaData.setParentPath( adjustedParentPath );
+      }
+    }
+    
     setPath( adjustedPath );
   }
 

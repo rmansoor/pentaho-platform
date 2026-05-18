@@ -234,24 +234,26 @@ public class RepositoryFilesImportHelper implements IImportHelper {
         IPlatformImportBundle folderImportBundle = solutionImportHandler.build( folderBundleBuilder );
         
         try {
-          // Extract parent path from the folder path
-          String parentPath = RepositoryFilenameUtils.getFullPathNoEndSeparator( repositoryFolderPath );
-          
+          // Get parent path from manifest for better parent folder resolution
+          String parentPath = manifestEntity.getRepositoryFile().getPath();
           if ( parentPath != null && !parentPath.isEmpty() && !parentPath.equals( "/" ) ) {
+            // Extract parent from the folder path
+            String calculatedParentPath = RepositoryFilenameUtils.getFullPathNoEndSeparator( repositoryFolderPath );
+            
             try {
               // Get repository and verify parent exists
               org.pentaho.platform.api.repository2.unified.IUnifiedRepository repo = 
                   PentahoSystem.get( org.pentaho.platform.api.repository2.unified.IUnifiedRepository.class );
               
-              if ( repo != null ) {
-                RepositoryFile parentFile = repo.getFile( parentPath );
+              if ( repo != null && calculatedParentPath != null && !calculatedParentPath.isEmpty() && !calculatedParentPath.equals( "/" ) ) {
+                RepositoryFile parentFile = repo.getFile( calculatedParentPath );
                 if ( parentFile != null && parentFile.getId() != null ) {
                   if ( solutionImportHandler.isPerformingRestore() ) {
-                    solutionImportHandler.getLogger().debug( "Parent folder found: " + parentPath + " with ID: " + parentFile.getId() );
+                    solutionImportHandler.getLogger().debug( "Parent folder found: " + calculatedParentPath + " with ID: " + parentFile.getId() );
                   }
                 } else {
                   if ( solutionImportHandler.isPerformingRestore() ) {
-                    solutionImportHandler.getLogger().debug( "Parent folder does not exist, will be created JIT: " + parentPath );
+                    solutionImportHandler.getLogger().debug( "Parent folder does not exist, will be created JIT: " + calculatedParentPath );
                   }
                 }
               }

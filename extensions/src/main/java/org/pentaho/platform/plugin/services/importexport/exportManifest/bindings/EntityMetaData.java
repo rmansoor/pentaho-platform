@@ -136,6 +136,8 @@ public class EntityMetaData {
   protected String title;
   @XmlAttribute( name = "runAfterImport" )
   protected Boolean runAfterImport;
+  @XmlAttribute( name = "parentPath" )
+  protected String parentPath;
 
   /**
    * Gets the value of the name property.
@@ -403,6 +405,27 @@ public class EntityMetaData {
    */
   public void setRunAfterImport( Boolean value ) {
     this.runAfterImport = value;
+  }
+
+  /**
+   * Gets the value of the parentPath property.
+   * 
+   * @return possible object is {@link String }
+   * 
+   */
+  public String getParentPath() {
+    return parentPath;
+  }
+
+  /**
+   * Sets the value of the parentPath property.
+   * 
+   * @param value
+   *          allowed object is {@link String }
+   * 
+   */
+  public void setParentPath( String value ) {
+    this.parentPath = value;
   }
 
 }
