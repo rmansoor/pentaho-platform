@@ -483,6 +483,16 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
     final String parentPath = RepositoryFilenameUtils.getFullPathNoEndSeparator( repositoryPath );
     final RepositoryFile parentFile = repository.getFile( parentPath );
     if ( parentFile == null ) {
+      // If parent not found and parent path is root, try alternative root paths
+      if ( parentPath != null && ( parentPath.equals( "/" ) || parentPath.isEmpty() ) ) {
+        // Try to get root folder by different methods
+        RepositoryFile rootFile = repository.getFile( "/" );
+        if ( rootFile != null && rootFile.getId() != null ) {
+          return rootFile.getId();
+        }
+        // If still null, this is an error - can't create at repo root without root ID
+        return null;
+      }
       return null;
     }
     Serializable parentFileId = parentFile.getId();
