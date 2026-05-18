@@ -221,6 +221,27 @@ public class RepositoryFilesImportHelper implements IImportHelper {
         String repositoryFolderPath = RepositoryFilenameUtils.concat( repoBundle.getPath(), decodedPath );
         folderBundleBuilder.path( repositoryFolderPath );
 
+        // Check if folder already exists in repository to prevent duplicates
+        try {
+          org.pentaho.platform.api.repository2.unified.IUnifiedRepository repo = 
+              PentahoSystem.get( org.pentaho.platform.api.repository2.unified.IUnifiedRepository.class );
+          if ( repo != null ) {
+            RepositoryFile existingFolder = repo.getFile( repositoryFolderPath );
+            if ( existingFolder != null && existingFolder.isFolder() ) {
+              if ( solutionImportHandler.isPerformingRestore() ) {
+                solutionImportHandler.getLogger().debug( "Folder already exists, skipping pre-import: " + repositoryFolderPath );
+              }
+              // Mark as processed but don't try to import it again
+              processedFolders.add( folderPath );
+              continue;
+            }
+          }
+        } catch ( Exception e ) {
+          if ( solutionImportHandler.isPerformingRestore() ) {
+            solutionImportHandler.getLogger().debug( "Could not check if folder exists: " + e.getMessage() );
+          }
+        }
+
         // Apply ACL settings from manifest
         folderBundleBuilder.charSet( importBundle.getCharSet() );
         folderBundleBuilder.overwriteFile( importBundle.overwriteInRepository() );
