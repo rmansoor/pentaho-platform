@@ -27,6 +27,7 @@ import org.pentaho.platform.api.importexport.ImportException;
 import org.pentaho.platform.api.engine.security.userroledao.IUserRoleDao;
 import org.pentaho.platform.api.engine.security.userroledao.AlreadyExistsException;
 import org.pentaho.platform.api.mt.ITenant;
+import org.pentaho.platform.api.mt.ITenantManager;
 import org.pentaho.platform.core.mt.Tenant;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.core.system.TenantUtils;
@@ -261,6 +262,23 @@ public class UsersAndRolesImportHelper implements IImportHelper {
           }
           userList.add( username );
         }
+        
+        // Ensure home folder exists even for existing users (in case it was missing)
+        try {
+          ITenantManager tenantManager = PentahoSystem.get( ITenantManager.class );
+          if ( tenantManager != null ) {
+            tenantManager.createUserHomeFolder( tenant, username );
+            if ( solutionImportHandler.isPerformingRestore() ) {
+              solutionImportHandler.getLogger().debug( "Verified/created home folder for existing user [ " + username + " ]" );
+            }
+          }
+        } catch ( Exception e ) {
+          // Don't fail if home folder creation has issues
+          if ( solutionImportHandler.isPerformingRestore() ) {
+            solutionImportHandler.getLogger().debug( "Could not verify home folder for existing user [ " + username + " ]: " + e.getMessage() );
+          }
+        }
+        
         return true; // User exists, treat as success
       }
     } catch ( Exception e ) {
@@ -294,6 +312,28 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       roleDao.createUser( tenant, username, password, null, userRoles );
       if ( solutionImportHandler.isPerformingRestore() ) {
         solutionImportHandler.getLogger().debug( "Successfully restored user [ " + username + " ]" );
+      }
+      
+      // Explicitly create user home folder using ITenantManager
+      // This ensures proper tenant structure setup and home folder creation
+      try {
+        ITenantManager tenantManager = PentahoSystem.get( ITenantManager.class );
+        if ( tenantManager != null ) {
+          tenantManager.createUserHomeFolder( tenant, username );
+          if ( solutionImportHandler.isPerformingRestore() ) {
+            solutionImportHandler.getLogger().debug( "Created home folder for user [ " + username + " ]" );
+          }
+        } else {
+          if ( solutionImportHandler.isPerformingRestore() ) {
+            solutionImportHandler.getLogger().warn( "ITenantManager not available - home folder may not have been created for user [ " + username + " ]" );
+          }
+        }
+      } catch ( Exception e ) {
+        // Log but don't fail - user was created successfully even if home folder creation has issues
+        if ( solutionImportHandler.isPerformingRestore() ) {
+          solutionImportHandler.getLogger().warn( "Could not create home folder for user [ " + username + " ]: " + e.getMessage() );
+          solutionImportHandler.getLogger().debug( "Home folder creation error", e );
+        }
       }
     } catch ( AlreadyExistsException e ) {
       // it's ok if the user already exists, it is probably a default user
