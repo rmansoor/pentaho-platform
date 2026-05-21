@@ -133,7 +133,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
    */
   protected void registerBuiltInExportHelpers( IUnifiedRepository repository ) {
     // Register helpers in order of typical export flow
-    addExportHelper( new RepositoryContentExportHelper( this, repository ) );
+    addExportHelper( new RepositoryContentExportHelper( this ) );
     addExportHelper( new DatasourcesExportHelper( this ) );
     addExportHelper( new MetadataExportHelper( this ) );
     addExportHelper( new MondrianExportHelper( this ) );
@@ -670,6 +670,14 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
   public ZipOutputStream getZipStream() {
     return zos;
+  }
+
+  /**
+   * Public accessor for fixed zip entry name.
+   * Used by export helpers to get properly formatted zip paths.
+   */
+  public String getFixedZipEntryName( RepositoryFile repositoryFile, String filePath ) {
+    return super.getFixedZipEntryName( repositoryFile, filePath );
   }
 
   /**

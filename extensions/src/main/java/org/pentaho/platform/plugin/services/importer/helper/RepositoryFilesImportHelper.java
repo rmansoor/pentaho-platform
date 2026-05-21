@@ -73,30 +73,7 @@ public class RepositoryFilesImportHelper implements IImportHelper {
     // Cast to BackupComponentConfig if available
     if ( componentOverrides instanceof BackupComponentConfig ) {
       BackupComponentConfig config = (BackupComponentConfig) componentOverrides;
-
-      // Include if content is explicitly requested
-      if ( config.isIncludeContent() ) {
-        return true;
-      }
-      
-      // Include if schedules are explicitly requested (schedule files need to be imported)
-      if ( config.isIncludeSchedules() ) {
-        return true;
-      }
-
-      // Also include if there are manifest files (for helper dependencies)
-      ExportManifest manifest = null;
-      try {
-        manifest = solutionImportHandler.getImportSession().getManifest();
-      } catch ( Exception e ) {
-        // If we can't access manifest, default to include
-        return true;
-      }
-
-      boolean hasFilesInManifest = manifest != null && manifest.getExportManifestEntities() != null
-          && !manifest.getExportManifestEntities().isEmpty();
-
-      return hasFilesInManifest;
+      return config.isIncludeContent();
     }
 
     // If type is unknown, default to include
