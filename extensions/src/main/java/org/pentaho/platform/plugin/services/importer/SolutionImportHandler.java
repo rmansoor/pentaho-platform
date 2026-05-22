@@ -308,7 +308,12 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     
     String normalized = path;
     
-    // 1. URL-decode common characters that might be encoded
+    // 1. CRITICAL: Convert + to space FIRST (before handling %2B)
+    // This handles form URL encoding where + = space
+    // MUST be done before %2B conversion to avoid corrupting actual plus characters
+    normalized = normalized.replace( "+", " " );
+    
+    // 2. URL-decode common characters that might be encoded
     // Handle parentheses: %28 = (, %29 = )
     normalized = normalized.replace( "%28", "(" );
     normalized = normalized.replace( "%29", ")" );
@@ -318,20 +323,19 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     normalized = normalized.replace( "%5B", "[" );  // [
     normalized = normalized.replace( "%5D", "]" );  // ]
     normalized = normalized.replace( "%26", "&" );  // &
-    normalized = normalized.replace( "%2B", "+" );  // +
+    normalized = normalized.replace( "%2B", "+" );  // + (actual plus character)
     
-    // 2. Convert backslashes to forward slashes
+    // 3. Convert backslashes to forward slashes
     normalized = normalized.replace( File.separator, RepositoryFile.SEPARATOR );
     normalized = normalized.replace( "\\", RepositoryFile.SEPARATOR );
     
-    // 3. Ensure leading forward slash
+    // 4. Ensure leading forward slash
     if ( !normalized.startsWith( RepositoryFile.SEPARATOR ) ) {
       normalized = RepositoryFile.SEPARATOR + normalized;
     }
     
-    // 4. Normalize space encoding: convert + to space
-    normalized = normalized.replace( "+", " " );  // Convert + to space
-    normalized = normalized.replaceAll( "\\s+", " " );  // Normalize multiple spaces to single space
+    // 5. Normalize multiple spaces to single space
+    normalized = normalized.replaceAll( "\\s+", " " );
     
     return normalized;
   }
