@@ -848,7 +848,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   public boolean importScheduleOwnerUser( String username, ExportManifest manifest ) {
     UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
     if ( helper != null ) {
-      return helper.importScheduleOwnerUser( username, manifest );
+      return helper.importScheduleOwnerUser( username, manifest, this );
     } else {
       getLogger().warn( "UsersAndRolesImportHelper not available - cannot import schedule owner user [ " + username + " ]" );
       return false;
