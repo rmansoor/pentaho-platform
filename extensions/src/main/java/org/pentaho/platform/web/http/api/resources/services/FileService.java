@@ -454,6 +454,9 @@ public class FileService {
         throw e;
       } finally {
         importLogger.endJob();
+        if ( componentOverrides != null ) {
+          ImportSession.getSession().setComponentOverrides( null );
+        }
         try {
           importLoggerStream.writeTo( fileOutputStream );
         } catch ( IOException e ) {

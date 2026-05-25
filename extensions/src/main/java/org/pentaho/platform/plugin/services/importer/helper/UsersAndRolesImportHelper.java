@@ -618,4 +618,91 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       solutionImportHandler.getLogger().debug( "[End: Restore global user settings]" );
     }
   }
+
+  /**
+   * Import a schedule owner user by username from the manifest.
+   * This method finds the user in the export manifest, imports the user with their roles,
+   * and ensures the home folder is created. This is critical for schedule import.
+   *
+   * @param username the username of the schedule owner to import
+   * @param manifest the export manifest containing user and role information
+   * @return true if user was imported successfully or already exists, false if user not found or import failed
+   */
+  public boolean importScheduleOwnerUser( String username, ExportManifest manifest ) {
+    if ( username == null || username.trim().isEmpty() || manifest == null ) {
+      return false;
+    }
+
+    try {
+      // Find the user in the manifest
+      UserExport scheduleOwnerUser = null;
+      List<UserExport> users = manifest.getUserExports();
+      if ( users != null ) {
+        for ( UserExport user : users ) {
+          if ( username.equals( user.getUsername() ) ) {
+            scheduleOwnerUser = user;
+            break;
+          }
+        }
+      }
+
+      if ( scheduleOwnerUser == null ) {
+        if ( solutionImportHandler.isPerformingRestore() ) {
+          solutionImportHandler.getLogger().debug( "Schedule owner user [ " + username + " ] not found in export manifest" );
+        }
+        return false;
+      }
+
+      if ( solutionImportHandler.isPerformingRestore() ) {
+        solutionImportHandler.getLogger().debug( "Importing schedule owner user [ " + username + " ] from manifest" );
+      }
+
+      // Create a map to track role-to-user mappings
+      Map<String, List<String>> roleToUserMap = new HashMap<>();
+
+      // Import the user (creates home folder if needed)
+      boolean userImported = importUserAndRole( username, scheduleOwnerUser, roleToUserMap );
+
+      if ( !userImported ) {
+        if ( solutionImportHandler.isPerformingRestore() ) {
+          solutionImportHandler.getLogger().warn( "Failed to import schedule owner user [ " + username + " ]" );
+        }
+        return false;
+      }
+
+      if ( solutionImportHandler.isPerformingRestore() ) {
+        solutionImportHandler.getLogger().debug( "Successfully imported schedule owner user [ " + username + " ]" );
+      }
+
+      // Find and import the user's roles
+      List<RoleExport> rolesToImport = new ArrayList<>();
+      List<RoleExport> allRoles = manifest.getRoleExports();
+      if ( allRoles != null && !roleToUserMap.isEmpty() ) {
+        for ( RoleExport role : allRoles ) {
+          if ( roleToUserMap.containsKey( role.getRolename() ) ) {
+            rolesToImport.add( role );
+          }
+        }
+      }
+
+      // Import the roles
+      if ( !rolesToImport.isEmpty() ) {
+        if ( solutionImportHandler.isPerformingRestore() ) {
+          solutionImportHandler.getLogger().debug( "Importing [ " + rolesToImport.size() + " ] roles for schedule owner user [ " + username + " ]" );
+        }
+        importRoles( rolesToImport, roleToUserMap );
+      }
+
+      if ( solutionImportHandler.isPerformingRestore() ) {
+        solutionImportHandler.getLogger().info( "Successfully completed import of schedule owner user [ " + username + " ] and their roles" );
+      }
+
+      return true;
+    } catch ( Exception e ) {
+      if ( solutionImportHandler.isPerformingRestore() ) {
+        solutionImportHandler.getLogger().error( "Error importing schedule owner user [ " + username + " ]: " + e.getMessage(), e );
+      }
+      return false;
+    }
+  }
 }

@@ -338,14 +338,14 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     
     // 5. Normalize multiple spaces to single space
     normalized = normalized.replaceAll( "\\s+", " " );
+    
     return normalized;
   }
-    
+
   /**
-   * Import a schedule dependency file from the backup bundle.
-   * Uses BACKWARDS COMPATIBLE matching: first tries with URL decoding (new exports),
-   * then tries without decoding (old exports with literal spaces).
-   * This ensures both old and new backup formats are supported.
+   * Imports a single file from the backup bundle into the repository.
+   * Called by import helpers (e.g., ScheduleImportUtil) to import files they depend on.
+   * This allows helpers to import missing dependencies without core knowing about them.
    * 
    * @param filePath the repository path of the file to import (e.g., "/Reports/SalesReport.prpt")
    * @return true if successfully imported, false if not found or failed
@@ -360,25 +360,67 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
     
     try {
-      String normalizedSearchPath = normalizePath( filePath );
-      
-      // BACKWARDS COMPATIBLE APPROACH: Try multiple matching strategies
-      // Strategy 1: Try matching with URL decoding (new exports with + and %XX)
-      IRepositoryFileBundle foundBundle = findFileInBundle( normalizedSearchPath, true );
-      if ( foundBundle != null ) {
-        return importFileFromFoundBundle( foundBundle, normalizedSearchPath );
+      // Search files list for matching file
+      for ( IRepositoryFileBundle fileBundle : files ) {
+        String fileName = fileBundle.getFile().getName();
+        String actualFilePath = fileBundle.getPath();
+        String manifestVersion = null;
+        
+        // Get manifest version if available
+        ExportManifest manifest = getImportSession().getManifest();
+        if ( manifest != null ) {
+          manifestVersion = manifest.getManifestInformation().getManifestVersion();
+        }
+        
+        if ( manifestVersion != null ) {
+          fileName = ExportFileNameEncoder.decodeZipFileName( fileName );
+          actualFilePath = ExportFileNameEncoder.decodeZipFileName( actualFilePath );
+        }
+        
+        String repositoryFilePath = RepositoryFilenameUtils.concat( 
+            PentahoPlatformImporter.computeBundlePath( actualFilePath ), fileName );
+        
+        // Normalize both paths for comparison
+        String normalizedSearchPath = normalizePath( filePath );
+        String normalizedBundlePath = normalizePath( repositoryFilePath );
+        
+        if ( normalizedSearchPath.equalsIgnoreCase( normalizedBundlePath ) ) {
+          // Found the file - import it
+          if ( isPerformingRestore ) {
+            getLogger().debug( "Found file in bundle: [ " + repositoryFilePath + " ]" );
+          }
+          
+          try {
+            RepositoryFileImportBundle.Builder bundleBuilder = new RepositoryFileImportBundle.Builder();
+            bundleBuilder.input( fileBundle.getInputStream() );
+            bundleBuilder.file( fileBundle.getFile() );
+            Assert.notNull( fileBundle.getFile(), "File object should not be null" );
+            bundleBuilder.name( fileBundle.getFile().getName() );
+            bundleBuilder.path( actualFilePath );
+            bundleBuilder.overwriteFile( overwriteFile );
+            bundleBuilder.retainOwnership( true );
+            bundleBuilder.charSet( fileBundle.getCharset() );
+            IPlatformMimeResolver mimeResolver = PentahoSystem.get( IPlatformMimeResolver.class );
+            String mimeTypeFromFile = mimeResolver.resolveMimeForFileName( fileName );
+            bundleBuilder.mime( mimeTypeFromFile );
+            IPlatformImporter importer = PentahoSystem.get( IPlatformImporter.class );
+            if ( importer != null ) {
+              importer.importFile( build( bundleBuilder ) );
+              if ( isPerformingRestore ) {
+                getLogger().debug( "Successfully imported file from bundle: [ " + filePath + " ]" );
+              }
+              return true;
+            }
+          } catch ( Exception e ) {
+            getLogger().error( "Failed to import file from bundle [ " + filePath + " ]: " + e.getMessage() );
+            return false;
+          }
+        }
       }
       
-      // Strategy 2: Try matching WITHOUT URL decoding (old exports with literal spaces)
-      // This handles old backups that may have been created before URL encoding was used
-      foundBundle = findFileInBundle( normalizedSearchPath, false );
-      if ( foundBundle != null ) {
-        return importFileFromFoundBundle( foundBundle, normalizedSearchPath );
-      }
-      
-      // File not found in bundle using any strategy
+      // File not found in bundle
       if ( isPerformingRestore ) {
-        getLogger().warn( "File not found in bundle: [ " + filePath + " ] using any matching strategy" );
+        getLogger().warn( "File not found in bundle: [ " + filePath + " ]" );
       }
       return false;
       
@@ -386,82 +428,6 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       getLogger().error( "Error importing file from bundle [ " + filePath + " ]: " + e.getMessage() );
       return false;
     }
-  }
-  
-  /**
-   * Search for a file in the bundle list using specified matching strategy.
-   * 
-   * @param normalizedSearchPath the normalized search path
-   * @param shouldDecode whether to URL-decode ZIP entry names
-   * @return the matching IRepositoryFileBundle, or null if not found
-   */
-  private IRepositoryFileBundle findFileInBundle( String normalizedSearchPath, boolean shouldDecode ) {
-    for ( IRepositoryFileBundle fileBundle : files ) {
-      String fileName = fileBundle.getFile().getName();
-      String actualFilePath = fileBundle.getPath();
-      
-      // Apply decoding strategy if requested
-      if ( shouldDecode ) {
-        fileName = ExportFileNameEncoder.decodeZipFileName( fileName );
-        actualFilePath = ExportFileNameEncoder.decodeZipFileName( actualFilePath );
-      }
-      
-      String repositoryFilePath = RepositoryFilenameUtils.concat( 
-          PentahoPlatformImporter.computeBundlePath( actualFilePath ), fileName );
-      
-      // Normalize the bundle path for comparison
-      String normalizedBundlePath = normalizePath( repositoryFilePath );
-      
-      if ( isPerformingRestore ) {
-        getLogger().debug( "Strategy[decode=" + shouldDecode + "]: Comparing search [ " + normalizedSearchPath 
-            + " ] with bundle [ " + normalizedBundlePath + " ]" );
-      }
-      
-      if ( normalizedSearchPath.equalsIgnoreCase( normalizedBundlePath ) ) {
-        if ( isPerformingRestore ) {
-          getLogger().debug( "Found file in bundle using strategy[decode=" + shouldDecode + "]: [ " 
-              + repositoryFilePath + " ]" );
-        }
-        return fileBundle;
-      }
-    }
-    return null;
-  }
-  
-  /**
-   * Import a found file bundle from the ZIP archive.
-   * 
-   * @param fileBundle the file bundle to import
-   * @param normalizedSearchPath the normalized search path (for logging)
-   * @return true if successfully imported, false otherwise
-   */
-  private boolean importFileFromFoundBundle( IRepositoryFileBundle fileBundle, String normalizedSearchPath ) {
-    try {
-      RepositoryFileImportBundle.Builder bundleBuilder = new RepositoryFileImportBundle.Builder();
-      bundleBuilder.input( fileBundle.getInputStream() );
-      bundleBuilder.file( fileBundle.getFile() );
-      Assert.notNull( fileBundle.getFile(), "File object should not be null" );
-      bundleBuilder.name( fileBundle.getFile().getName() );
-      bundleBuilder.path( fileBundle.getPath() );
-      bundleBuilder.overwriteFile( overwriteFile );
-      bundleBuilder.retainOwnership( true );
-      bundleBuilder.charSet( fileBundle.getCharset() );
-      IPlatformMimeResolver mimeResolver = PentahoSystem.get( IPlatformMimeResolver.class );
-      String mimeTypeFromFile = mimeResolver.resolveMimeForFileName( fileBundle.getFile().getName() );
-      bundleBuilder.mime( mimeTypeFromFile );
-      IPlatformImporter importer = PentahoSystem.get( IPlatformImporter.class );
-      if ( importer != null ) {
-        importer.importFile( build( bundleBuilder ) );
-        if ( isPerformingRestore ) {
-          getLogger().debug( "Successfully imported file from bundle: [ " + normalizedSearchPath + " ]" );
-        }
-        return true;
-      }
-    } catch ( Exception e ) {
-      getLogger().error( "Failed to import file from bundle [ " + normalizedSearchPath + " ]: " + e.getMessage() );
-      return false;
-    }
-    return false;
   }
 
   /**
@@ -834,24 +800,6 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
     if ( helper != null ) {
       helper.importUserAndRoleWithTracking( tenantPath, user, roleToUserMap );
-    }
-  }
-
-  /**
-   * Import a schedule owner user by delegating to UsersAndRolesImportHelper.
-   * This ensures the user, home folder, and roles are properly created before schedule import.
-   *
-   * @param username the username of the schedule owner to import
-   * @param manifest the export manifest containing user and role information
-   * @return true if user was imported successfully or already exists, false if user not found or import failed
-   */
-  public boolean importScheduleOwnerUser( String username, ExportManifest manifest ) {
-    UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
-    if ( helper != null ) {
-      return helper.importScheduleOwnerUser( username, manifest );
-    } else {
-      getLogger().warn( "UsersAndRolesImportHelper not available - cannot import schedule owner user [ " + username + " ]" );
-      return false;
     }
   }
 }
