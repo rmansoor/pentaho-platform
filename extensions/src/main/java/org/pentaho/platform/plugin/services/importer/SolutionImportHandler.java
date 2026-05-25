@@ -303,7 +303,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
    * @param path the path to normalize
    * @return normalized path
    */
-  protected String normalizePath( String path ) {
+  public String normalizePath( String path ) {
     if ( path == null ) {
       return "";
     }
