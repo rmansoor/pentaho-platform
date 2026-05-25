@@ -142,7 +142,7 @@ public class UsersAndRolesImportHelper implements IImportHelper {
         solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_USER", users.size() ) );
       }
       for ( UserExport user : users ) {
-        int importResult = importUserAndRoleWithTracking( user.getUsername(), user, roleToUserMap );
+        int importResult = importUserAndRoleWithTracking( user.getUsername(), user, roleToUserMap, this.solutionImportHandler );
         if ( importResult > 0 ) {
           successFullUserImportCount++;
           if ( importResult == 1 ) {
@@ -186,7 +186,7 @@ public class UsersAndRolesImportHelper implements IImportHelper {
   /**
    * Import a single user with tracking of whether it was newly created or already existed.
    */
-  public int importUserAndRoleWithTracking( String username, UserExport user, Map<String, List<String>> roleToUserMap ) {
+  public int importUserAndRoleWithTracking( String username, UserExport user, Map<String, List<String>> roleToUserMap, SolutionImportHandler handler ) {
     // Check if user exists BEFORE import attempt
     boolean userExistedBeforeImport = false;
     IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
@@ -199,33 +199,33 @@ public class UsersAndRolesImportHelper implements IImportHelper {
         }
       } catch ( Exception e ) {
         // If we can't check, assume user doesn't exist
-        if ( solutionImportHandler.isPerformingRestore() ) {
-          solutionImportHandler.getLogger().debug( "Could not check if user [ " + username + " ] existed before import: " + e.getMessage() );
+        if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+          ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Could not check if user [ " + username + " ] existed before import: " + e.getMessage() );
         }
       }
     }
     
     // Attempt import
-    boolean result = importUserAndRole( username, user, roleToUserMap );
+    boolean result = importUserAndRole( username, user, roleToUserMap, handler );
     
     if ( result ) {
       if ( userExistedBeforeImport ) {
         // User already existed, so it was skipped
-        if ( solutionImportHandler.isPerformingRestore() ) {
-          solutionImportHandler.getLogger().debug( "User [ " + username + " ] already existed, skipped import" );
+        if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+          ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "User [ " + username + " ] already existed, skipped import" );
         }
         return 2; // Existing (skipped)
       } else {
         // User did not exist before, so it was newly created
-        if ( solutionImportHandler.isPerformingRestore() ) {
-          solutionImportHandler.getLogger().debug( "User [ " + username + " ] was newly created" );
+        if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+          ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "User [ " + username + " ] was newly created" );
         }
         return 1; // Newly created
       }
     } else {
       // Import failed
-      if ( solutionImportHandler.isPerformingRestore() ) {
-        solutionImportHandler.getLogger().debug( "User [ " + username + " ] import failed" );
+      if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+        ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "User [ " + username + " ] import failed" );
       }
       return 0; // Failed
     }
@@ -234,10 +234,10 @@ public class UsersAndRolesImportHelper implements IImportHelper {
   /**
    * Import a single user with their roles and settings.
    */
-  private boolean importUserAndRole( String username, UserExport user, Map<String, List<String>> roleToUserMap ) {
+  private boolean importUserAndRole( String username, UserExport user, Map<String, List<String>> roleToUserMap, SolutionImportHandler handler ) {
     IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
     if ( roleDao == null ) {
-      solutionImportHandler.getLogger().warn( "Unable to import user [ " + username + " ] - IUserRoleDao not available" );
+      ( handler != null ? handler : solutionImportHandler ).getLogger().warn( "Unable to import user [ " + username + " ] - IUserRoleDao not available" );
       return false;
     }
     
@@ -247,8 +247,8 @@ public class UsersAndRolesImportHelper implements IImportHelper {
     try {
       IPentahoUser existingUser = roleDao.getUser( tenant, username );
       if ( existingUser != null ) {
-        if ( solutionImportHandler.isPerformingRestore() ) {
-          solutionImportHandler.getLogger().debug( "User [ " + username + " ] already exists, skipping import" );
+        if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+          ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "User [ " + username + " ] already exists, skipping import" );
         }
         
         // Still need to map the user to their roles for role binding later
@@ -268,14 +268,14 @@ public class UsersAndRolesImportHelper implements IImportHelper {
           ITenantManager tenantManager = PentahoSystem.get( ITenantManager.class );
           if ( tenantManager != null ) {
             tenantManager.createUserHomeFolder( tenant, username );
-            if ( solutionImportHandler.isPerformingRestore() ) {
-              solutionImportHandler.getLogger().debug( "Verified/created home folder for existing user [ " + username + " ]" );
+            if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+              ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Verified/created home folder for existing user [ " + username + " ]" );
             }
           }
         } catch ( Exception e ) {
           // Don't fail if home folder creation has issues
-          if ( solutionImportHandler.isPerformingRestore() ) {
-            solutionImportHandler.getLogger().debug( "Could not verify home folder for existing user [ " + username + " ]: " + e.getMessage() );
+          if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+            ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Could not verify home folder for existing user [ " + username + " ]: " + e.getMessage() );
           }
         }
         
@@ -283,14 +283,14 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       }
     } catch ( Exception e ) {
       // User doesn't exist, proceed with import
-      if ( solutionImportHandler.isPerformingRestore() ) {
-        solutionImportHandler.getLogger().debug( "User [ " + username + " ] does not exist or error checking existence: " + e.getMessage() );
+      if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+        ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "User [ " + username + " ] does not exist or error checking existence: " + e.getMessage() );
       }
     }
     
     // User doesn't exist, import it
     String password = user.getPassword();
-    solutionImportHandler.getLogger().debug( Messages.getInstance().getString( "USER.importing", username ) );
+    ( handler != null ? handler : solutionImportHandler ).getLogger().debug( Messages.getInstance().getString( "USER.importing", username ) );
 
     // map the user to the roles he/she is in
     for ( String role : user.getRoles() ) {
@@ -306,12 +306,12 @@ public class UsersAndRolesImportHelper implements IImportHelper {
 
     String[] userRoles = user.getRoles().toArray( new String[] {} );
     try {
-      if ( solutionImportHandler.isPerformingRestore() ) {
-        solutionImportHandler.getLogger().debug( "Restoring user [ " + username + " ] " );
+      if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+        ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Restoring user [ " + username + " ] " );
       }
       roleDao.createUser( tenant, username, password, null, userRoles );
-      if ( solutionImportHandler.isPerformingRestore() ) {
-        solutionImportHandler.getLogger().debug( "Successfully restored user [ " + username + " ]" );
+      if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+        ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Successfully restored user [ " + username + " ]" );
       }
       
       // Explicitly create user home folder using ITenantManager
@@ -320,12 +320,12 @@ public class UsersAndRolesImportHelper implements IImportHelper {
         ITenantManager tenantManager = PentahoSystem.get( ITenantManager.class );
         if ( tenantManager != null ) {
           tenantManager.createUserHomeFolder( tenant, username );
-          if ( solutionImportHandler.isPerformingRestore() ) {
-            solutionImportHandler.getLogger().debug( "Created home folder for user [ " + username + " ]" );
+          if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+            ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Created home folder for user [ " + username + " ]" );
           }
         } else {
-          if ( solutionImportHandler.isPerformingRestore() ) {
-            solutionImportHandler.getLogger().warn( "ITenantManager not available - home folder may not have been created for user [ " + username + " ]" );
+          if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
+            ( handler != null ? handler : solutionImportHandler ).getLogger().warn( "ITenantManager not available - home folder may not have been created for user [ " + username + " ]" );
           }
         }
       } catch ( Exception e ) {
@@ -661,7 +661,7 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       Map<String, List<String>> roleToUserMap = new HashMap<>();
 
       // Import the user (creates home folder if needed)
-      boolean userImported = importUserAndRole( username, scheduleOwnerUser, roleToUserMap );
+      boolean userImported = importUserAndRole( username, scheduleOwnerUser, roleToUserMap, handler );
 
       if ( !userImported ) {
         if ( handler.isPerformingRestore() ) {

@@ -833,7 +833,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   public void importUserAndRoleWithTracking( String tenantPath, UserExport user, Map<String, List<String>> roleToUserMap ) throws Exception {
     UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
     if ( helper != null ) {
-      helper.importUserAndRoleWithTracking( tenantPath, user, roleToUserMap );
+      helper.importUserAndRoleWithTracking( tenantPath, user, roleToUserMap, this );
     }
   }
 
