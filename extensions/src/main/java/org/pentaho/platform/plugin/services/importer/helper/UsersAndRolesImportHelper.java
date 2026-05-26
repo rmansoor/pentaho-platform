@@ -98,9 +98,9 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       }
 
       try {
-        Map<String, List<String>> roleToUserMap = importUsers( manifest.getUserExports() );
+        Map<String, List<String>> roleToUserMap = importUsers( manifest.getUserExports(), solutionImportHandler );
         // Import the roles
-        importRoles( manifest.getRoleExports(), roleToUserMap );
+        importRoles( manifest.getRoleExports(), roleToUserMap, solutionImportHandler );
         
         // Import global user settings
         importGlobalUserSettings( manifest.getGlobalUserSettings(), solutionImportHandler );
@@ -127,19 +127,19 @@ public class UsersAndRolesImportHelper implements IImportHelper {
    * Import users into the platform.
    * Internal implementation extracted from SolutionImportHandler.
    */
-  public Map<String, List<String>> importUsers( List<UserExport> users ) {
+  public Map<String, List<String>> importUsers( List<UserExport> users, SolutionImportHandler handler ) {
     Map<String, List<String>> roleToUserMap = new HashMap<>();
     int successFullUserImportCount = 0;
     int newUsersCreated = 0;
     int existingUsersSkipped = 0;
     int userFailedCount = 0;
     
-    if ( solutionImportHandler.isPerformingRestore() ) {
-      solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_USER" ) );
+    if ( handler.isPerformingRestore() ) {
+      handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_USER" ) );
     }
     if ( users != null ) {
-      if ( solutionImportHandler.isPerformingRestore() ) {
-        solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_USER", users.size() ) );
+      if ( handler.isPerformingRestore() ) {
+        handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_USER", users.size() ) );
       }
       for ( UserExport user : users ) {
         int importResult = importUserAndRoleWithTracking( user.getUsername(), user, roleToUserMap, this.solutionImportHandler );
@@ -159,12 +159,12 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       }
     }
     
-    if ( solutionImportHandler.isPerformingRestore() ) {
-      solutionImportHandler.getLogger().info( "User import summary - Total: " + (users != null ? users.size() : 0) + 
+    if ( handler.isPerformingRestore() ) {
+      handler.getLogger().info( "User import summary - Total: " + (users != null ? users.size() : 0) + 
         ", Created: " + newUsersCreated + ", Existing (skipped): " + existingUsersSkipped + ", Failed: " + userFailedCount );
       
       // Track user imports in metrics with detailed breakdown
-      ImportExportMetrics metrics = solutionImportHandler.getMetrics();
+      ImportExportMetrics metrics = handler.getMetrics();
       if ( metrics != null ) {
         for ( int i = 0; i < newUsersCreated; i++ ) {
           metrics.recordSuccess( ImportExportMetrics.Category.USERS );
@@ -177,8 +177,8 @@ public class UsersAndRolesImportHelper implements IImportHelper {
         }
       }
       
-      solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_USER_COUNT", successFullUserImportCount, users != null ? users.size() : 0 ) );
-      solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_USER" ) );
+      handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_USER_COUNT", successFullUserImportCount, users != null ? users.size() : 0 ) );
+      handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_USER" ) );
     }
     return roleToUserMap;
   }
@@ -436,9 +436,9 @@ public class UsersAndRolesImportHelper implements IImportHelper {
    * Import roles into the platform.
    * Internal implementation extracted from SolutionImportHandler.
    */
-  public void importRoles( List<RoleExport> roles, Map<String, List<String>> roleToUserMap ) {
-    if ( solutionImportHandler.isPerformingRestore() ) {
-      solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_ROLE" ) );
+  public void importRoles( List<RoleExport> roles, Map<String, List<String>> roleToUserMap, SolutionImportHandler handler ) {
+    if ( handler.isPerformingRestore() ) {
+      handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_ROLE" ) );
     }
     if ( roles != null ) {
       IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
@@ -452,12 +452,12 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       int rolesWithPermissionsUpdated = 0;
       int roleFailedCount = 0;
       
-      if ( solutionImportHandler.isPerformingRestore() ) {
-        solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_ROLE", roles.size() ) );
+      if ( handler.isPerformingRestore() ) {
+        handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_ROLE", roles.size() ) );
       }
       int successFullRoleImportCount = 0;
       for ( RoleExport role : roles ) {
-        solutionImportHandler.getLogger().debug( Messages.getInstance().getString( "ROLE.importing", role.getRolename() ) );
+        handler.getLogger().debug( Messages.getInstance().getString( "ROLE.importing", role.getRolename() ) );
         
         // Check if role already exists before attempting to create
         boolean roleExists = false;
@@ -467,14 +467,14 @@ public class UsersAndRolesImportHelper implements IImportHelper {
             roleExists = true;
             existingRoles.add( role.getRolename() );
             existingRolesSkipped++;
-            if ( solutionImportHandler.isPerformingRestore() ) {
-              solutionImportHandler.getLogger().debug( "Role [ " + role.getRolename() + " ] already exists (will skip creation)" );
+            if ( handler.isPerformingRestore() ) {
+              handler.getLogger().debug( "Role [ " + role.getRolename() + " ] already exists (will skip creation)" );
             }
           }
         } catch ( Exception e ) {
           // Role doesn't exist, proceed with creation
-          if ( solutionImportHandler.isPerformingRestore() ) {
-            solutionImportHandler.getLogger().debug( "Role [ " + role.getRolename() + " ] does not exist or error checking existence: " + e.getMessage() );
+          if ( handler.isPerformingRestore() ) {
+            handler.getLogger().debug( "Role [ " + role.getRolename() + " ] does not exist or error checking existence: " + e.getMessage() );
           }
         }
         
@@ -486,19 +486,19 @@ public class UsersAndRolesImportHelper implements IImportHelper {
             IPentahoRole role1 = roleDao.createRole( tenant, role.getRolename(), null, userarray );
             newRolesCreated++;
             successFullRoleImportCount++;
-            if ( solutionImportHandler.isPerformingRestore() ) {
-              solutionImportHandler.getLogger().debug( "Role [ " + role.getRolename() + " ] created successfully" );
+            if ( handler.isPerformingRestore() ) {
+              handler.getLogger().debug( "Role [ " + role.getRolename() + " ] created successfully" );
             }
           } catch ( AlreadyExistsException e ) {
             existingRoles.add( role.getRolename() );
             existingRolesSkipped++;
             successFullRoleImportCount++; // Treat existing role as successful
-            if ( solutionImportHandler.isPerformingRestore() ) {
-              solutionImportHandler.getLogger().debug( "Role [ " + role.getRolename() + " ] already exists (caught as AlreadyExistsException)" );
+            if ( handler.isPerformingRestore() ) {
+              handler.getLogger().debug( "Role [ " + role.getRolename() + " ] already exists (caught as AlreadyExistsException)" );
             }
           } catch ( Exception e ) {
             roleFailedCount++;
-            solutionImportHandler.getLogger().error( "Failed to create role [ " + role.getRolename() + " ]: " + e.getMessage(), e );
+            handler.getLogger().error( "Failed to create role [ " + role.getRolename() + " ]: " + e.getMessage(), e );
             // Continue with next role even if creation fails
             continue;
           }
@@ -509,43 +509,43 @@ public class UsersAndRolesImportHelper implements IImportHelper {
         try {
           if ( existingRoles.contains( role.getRolename() ) ) {
             //Only update an existing role if the overwrite flag is set
-            if ( solutionImportHandler.isOverwriteFile() ) {
-              if ( solutionImportHandler.isPerformingRestore() ) {
-                solutionImportHandler.getLogger().debug( "Overwrite is set to true. Updating permissions for role [ " + role.getRolename() + "]" );
+            if ( handler.isOverwriteFile() ) {
+              if ( handler.isPerformingRestore() ) {
+                handler.getLogger().debug( "Overwrite is set to true. Updating permissions for role [ " + role.getRolename() + "]" );
               }
               roleBindingDao.setRoleBindings( tenant, role.getRolename(), role.getPermissions() );
               rolesWithPermissionsUpdated++;
-              if ( solutionImportHandler.isPerformingRestore() ) {
-                solutionImportHandler.getLogger().debug( "Permissions updated for role [ " + role.getRolename() + "]" );
+              if ( handler.isPerformingRestore() ) {
+                handler.getLogger().debug( "Permissions updated for role [ " + role.getRolename() + "]" );
               }
             } else {
-              if ( solutionImportHandler.isPerformingRestore() ) {
-                solutionImportHandler.getLogger().debug( "Overwrite is false. Skipping permission update for existing role [ " + role.getRolename() + "]" );
+              if ( handler.isPerformingRestore() ) {
+                handler.getLogger().debug( "Overwrite is false. Skipping permission update for existing role [ " + role.getRolename() + "]" );
               }
             }
           } else {
-            if ( solutionImportHandler.isPerformingRestore() ) {
-              solutionImportHandler.getLogger().debug( "Updating role mapping from runtime roles to logical roles for [ " + role.getRolename() + "]" );
+            if ( handler.isPerformingRestore() ) {
+              handler.getLogger().debug( "Updating role mapping from runtime roles to logical roles for [ " + role.getRolename() + "]" );
             }
             //Always write a roles permissions that were not previously existing
             roleBindingDao.setRoleBindings( tenant, role.getRolename(), role.getPermissions() );
-            if ( solutionImportHandler.isPerformingRestore() ) {
-              solutionImportHandler.getLogger().debug( "Permissions set for new role [ " + role.getRolename() + "]" );
+            if ( handler.isPerformingRestore() ) {
+              handler.getLogger().debug( "Permissions set for new role [ " + role.getRolename() + "]" );
             }
           }
         } catch ( Exception e ) {
-          solutionImportHandler.getLogger().error( Messages.getInstance()
+          handler.getLogger().error( Messages.getInstance()
               .getString( "ERROR.SettingRolePermissions", role.getRolename() ), e );
           // Continue with next role even if permission setting fails
         }
       }
-      if ( solutionImportHandler.isPerformingRestore() ) {
-        solutionImportHandler.getLogger().info( "Role import summary - Total: " + roles.size() + 
+      if ( handler.isPerformingRestore() ) {
+        handler.getLogger().info( "Role import summary - Total: " + roles.size() + 
           ", Created: " + newRolesCreated + ", Existing (skipped): " + existingRolesSkipped + 
           ", Permissions Updated: " + rolesWithPermissionsUpdated + ", Failed: " + roleFailedCount );
         
         // Track role imports in metrics with detailed breakdown
-        ImportExportMetrics metrics = solutionImportHandler.getMetrics();
+        ImportExportMetrics metrics = handler.getMetrics();
         if ( metrics != null ) {
           for ( int i = 0; i < newRolesCreated; i++ ) {
             metrics.recordSuccess( ImportExportMetrics.Category.ROLES );
@@ -558,11 +558,11 @@ public class UsersAndRolesImportHelper implements IImportHelper {
           }
         }
         
-        solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_ROLE_COUNT", successFullRoleImportCount, roles.size() ) );
+        handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_SUCCESSFUL_ROLE_COUNT", successFullRoleImportCount, roles.size() ) );
       }
     }
-    if ( solutionImportHandler.isPerformingRestore() ) {
-      solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_ROLE" ) );
+    if ( handler.isPerformingRestore() ) {
+      handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_ROLE" ) );
     }
   }
 
@@ -695,7 +695,7 @@ public class UsersAndRolesImportHelper implements IImportHelper {
         if ( handler.isPerformingRestore() ) {
           handler.getLogger().debug( "Importing [ " + rolesToImport.size() + " ] roles for schedule owner user [ " + username + " ]" );
         }
-        importRoles( rolesToImport, roleToUserMap );
+        importRoles( rolesToImport, roleToUserMap, handler );
       }
 
       if ( handler.isPerformingRestore() ) {

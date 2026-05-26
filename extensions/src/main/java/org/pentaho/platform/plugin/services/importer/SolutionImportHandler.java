@@ -783,7 +783,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   public Map<String, List<String>> importUsers( List<UserExport> users ) throws Exception {
     UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
     if ( helper != null ) {
-      return helper.importUsers( users );
+      return helper.importUsers( users, this );
     }
     return new HashMap<>();
   }
@@ -796,7 +796,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   public void importRoles( List<RoleExport> roles, Map<String, List<String>> roleToUserMap ) throws Exception {
     UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
     if ( helper != null ) {
-      helper.importRoles( roles, roleToUserMap );
+      helper.importRoles( roles, roleToUserMap, this );
     }
   }
 
