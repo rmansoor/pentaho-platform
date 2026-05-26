@@ -235,9 +235,14 @@ public class UsersAndRolesImportHelper implements IImportHelper {
    * Import a single user with their roles and settings.
    */
   private boolean importUserAndRole( String username, UserExport user, Map<String, List<String>> roleToUserMap, SolutionImportHandler handler ) {
+    // Handler is required - cannot proceed without it
+    if ( handler == null ) {
+      return false;
+    }
+    
     IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
     if ( roleDao == null ) {
-      ( handler != null ? handler : solutionImportHandler ).getLogger().warn( "Unable to import user [ " + username + " ] - IUserRoleDao not available" );
+      handler.getLogger().warn( "Unable to import user [ " + username + " ] - IUserRoleDao not available" );
       return false;
     }
     
@@ -247,8 +252,8 @@ public class UsersAndRolesImportHelper implements IImportHelper {
     try {
       IPentahoUser existingUser = roleDao.getUser( tenant, username );
       if ( existingUser != null ) {
-        if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
-          ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "User [ " + username + " ] already exists, skipping import" );
+        if ( handler.isPerformingRestore() ) {
+          handler.getLogger().debug( "User [ " + username + " ] already exists, skipping import" );
         }
         
         // Still need to map the user to their roles for role binding later
@@ -268,14 +273,14 @@ public class UsersAndRolesImportHelper implements IImportHelper {
           ITenantManager tenantManager = PentahoSystem.get( ITenantManager.class );
           if ( tenantManager != null ) {
             tenantManager.createUserHomeFolder( tenant, username );
-            if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
-              ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Verified/created home folder for existing user [ " + username + " ]" );
+            if ( handler.isPerformingRestore() ) {
+              handler.getLogger().debug( "Verified/created home folder for existing user [ " + username + " ]" );
             }
           }
         } catch ( Exception e ) {
           // Don't fail if home folder creation has issues
-          if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
-            ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Could not verify home folder for existing user [ " + username + " ]: " + e.getMessage() );
+          if ( handler.isPerformingRestore() ) {
+            handler.getLogger().debug( "Could not verify home folder for existing user [ " + username + " ]: " + e.getMessage() );
           }
         }
         
@@ -283,14 +288,14 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       }
     } catch ( Exception e ) {
       // User doesn't exist, proceed with import
-      if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
-        ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "User [ " + username + " ] does not exist or error checking existence: " + e.getMessage() );
+      if ( handler.isPerformingRestore() ) {
+        handler.getLogger().debug( "User [ " + username + " ] does not exist or error checking existence: " + e.getMessage() );
       }
     }
     
     // User doesn't exist, import it
     String password = user.getPassword();
-    ( handler != null ? handler : solutionImportHandler ).getLogger().debug( Messages.getInstance().getString( "USER.importing", username ) );
+    handler.getLogger().debug( Messages.getInstance().getString( "USER.importing", username ) );
 
     // map the user to the roles he/she is in
     for ( String role : user.getRoles() ) {
@@ -306,12 +311,12 @@ public class UsersAndRolesImportHelper implements IImportHelper {
 
     String[] userRoles = user.getRoles().toArray( new String[] {} );
     try {
-      if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
-        ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Restoring user [ " + username + " ] " );
+      if ( handler.isPerformingRestore() ) {
+        handler.getLogger().debug( "Restoring user [ " + username + " ] " );
       }
       roleDao.createUser( tenant, username, password, null, userRoles );
-      if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
-        ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Successfully restored user [ " + username + " ]" );
+      if ( handler.isPerformingRestore() ) {
+        handler.getLogger().debug( "Successfully restored user [ " + username + " ]" );
       }
       
       // Explicitly create user home folder using ITenantManager
@@ -320,39 +325,39 @@ public class UsersAndRolesImportHelper implements IImportHelper {
         ITenantManager tenantManager = PentahoSystem.get( ITenantManager.class );
         if ( tenantManager != null ) {
           tenantManager.createUserHomeFolder( tenant, username );
-          if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
-            ( handler != null ? handler : solutionImportHandler ).getLogger().debug( "Created home folder for user [ " + username + " ]" );
+          if ( handler.isPerformingRestore() ) {
+            handler.getLogger().debug( "Created home folder for user [ " + username + " ]" );
           }
         } else {
-          if ( ( handler != null ? handler : solutionImportHandler ).isPerformingRestore() ) {
-            ( handler != null ? handler : solutionImportHandler ).getLogger().warn( "ITenantManager not available - home folder may not have been created for user [ " + username + " ]" );
+          if ( handler.isPerformingRestore() ) {
+            handler.getLogger().warn( "ITenantManager not available - home folder may not have been created for user [ " + username + " ]" );
           }
         }
       } catch ( Exception e ) {
         // Log but don't fail - user was created successfully even if home folder creation has issues
-        if ( solutionImportHandler.isPerformingRestore() ) {
-          solutionImportHandler.getLogger().warn( "Could not create home folder for user [ " + username + " ]: " + e.getMessage() );
-          solutionImportHandler.getLogger().debug( "Home folder creation error", e );
+        if ( handler.isPerformingRestore() ) {
+          handler.getLogger().warn( "Could not create home folder for user [ " + username + " ]: " + e.getMessage() );
+          handler.getLogger().debug( "Home folder creation error", e );
         }
       }
     } catch ( AlreadyExistsException e ) {
       // it's ok if the user already exists, it is probably a default user
-      solutionImportHandler.getLogger().debug( Messages.getInstance().getString( "USER.Already.Exists", username ) );
+      handler.getLogger().debug( Messages.getInstance().getString( "USER.Already.Exists", username ) );
       // User was just created but this exception thrown anyway - still treat as success
       return true;
     } catch ( Exception e ) {
-      solutionImportHandler.getLogger().debug( Messages.getInstance()
+      handler.getLogger().debug( Messages.getInstance()
           .getString( "ERROR.OverridingExistingUser", username ), e );
-      solutionImportHandler.getLogger().error( Messages.getInstance()
+      handler.getLogger().error( Messages.getInstance()
           .getString( "ERROR.OverridingExistingUser", username ) );
       return false;
     }
-    if ( solutionImportHandler.isPerformingRestore() ) {
-      solutionImportHandler.getLogger().debug( "Restoring user [ " + username + " ] specific settings" );
+    if ( handler.isPerformingRestore() ) {
+      handler.getLogger().debug( "Restoring user [ " + username + " ] specific settings" );
     }
     importUserSettings( user );
-    if ( solutionImportHandler.isPerformingRestore() ) {
-      solutionImportHandler.getLogger().debug( "Successfully restored user [ " + username + " ] specific settings" );
+    if ( handler.isPerformingRestore() ) {
+      handler.getLogger().debug( "Successfully restored user [ " + username + " ] specific settings" );
     }
     return true;
   }
