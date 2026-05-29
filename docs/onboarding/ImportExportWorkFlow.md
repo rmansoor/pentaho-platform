@@ -11,10 +11,6 @@
 7. [Service Layer Integration](#service-layer-integration)
 8. [Repository Access Patterns](#repository-access-patterns)
 9. [Error Handling](#error-handling)
-10. [Performance Considerations](#performance-considerations)
-11. [Known Issues & Fixes](#known-issues--fixes)
-12. [Best Practices](#best-practices)
-13. [Troubleshooting Guide](#troubleshooting-guide)
 
 ---
 
