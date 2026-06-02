@@ -14,43 +14,22 @@
 package org.pentaho.platform.plugin.services.importer;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.castor.core.util.Assert;
 import org.pentaho.platform.api.mimetype.IPlatformMimeResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.pentaho.database.model.IDatabaseConnection;
 import org.pentaho.metadata.repository.DomainAlreadyExistsException;
 import org.pentaho.metadata.repository.DomainIdNullException;
 import org.pentaho.metadata.repository.DomainStorageException;
-import org.pentaho.platform.api.engine.security.userroledao.AlreadyExistsException;
-import org.pentaho.platform.api.engine.security.userroledao.IPentahoRole;
-import org.pentaho.platform.api.engine.security.userroledao.IPentahoUser;
-import org.pentaho.platform.api.engine.security.userroledao.IUserRoleDao;
 import org.pentaho.platform.api.importexport.IImportHelper;
 import org.pentaho.platform.api.mimetype.IMimeType;
-import org.pentaho.platform.api.mt.ITenant;
-import org.pentaho.platform.api.repository.datasource.IDatasourceMgmtService;
 import org.pentaho.platform.api.repository2.unified.IPlatformImportBundle;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.repository2.unified.RepositoryFileExtraMetaData;
-import org.pentaho.platform.api.scheduler2.IJob;
-import org.pentaho.platform.api.scheduler2.IJobRequest;
-import org.pentaho.platform.api.scheduler2.IJobScheduleParam;
-import org.pentaho.platform.api.scheduler2.IJobScheduleRequest;
-import org.pentaho.platform.api.scheduler2.IScheduler;
-import org.pentaho.platform.api.scheduler2.ISchedulerResource;
-import org.pentaho.platform.api.scheduler2.JobState;
-import org.pentaho.platform.api.usersettings.IAnyUserSettingService;
-import org.pentaho.platform.api.usersettings.IUserSettingService;
-import org.pentaho.platform.api.usersettings.pojo.IUserSetting;
-import org.pentaho.platform.core.mt.Tenant;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
-import org.pentaho.platform.engine.core.system.TenantUtils;
-import org.pentaho.platform.plugin.services.importexport.DatabaseConnectionConverter;
 import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
 import org.pentaho.platform.plugin.services.importexport.ExportManifestUserSetting;
 import org.pentaho.platform.plugin.services.importexport.IRepositoryImportLogger;
@@ -64,11 +43,7 @@ import org.pentaho.platform.plugin.services.importexport.RoleExport;
 import org.pentaho.platform.plugin.services.importexport.UserExport;
 import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
-import org.pentaho.platform.plugin.services.importexport.exportManifest.Parameters;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMetaStore;
-import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMetadata;
-import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMondrian;
-import org.pentaho.platform.plugin.services.importexport.legacy.MondrianCatalogRepositoryHelper;
 import org.pentaho.platform.plugin.services.importer.helper.UsersAndRolesImportHelper;
 import org.pentaho.platform.plugin.services.importer.helper.MetadataImportHelper;
 import org.pentaho.platform.plugin.services.importer.helper.MondrianImportHelper;
@@ -77,23 +52,18 @@ import org.pentaho.platform.plugin.services.importer.helper.JdbcDatasourceImport
 import org.pentaho.platform.plugin.services.importer.helper.RepositoryFilesImportHelper;
 import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.repository.RepositoryFilenameUtils;
-import org.pentaho.platform.security.policy.rolebased.IRoleAuthorizationPolicyRoleBindingDao;
 import org.pentaho.platform.web.http.api.resources.services.FileService;
 
-import javax.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -821,7 +791,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   public void importUserSettings( UserExport user ) throws Exception {
     UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
     if ( helper != null ) {
-      helper.importUserSettings( user );
+      helper.importUserSettings( user, this );
     }
   }
 
@@ -848,7 +818,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   public boolean importScheduleOwnerUser( String username, ExportManifest manifest ) {
     UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
     if ( helper != null ) {
-      return helper.importScheduleOwnerUser( username, manifest, this );
+      return helper.importUserAndRole( username, manifest, this );
     } else {
       getLogger().warn( "UsersAndRolesImportHelper not available - cannot import schedule owner user [ " + username + " ]" );
       return false;

@@ -27,7 +27,6 @@ import org.pentaho.platform.api.importexport.ImportException;
 import org.pentaho.platform.api.engine.security.userroledao.IUserRoleDao;
 import org.pentaho.platform.api.engine.security.userroledao.AlreadyExistsException;
 import org.pentaho.platform.api.mt.ITenant;
-import org.pentaho.platform.api.mt.ITenantManager;
 import org.pentaho.platform.core.mt.Tenant;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.core.system.TenantUtils;
@@ -267,23 +266,6 @@ public class UsersAndRolesImportHelper implements IImportHelper {
           }
           userList.add( username );
         }
-        
-        // Ensure home folder exists even for existing users (in case it was missing)
-        try {
-          ITenantManager tenantManager = PentahoSystem.get( ITenantManager.class );
-          if ( tenantManager != null ) {
-            tenantManager.createUserHomeFolder( tenant, username );
-            if ( handler.isPerformingRestore() ) {
-              handler.getLogger().debug( "Verified/created home folder for existing user [ " + username + " ]" );
-            }
-          }
-        } catch ( Exception e ) {
-          // Don't fail if home folder creation has issues
-          if ( handler.isPerformingRestore() ) {
-            handler.getLogger().debug( "Could not verify home folder for existing user [ " + username + " ]: " + e.getMessage() );
-          }
-        }
-        
         return true; // User exists, treat as success
       }
     } catch ( Exception e ) {
@@ -318,28 +300,6 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       if ( handler.isPerformingRestore() ) {
         handler.getLogger().debug( "Successfully restored user [ " + username + " ]" );
       }
-      
-      // Explicitly create user home folder using ITenantManager
-      // This ensures proper tenant structure setup and home folder creation
-      try {
-        ITenantManager tenantManager = PentahoSystem.get( ITenantManager.class );
-        if ( tenantManager != null ) {
-          tenantManager.createUserHomeFolder( tenant, username );
-          if ( handler.isPerformingRestore() ) {
-            handler.getLogger().debug( "Created home folder for user [ " + username + " ]" );
-          }
-        } else {
-          if ( handler.isPerformingRestore() ) {
-            handler.getLogger().warn( "ITenantManager not available - home folder may not have been created for user [ " + username + " ]" );
-          }
-        }
-      } catch ( Exception e ) {
-        // Log but don't fail - user was created successfully even if home folder creation has issues
-        if ( handler.isPerformingRestore() ) {
-          handler.getLogger().warn( "Could not create home folder for user [ " + username + " ]: " + e.getMessage() );
-          handler.getLogger().debug( "Home folder creation error", e );
-        }
-      }
     } catch ( AlreadyExistsException e ) {
       // it's ok if the user already exists, it is probably a default user
       handler.getLogger().debug( Messages.getInstance().getString( "USER.Already.Exists", username ) );
@@ -355,7 +315,7 @@ public class UsersAndRolesImportHelper implements IImportHelper {
     if ( handler.isPerformingRestore() ) {
       handler.getLogger().debug( "Restoring user [ " + username + " ] specific settings" );
     }
-    importUserSettings( user );
+    importUserSettings( user, handler );
     if ( handler.isPerformingRestore() ) {
       handler.getLogger().debug( "Successfully restored user [ " + username + " ] specific settings" );
     }
@@ -366,7 +326,10 @@ public class UsersAndRolesImportHelper implements IImportHelper {
    * Import user-specific settings for a user.
    * Internal implementation extracted from SolutionImportHandler.
    */
-  public void importUserSettings( UserExport user ) {
+  public void importUserSettings( UserExport user, SolutionImportHandler handler ) {
+    if ( handler == null ) {
+      return;  // Cannot import settings without handler context
+    }
     IUserSettingService settingService = PentahoSystem.get( IUserSettingService.class );
     IAnyUserSettingService userSettingService = null;
     int userSettingsListSize = 0;
@@ -374,59 +337,59 @@ public class UsersAndRolesImportHelper implements IImportHelper {
     if ( settingService != null && settingService instanceof IAnyUserSettingService ) {
       userSettingService = (IAnyUserSettingService) settingService;
     }
-    if ( solutionImportHandler.isPerformingRestore() ) {
-      solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_USER_SETTING" ) );
+    if ( handler.isPerformingRestore() ) {
+      handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_USER_SETTING" ) );
     }
     if ( userSettingService != null ) {
       List<ExportManifestUserSetting> exportedSettings = user.getUserSettings();
       userSettingsListSize = user.getUserSettings().size();
-      if ( solutionImportHandler.isPerformingRestore() ) {
-        solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_USER_SETTING", userSettingsListSize, user.getUsername() ) );
+      if ( handler.isPerformingRestore() ) {
+        handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_USER_SETTING", userSettingsListSize, user.getUsername() ) );
       }
       for ( ExportManifestUserSetting exportedSetting : exportedSettings ) {
         try {
-          if ( solutionImportHandler.isPerformingRestore() ) {
-            solutionImportHandler.getLogger().debug( "Restore user specific setting  [ " + exportedSetting.getName() + " ]" );
+          if ( handler.isPerformingRestore() ) {
+            handler.getLogger().debug( "Restore user specific setting  [ " + exportedSetting.getName() + " ]" );
           }
-          if ( solutionImportHandler.isOverwriteFile() ) {
-            if ( solutionImportHandler.isPerformingRestore() ) {
-              solutionImportHandler.getLogger().debug( "Overwrite is set to true. So restoring setting  [ " + exportedSetting.getName() + " ]" );
+          if ( handler.isOverwriteFile() ) {
+            if ( handler.isPerformingRestore() ) {
+              handler.getLogger().debug( "Overwrite is set to true. So restoring setting  [ " + exportedSetting.getName() + " ]" );
             }
             userSettingService.setUserSetting( user.getUsername(),
                 exportedSetting.getName(), exportedSetting.getValue() );
-            if ( solutionImportHandler.isPerformingRestore() ) {
-              solutionImportHandler.getLogger().debug( "Finished restore of user specific setting with name [ " + exportedSetting.getName() + " ]" );
+            if ( handler.isPerformingRestore() ) {
+              handler.getLogger().debug( "Finished restore of user specific setting with name [ " + exportedSetting.getName() + " ]" );
             }
             successfulUserSettingsImportCount++;
           } else {
             // see if it's there first before we set this setting
-            if ( solutionImportHandler.isPerformingRestore() ) {
-              solutionImportHandler.getLogger().debug( "Overwrite is set to false. Only restore setting  [ " + exportedSetting.getName() + " ] if is does not exist" );
+            if ( handler.isPerformingRestore() ) {
+              handler.getLogger().debug( "Overwrite is set to false. Only restore setting  [ " + exportedSetting.getName() + " ] if is does not exist" );
             }
             IUserSetting userSetting =
                 userSettingService.getUserSetting( user.getUsername(), exportedSetting.getName(), null );
             if ( userSetting == null ) {
               // only set it if we didn't find that it exists already
               userSettingService.setUserSetting( user.getUsername(), exportedSetting.getName(), exportedSetting.getValue() );
-              if ( solutionImportHandler.isPerformingRestore() ) {
-                solutionImportHandler.getLogger().debug( "Finished restore of user specific setting with name [ " + exportedSetting.getName() + " ]" );
+              if ( handler.isPerformingRestore() ) {
+                handler.getLogger().debug( "Finished restore of user specific setting with name [ " + exportedSetting.getName() + " ]" );
               }
               successfulUserSettingsImportCount++;
             }
           }
-          if ( solutionImportHandler.isPerformingRestore() ) {
-            solutionImportHandler.getLogger().debug( "Successfully restored setting  [ " + exportedSetting.getName() + " ]" );
+          if ( handler.isPerformingRestore() ) {
+            handler.getLogger().debug( "Successfully restored setting  [ " + exportedSetting.getName() + " ]" );
           }
         } catch ( Exception e ) {
-          solutionImportHandler.getLogger().warn( "Failed to import user setting [ " + exportedSetting.getName() + " ] for user [ " + user.getUsername() + " ]: " + e.getMessage() );
-          solutionImportHandler.getLogger().debug( "User setting error", e );
+          handler.getLogger().warn( "Failed to import user setting [ " + exportedSetting.getName() + " ] for user [ " + user.getUsername() + " ]: " + e.getMessage() );
+          handler.getLogger().debug( "User setting error", e );
           // Continue with next setting even if this one fails
         }
       }
-      if ( solutionImportHandler.isPerformingRestore() ) {
-        solutionImportHandler.getLogger().info( Messages.getInstance()
+      if ( handler.isPerformingRestore() ) {
+        handler.getLogger().info( Messages.getInstance()
             .getString( "SolutionImportHandler.INFO_SUCCESSFUL_USER_SETTING_IMPORT_COUNT", successfulUserSettingsImportCount, userSettingsListSize ) );
-        solutionImportHandler.getLogger().info( Messages.getInstance()
+        handler.getLogger().info( Messages.getInstance()
             .getString( "SolutionImportHandler.INFO_END_IMPORT_USER_SETTING" ) );
       }
     }
@@ -625,15 +588,14 @@ public class UsersAndRolesImportHelper implements IImportHelper {
   }
 
   /**
-   * Import a schedule owner user by username from the manifest.
-   * This method finds the user in the export manifest, imports the user with their roles,
-   * and ensures the home folder is created. This is critical for schedule import.
+   * Import a user by username from the manifest.
+   * This method finds the user in the export manifest, imports the user with their roles.
    *
    * @param username the username of the schedule owner to import
    * @param manifest the export manifest containing user and role information
    * @return true if user was imported successfully or already exists, false if user not found or import failed
    */
-  public boolean importScheduleOwnerUser( String username, ExportManifest manifest, SolutionImportHandler handler ) {
+  public boolean importUserAndRole( String username, ExportManifest manifest, SolutionImportHandler handler ) {
     if ( username == null || username.trim().isEmpty() || manifest == null || handler == null ) {
       return false;
     }
@@ -653,13 +615,13 @@ public class UsersAndRolesImportHelper implements IImportHelper {
 
       if ( scheduleOwnerUser == null ) {
         if ( handler.isPerformingRestore() ) {
-          handler.getLogger().debug( "Schedule owner user [ " + username + " ] not found in export manifest" );
+          handler.getLogger().debug( "User [ " + username + " ] not found in export manifest" );
         }
         return false;
       }
 
       if ( handler.isPerformingRestore() ) {
-        handler.getLogger().debug( "Importing schedule owner user [ " + username + " ] from manifest" );
+        handler.getLogger().debug( "Importing user [ " + username + " ] from manifest" );
       }
 
       // Create a map to track role-to-user mappings
@@ -670,13 +632,13 @@ public class UsersAndRolesImportHelper implements IImportHelper {
 
       if ( !userImported ) {
         if ( handler.isPerformingRestore() ) {
-          handler.getLogger().warn( "Failed to import schedule owner user [ " + username + " ]" );
+          handler.getLogger().warn( "Failed to import user [ " + username + " ]" );
         }
         return false;
       }
 
       if ( handler.isPerformingRestore() ) {
-        handler.getLogger().debug( "Successfully imported schedule owner user [ " + username + " ]" );
+        handler.getLogger().debug( "Successfully user [ " + username + " ]" );
       }
 
       // Find and import the user's roles
@@ -693,19 +655,19 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       // Import the roles
       if ( !rolesToImport.isEmpty() ) {
         if ( handler.isPerformingRestore() ) {
-          handler.getLogger().debug( "Importing [ " + rolesToImport.size() + " ] roles for schedule owner user [ " + username + " ]" );
+          handler.getLogger().debug( "Importing [ " + rolesToImport.size() + " ] roles for user [ " + username + " ]" );
         }
         importRoles( rolesToImport, roleToUserMap, handler );
       }
 
       if ( handler.isPerformingRestore() ) {
-        handler.getLogger().info( "Successfully completed import of schedule owner user [ " + username + " ] and their roles" );
+        handler.getLogger().info( "Successfully completed import of user [ " + username + " ] and their roles" );
       }
 
       return true;
     } catch ( Exception e ) {
       if ( handler.isPerformingRestore() ) {
-        handler.getLogger().error( "Error importing schedule owner user [ " + username + " ]: " + e.getMessage(), e );
+        handler.getLogger().error( "Error importing user [ " + username + " ]: " + e.getMessage(), e );
       }
       return false;
     }
