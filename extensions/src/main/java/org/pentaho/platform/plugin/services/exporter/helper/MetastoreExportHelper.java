@@ -21,7 +21,7 @@ import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.exporter.MetaStoreExportUtil;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMetaStore;
 import org.pentaho.platform.plugin.services.messages.Messages;
@@ -58,13 +58,16 @@ public class MetastoreExportHelper implements IExportHelper {
     return "MetastoreExporter";
   }
 
-  public boolean shouldExecute( BackupComponentConfig config ) {
-    return config != null && config.isIncludeMetastore();
+  public boolean shouldExecute( Object config ) {
+    if ( config instanceof ComponentConfig ) {
+      return ( ( ComponentConfig ) config ).isIncludeMetastore();
+    }
+    return false;
   }
 
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    BackupComponentConfig config = exporter != null ? exporter.getComponentConfig() : null;
+    Object config = exporter != null ? exporter.getComponentConfig() : null;
     if ( !shouldExecute( config ) ) {
       return;
     }

@@ -17,7 +17,6 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
-import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.scheduler2.IScheduler;
 
 import java.io.Serializable;
@@ -27,14 +26,13 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 /**
  * Integration tests for backup/restore with generated content filtering feature
  */
 public class GeneratedContentBackupRestoreIntegrationTest {
 
-  private BackupComponentConfig backupConfig;
+  private ComponentConfig backupConfig;
 
   @Mock
   private IUnifiedRepository repository;
@@ -42,7 +40,7 @@ public class GeneratedContentBackupRestoreIntegrationTest {
   @Before
   public void setUp() {
     MockitoAnnotations.openMocks( this );
-    backupConfig = new BackupComponentConfig();
+    backupConfig = new ComponentConfig();
   }
 
   /**
@@ -51,7 +49,7 @@ public class GeneratedContentBackupRestoreIntegrationTest {
   @Test
   public void testFullSystemBackupIncludesAllContent() {
     // Setup
-    BackupComponentConfig fullSystem = BackupComponentConfig.fullSystem();
+    ComponentConfig fullSystem = ComponentConfig.fullSystem();
 
     // Assert
     assertTrue( "Full system backup should include content", fullSystem.isIncludeContent() );
@@ -157,10 +155,10 @@ public class GeneratedContentBackupRestoreIntegrationTest {
   @Test
   public void testIndependentBackupConfigs() {
     // Setup
-    BackupComponentConfig config1 = new BackupComponentConfig();
+    ComponentConfig config1 = new ComponentConfig();
     config1.setIncludeGeneratedContent( false );
 
-    BackupComponentConfig config2 = new BackupComponentConfig();
+    ComponentConfig config2 = new ComponentConfig();
     config2.setIncludeGeneratedContent( true );
 
     // Assert: Changes to one shouldn't affect the other

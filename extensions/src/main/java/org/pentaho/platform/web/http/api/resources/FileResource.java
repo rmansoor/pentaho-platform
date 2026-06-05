@@ -47,8 +47,8 @@ import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.plugin.services.importer.PlatformImportException;
 import org.pentaho.platform.api.importexport.ExportException;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.Exporter;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 import org.pentaho.platform.repository.RepositoryDownloadWhitelist;
 import org.pentaho.platform.repository.RepositoryFilenameUtils;
 import org.pentaho.platform.repository2.ClientRepositoryPaths;
@@ -268,7 +268,7 @@ public class FileResource extends AbstractJaxRSResource {
       @ResponseCode( code = 400, condition = "Invalid component configuration" ),
       @ResponseCode( code = 403, condition = "User does not have administrative permissions" ),
       @ResponseCode( code = 500, condition = "Failure to complete the export." )} )
-  public Response selectiveBackup( BackupComponentConfig componentConfig,
+  public Response selectiveBackup( ComponentConfig componentConfig,
       @QueryParam( "logFile" ) String logFile,
       @QueryParam( "logLevel" ) String logLevel,
       @QueryParam( "outputFile" ) String outputFile ) {
@@ -334,7 +334,7 @@ public class FileResource extends AbstractJaxRSResource {
       @FormDataParam( "backupBundlePath" ) String backupBundlePath ) {
     try {
       // Parse component overrides if provided
-      BackupComponentConfig componentOverrides = null;
+      ComponentConfig componentOverrides = null;
       if ( componentOverridesJson != null && !componentOverridesJson.isEmpty() ) {
         componentOverrides = parseComponentConfigJson( componentOverridesJson );
       }
@@ -352,17 +352,17 @@ public class FileResource extends AbstractJaxRSResource {
   }
 
   /**
-   * Helper method to parse JSON string to BackupComponentConfig
+   * Helper method to parse JSON string to ComponentConfig
    * Uses Jackson ObjectMapper for robust JSON parsing
    *
-   * @param json JSON string representation of BackupComponentConfig
-   * @return Parsed BackupComponentConfig
+   * @param json JSON string representation of ComponentConfig
+   * @return Parsed ComponentConfig
    * @throws IllegalArgumentException if JSON is invalid
    */
-  private BackupComponentConfig parseComponentConfigJson( String json ) throws IllegalArgumentException {
+  private ComponentConfig parseComponentConfigJson( String json ) throws IllegalArgumentException {
     try {
       ObjectMapper mapper = new ObjectMapper();
-      return mapper.readValue( json, BackupComponentConfig.class );
+      return mapper.readValue( json, ComponentConfig.class );
     } catch ( Exception e ) {
       throw new IllegalArgumentException( "Invalid JSON format for component configuration: " + e.getMessage() );
     }

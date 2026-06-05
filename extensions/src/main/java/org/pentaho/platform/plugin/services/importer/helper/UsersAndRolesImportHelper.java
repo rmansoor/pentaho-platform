@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.pentaho.platform.api.engine.ISystemConfig;
 import org.pentaho.platform.api.importexport.IImportHelper;
 import org.pentaho.platform.api.importexport.ImportException;
 import org.pentaho.platform.api.engine.security.userroledao.IUserRoleDao;
@@ -30,7 +31,7 @@ import org.pentaho.platform.api.mt.ITenant;
 import org.pentaho.platform.core.mt.Tenant;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.core.system.TenantUtils;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ExportManifestUserSetting;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.RoleExport;
@@ -62,27 +63,32 @@ public class UsersAndRolesImportHelper implements IImportHelper {
   }
 
   @Override
-  public boolean shouldExecute( Object componentOverrides ) {
-    // Only execute if users are included in the profile
-    if ( componentOverrides == null ) {
-      return true; // Full restore, include users
+  public boolean shouldExecute( Object config ) {
+    if ( config instanceof ComponentConfig ) {
+      return ( ( ComponentConfig ) config ).isIncludeUsers();
     }
-
-    // Cast to BackupComponentConfig if available
-    if ( componentOverrides instanceof BackupComponentConfig ) {
-      BackupComponentConfig config = (BackupComponentConfig) componentOverrides;
-      return config.isIncludeUsers();
-    }
-
-    // If type is unknown, default to include
-    return true;
+    return false;
   }
 
   @Override
   public void doImport( Object importArg ) throws ImportException {
     solutionImportHandler = (SolutionImportHandler) importArg;
-
+    if ( !shouldExecute( solutionImportHandler.getImportSession().getComponentOverrides() ) ) {
+      return;
+    }
     try {
+      // Read property from system/security.properties
+      ISystemConfig systemConfig = PentahoSystem.get( ISystemConfig.class );
+      String provider = "jackrabbit";
+      if ( systemConfig != null ) {
+        provider = systemConfig.getProperty( "security.provider",  "jackrabbit");
+      }
+
+      if ( provider.equalsIgnoreCase( "jackrabbit" ) ) {
+        solutionImportHandler.getLogger().info( "Nothing to import from users and roles as the authentication is external");
+        return;
+      }
+
       ExportManifest manifest = solutionImportHandler.getImportSession().getManifest();
 
       if ( manifest == null ) {

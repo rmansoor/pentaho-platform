@@ -20,7 +20,7 @@ import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.repository2.unified.RepositoryFileExtraMetaData;
 import org.pentaho.platform.api.scheduler2.IScheduler;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -87,7 +87,7 @@ public class GeneratedContentFilteringTest {
   @Test
   public void testGeneratedContentSkippedWhenFilterEnabled() {
     // Setup
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeGeneratedContent( false );
 
     Map<String, Serializable> metadata = new HashMap<>();
@@ -108,7 +108,7 @@ public class GeneratedContentFilteringTest {
   @Test
   public void testGeneratedContentNotSkippedWhenFilterDisabled() {
     // Setup
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeGeneratedContent( true );
 
     Map<String, Serializable> metadata = new HashMap<>();
@@ -129,7 +129,7 @@ public class GeneratedContentFilteringTest {
   @Test
   public void testNonGeneratedContentNeverSkipped() {
     // Setup
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeGeneratedContent( false );
 
     Map<String, Serializable> metadata = new HashMap<>();

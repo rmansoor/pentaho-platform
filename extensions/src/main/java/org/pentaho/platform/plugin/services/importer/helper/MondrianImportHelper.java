@@ -22,7 +22,7 @@ import org.pentaho.platform.api.importexport.IImportHelper;
 import org.pentaho.platform.api.importexport.ImportException;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.plugin.services.importer.RepositoryFileImportBundle;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMondrian;
@@ -47,27 +47,20 @@ public class MondrianImportHelper implements IImportHelper {
     return "Mondrian OLAP Schema Import Helper";
   }
 
-  @Override
-  public boolean shouldExecute( Object componentOverrides ) {
-    // Only execute if Mondrian schemas are included in the profile
-    if ( componentOverrides == null ) {
-      return true; // Full restore, include Mondrian
+  public boolean shouldExecute( Object config ) {
+    if ( config instanceof ComponentConfig ) {
+      return ( ( ComponentConfig ) config ).isIncludeMondrian();
     }
-
-    // Cast to BackupComponentConfig if available
-    if ( componentOverrides instanceof BackupComponentConfig ) {
-      BackupComponentConfig config = (BackupComponentConfig) componentOverrides;
-      return config.isIncludeMondrian();
-    }
-
-    // If type is unknown, default to include
-    return true;
+    return false;
   }
+
 
   @Override
   public void doImport( Object importArg ) throws ImportException {
     solutionImportHandler = (SolutionImportHandler) importArg;
-
+    if ( !shouldExecute( solutionImportHandler.getImportSession().getComponentOverrides() ) ) {
+      return;
+    }
     try {
       ExportManifest manifest = solutionImportHandler.getImportSession().getManifest();
 

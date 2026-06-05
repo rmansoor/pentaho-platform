@@ -20,15 +20,13 @@ import java.util.List;
 import org.pentaho.platform.api.importexport.IImportHelper;
 import org.pentaho.platform.api.importexport.ImportException;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
-import org.pentaho.platform.api.repository2.unified.IPlatformImportBundle;
 import org.pentaho.platform.plugin.services.importer.RepositoryFileImportBundle;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMetadata;
 import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.plugin.services.importer.SolutionImportHandler;
-import org.pentaho.platform.plugin.services.importexport.ImportSource.IRepositoryFileBundle;
 
 /**
  * Import helper for metadata (datasources) restoration.
@@ -48,26 +46,19 @@ public class MetadataImportHelper implements IImportHelper {
   }
 
   @Override
-  public boolean shouldExecute( Object componentOverrides ) {
-    // Only execute if datasources are included in the profile
-    if ( componentOverrides == null ) {
-      return true; // Full restore, include datasources
+  public boolean shouldExecute( Object config ) {
+    if ( config instanceof ComponentConfig ) {
+      return ( ( ComponentConfig ) config ).isIncludeDatasources();
     }
-
-    // Cast to BackupComponentConfig if available
-    if ( componentOverrides instanceof BackupComponentConfig ) {
-      BackupComponentConfig config = (BackupComponentConfig) componentOverrides;
-      return config.isIncludeDatasources();
-    }
-
-    // If type is unknown, default to include
-    return true;
+    return false;
   }
 
   @Override
   public void doImport( Object importArg ) throws ImportException {
     solutionImportHandler = (SolutionImportHandler) importArg;
-
+    if ( !shouldExecute( solutionImportHandler.getImportSession().getComponentOverrides() ) ) {
+      return;
+    }
     try {
       ExportManifest manifest = solutionImportHandler.getImportSession().getManifest();
 

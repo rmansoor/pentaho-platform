@@ -14,17 +14,13 @@ package org.pentaho.platform.plugin.services.importexport;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.apache.commons.logging.Log;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -40,7 +36,7 @@ import static org.mockito.Mockito.*;
 public class ImportExportLoggerTest {
 
   private ImportExportLogger logger;
-  private BackupComponentConfig config;
+  private ComponentConfig config;
 
   @Before
   public void setUp() {
@@ -164,7 +160,7 @@ public class ImportExportLoggerTest {
   @Test
   public void testBackupStartLogsConfiguration() {
     // Arrange
-    BackupComponentConfig cfg = BackupComponentConfig.contentOnly();
+    ComponentConfig cfg = ComponentConfig.contentOnly();
     
     // Act
     logger.logBackupStart( cfg );
@@ -295,7 +291,7 @@ public class ImportExportLoggerTest {
   @Test
   public void testRestoreLoggingMatchesBackupStructure() {
     // Arrange
-    BackupComponentConfig cfg = BackupComponentConfig.contentOnly();
+    ComponentConfig cfg = ComponentConfig.contentOnly();
     
     // Act: Start restore
     logger.logRestoreStart( cfg );
@@ -344,8 +340,8 @@ public class ImportExportLoggerTest {
 
   // ===== Helper Methods =====
 
-  private BackupComponentConfig createTestConfig() {
-    BackupComponentConfig cfg = BackupComponentConfig.contentOnly();
+  private ComponentConfig createTestConfig() {
+    ComponentConfig cfg = ComponentConfig.contentOnly();
     cfg.setIncludeGeneratedContent( false );
     return cfg;
   }
@@ -365,7 +361,7 @@ public class ImportExportLoggerTest {
   @Test
   public void testFullBackupCycleLogging() {
     // Arrange
-    BackupComponentConfig cfg = BackupComponentConfig.fullSystem();
+    ComponentConfig cfg = ComponentConfig.fullSystem();
     cfg.setIncludeGeneratedContent( false );
     
     // Act

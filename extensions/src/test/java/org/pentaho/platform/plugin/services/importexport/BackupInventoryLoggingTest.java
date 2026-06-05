@@ -28,7 +28,7 @@ public class BackupInventoryLoggingTest {
   private BackupInventory inventory;
 
   @Mock
-  private BackupComponentConfig componentConfig;
+  private ComponentConfig componentConfig;
 
   @Before
   public void setUp() {

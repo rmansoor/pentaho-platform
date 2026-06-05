@@ -138,7 +138,7 @@ This file is now the top-level bridge between REST/CLI requests and the importer
 
 ### Key changes
 - registers built-in export helpers
-- supports selective export via `BackupComponentConfig`
+- supports selective export via `ComponentConfig`
 - added `runAllExportHelpers()`
 - added `exportFileByPath(...)` for dependency-aware export
 - added metrics, inventory, and summary logging

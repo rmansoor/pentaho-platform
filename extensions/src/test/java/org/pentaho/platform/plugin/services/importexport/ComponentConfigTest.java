@@ -23,13 +23,13 @@ import java.util.Map;
 import org.junit.Test;
 
 /**
- * Test cases for BackupComponentConfig
+ * Test cases for ComponentConfig
  */
-public class BackupComponentConfigTest {
+public class ComponentConfigTest {
 
   @Test
   public void testFullSystemBackup() {
-    BackupComponentConfig config = BackupComponentConfig.fullSystem();
+    ComponentConfig config = ComponentConfig.fullSystem();
 
     assertTrue( config.isIncludeContent() );
     assertTrue( config.isIncludeUsers() );
@@ -45,7 +45,7 @@ public class BackupComponentConfigTest {
 
   @Test
   public void testContentOnlyBackup() {
-    BackupComponentConfig config = BackupComponentConfig.contentOnly();
+    ComponentConfig config = ComponentConfig.contentOnly();
 
     assertTrue( config.isIncludeContent() );
     assertFalse( config.isIncludeUsers() );
@@ -61,7 +61,7 @@ public class BackupComponentConfigTest {
 
   @Test
   public void testSecurityOnlyBackup() {
-    BackupComponentConfig config = BackupComponentConfig.securityOnly();
+    ComponentConfig config = ComponentConfig.securityOnly();
 
     assertFalse( config.isIncludeContent() );
     assertTrue( config.isIncludeUsers() );
@@ -77,7 +77,7 @@ public class BackupComponentConfigTest {
 
   @Test
   public void testDataSourceBackup() {
-    BackupComponentConfig config = BackupComponentConfig.dataSource();
+    ComponentConfig config = ComponentConfig.dataSource();
 
     assertFalse( config.isIncludeContent() );
     assertFalse( config.isIncludeUsers() );
@@ -93,7 +93,7 @@ public class BackupComponentConfigTest {
 
   @Test
   public void testInfrastructureBackup() {
-    BackupComponentConfig config = BackupComponentConfig.infrastructure();
+    ComponentConfig config = ComponentConfig.infrastructure();
 
     assertFalse( config.isIncludeContent() );
     assertFalse( config.isIncludeUsers() );
@@ -109,7 +109,7 @@ public class BackupComponentConfigTest {
 
   @Test
   public void testCustomConfiguration() {
-    BackupComponentConfig config = new BackupComponentConfig( "Custom Backup" );
+    ComponentConfig config = new ComponentConfig( "Custom Backup" );
     config.setIncludeContent( true );
     config.setIncludeUsers( true );
     config.setIncludeDatasources( false );
@@ -133,7 +133,7 @@ public class BackupComponentConfigTest {
 
   @Test
   public void testGetEnabledComponents() {
-    BackupComponentConfig config = BackupComponentConfig.contentOnly();
+    ComponentConfig config = ComponentConfig.contentOnly();
     config.setIncludeSchedules( true );
 
     List<String> components = config.getEnabledComponents();
@@ -145,7 +145,7 @@ public class BackupComponentConfigTest {
 
   @Test
   public void testToMap() {
-    BackupComponentConfig config = BackupComponentConfig.securityOnly();
+    ComponentConfig config = ComponentConfig.securityOnly();
     Map<String, Boolean> map = config.toMap();
 
     assertNotNull( map );
@@ -160,7 +160,7 @@ public class BackupComponentConfigTest {
 
   @Test
   public void testInvalidConfiguration() {
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeContent( false );
     config.setIncludeUsers( false );
     config.setIncludeDatasources( false );
@@ -174,17 +174,17 @@ public class BackupComponentConfigTest {
 
   @Test
   public void testToString() {
-    BackupComponentConfig config = BackupComponentConfig.fullSystem();
+    ComponentConfig config = ComponentConfig.fullSystem();
     String str = config.toString();
 
     assertNotNull( str );
-    assertTrue( str.contains( "BackupComponentConfig" ) );
+    assertTrue( str.contains( "ComponentConfig" ) );
     assertTrue( str.contains( "Full System Backup" ) );
   }
 
   @Test
   public void testSerialization() {
-    BackupComponentConfig config = BackupComponentConfig.dataSource();
+    ComponentConfig config = ComponentConfig.dataSource();
     config.setBackupName( "Test Backup" );
     config.setDescription( "Test Description" );
 

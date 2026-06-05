@@ -22,7 +22,7 @@ import org.pentaho.platform.api.importexport.IImportHelper;
 import org.pentaho.platform.api.importexport.ImportException;
 import org.pentaho.platform.api.repository.datasource.IDatasourceMgmtService;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.DatabaseConnectionConverter;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
@@ -46,27 +46,19 @@ public class JdbcDatasourceImportHelper implements IImportHelper {
     return "JDBC Datasource Import Helper";
   }
 
-  @Override
-  public boolean shouldExecute( Object componentOverrides ) {
-    // Only execute if datasources are included in the profile
-    if ( componentOverrides == null ) {
-      return true; // Full restore, include datasources
+  public boolean shouldExecute( Object config ) {
+    if ( config instanceof ComponentConfig ) {
+      return ( ( ComponentConfig ) config ).isIncludeDatasources();
     }
-
-    // Cast to BackupComponentConfig if available
-    if ( componentOverrides instanceof BackupComponentConfig ) {
-      BackupComponentConfig config = (BackupComponentConfig) componentOverrides;
-      return config.isIncludeDatasources();
-    }
-
-    // If type is unknown, default to include
-    return true;
+    return false;
   }
 
   @Override
   public void doImport( Object importArg ) throws ImportException {
     solutionImportHandler = (SolutionImportHandler) importArg;
-
+    if ( !shouldExecute( solutionImportHandler.getImportSession().getComponentOverrides() ) ) {
+      return;
+    }
     try {
       ExportManifest manifest = solutionImportHandler.getImportSession().getManifest();
 

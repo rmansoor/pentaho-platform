@@ -22,19 +22,19 @@ import java.util.*;
  */
 public class SelectiveBackupRestoreCoordinationTest {
 
-  private BackupComponentConfig exportConfig;
-  private BackupComponentConfig importConfig;
+  private ComponentConfig exportConfig;
+  private ComponentConfig importConfig;
 
   @Before
   public void setUp() {
-    exportConfig = new BackupComponentConfig();
-    importConfig = new BackupComponentConfig();
+    exportConfig = new ComponentConfig();
+    importConfig = new ComponentConfig();
   }
 
   /**
    * Helper: count enabled components in config
    */
-  private int countEnabledComponents( BackupComponentConfig config ) {
+  private int countEnabledComponents( ComponentConfig config ) {
     int count = 0;
     if ( config.isIncludeContent() ) count++;
     if ( config.isIncludeUsers() ) count++;
@@ -51,11 +51,11 @@ public class SelectiveBackupRestoreCoordinationTest {
   @Test
   public void testContentOnlyExportFullRestore() {
     // Setup: Export content-only backup
-    exportConfig = BackupComponentConfig.contentOnly();
+    exportConfig = ComponentConfig.contentOnly();
     assertFalse( "Export should not include users", exportConfig.isIncludeUsers() );
 
     // During restore, user tries to restore users (but won't exist in backup)
-    importConfig = new BackupComponentConfig();
+    importConfig = new ComponentConfig();
     importConfig.setIncludeUsers( true );
 
     // Assert: Export config is restrictive, import config can request anything
@@ -69,12 +69,12 @@ public class SelectiveBackupRestoreCoordinationTest {
   @Test
   public void testFullExportContentOnlyRestore() {
     // Setup: Export full system
-    exportConfig = BackupComponentConfig.fullSystem();
+    exportConfig = ComponentConfig.fullSystem();
     assertTrue( "Export includes everything", exportConfig.isIncludeUsers() );
     assertTrue( "Export includes everything", exportConfig.isIncludeDatasources() );
 
     // During restore, user restricts to content-only
-    importConfig = BackupComponentConfig.contentOnly();
+    importConfig = ComponentConfig.contentOnly();
     assertTrue( "Restore has content", importConfig.isIncludeContent() );
     assertFalse( "Restore excludes users", importConfig.isIncludeUsers() );
 
@@ -115,7 +115,7 @@ public class SelectiveBackupRestoreCoordinationTest {
   @Test
   public void testGeneratedContentFilteringDuringExport() {
     // Setup: Content backup without generated content
-    exportConfig = BackupComponentConfig.contentOnly();
+    exportConfig = ComponentConfig.contentOnly();
     exportConfig.setIncludeGeneratedContent( false );
 
     assertFalse( "Export should exclude generated content", exportConfig.isIncludeGeneratedContent() );
@@ -179,17 +179,17 @@ public class SelectiveBackupRestoreCoordinationTest {
   @Test
   public void testMultipleBackupScenariosForSameEnvironment() {
     // Scenario 1: Weekly full backup
-    BackupComponentConfig weekly = BackupComponentConfig.fullSystem();
+    ComponentConfig weekly = ComponentConfig.fullSystem();
     assertTrue( "Weekly includes everything", weekly.isIncludeContent() );
     assertTrue( "Weekly includes users", weekly.isIncludeUsers() );
 
     // Scenario 2: Daily content backup
-    BackupComponentConfig daily = BackupComponentConfig.contentOnly();
+    ComponentConfig daily = ComponentConfig.contentOnly();
     assertTrue( "Daily includes content", daily.isIncludeContent() );
     assertFalse( "Daily excludes users", daily.isIncludeUsers() );
 
     // Scenario 3: On-demand security backup
-    BackupComponentConfig security = BackupComponentConfig.securityOnly();
+    ComponentConfig security = ComponentConfig.securityOnly();
     assertFalse( "Security excludes content", security.isIncludeContent() );
     assertTrue( "Security includes users", security.isIncludeUsers() );
 
@@ -209,11 +209,11 @@ public class SelectiveBackupRestoreCoordinationTest {
   @Test
   public void testRestoreStrategyAfterBackupFailure() {
     // Setup: Last successful backup was content-only
-    BackupComponentConfig lastGoodBackup = BackupComponentConfig.contentOnly();
+    ComponentConfig lastGoodBackup = ComponentConfig.contentOnly();
     lastGoodBackup.setIncludeGeneratedContent( false );
 
     // Current restore needs to work with what's available
-    importConfig = new BackupComponentConfig();
+    importConfig = new ComponentConfig();
     importConfig.setIncludeContent( true );
     // Users, datasources will be skipped because backup didn't include them
     importConfig.setIncludeUsers( false );
@@ -232,10 +232,10 @@ public class SelectiveBackupRestoreCoordinationTest {
     // Scenario: Full system is backed up regularly, but we update specific components
 
     // Full backup exists
-    BackupComponentConfig fullBackup = BackupComponentConfig.fullSystem();
+    ComponentConfig fullBackup = ComponentConfig.fullSystem();
 
     // Today we only want to restore users (security update)
-    BackupComponentConfig todayRestore = new BackupComponentConfig();
+    ComponentConfig todayRestore = new ComponentConfig();
     todayRestore.setIncludeContent( false );
     todayRestore.setIncludeUsers( true );
     todayRestore.setIncludeDatasources( false );
@@ -255,20 +255,20 @@ public class SelectiveBackupRestoreCoordinationTest {
   @Test
   public void testProgressiveRestoreStrategy() {
     // Phase 1: Restore core system
-    BackupComponentConfig phase1 = new BackupComponentConfig();
+    ComponentConfig phase1 = new ComponentConfig();
     phase1.setIncludeContent( true );
     phase1.setIncludeUsers( true );
     phase1.setIncludeDatasources( false );
 
     // Phase 2: Add datasources
-    BackupComponentConfig phase2 = new BackupComponentConfig();
+    ComponentConfig phase2 = new ComponentConfig();
     phase2.setIncludeContent( true );
     phase2.setIncludeUsers( true );
     phase2.setIncludeDatasources( true );
     phase2.setIncludeSchedules( false );
 
     // Phase 3: Add schedules
-    BackupComponentConfig phase3 = BackupComponentConfig.fullSystem();
+    ComponentConfig phase3 = ComponentConfig.fullSystem();
 
     // Assert: Progressive expansion
     assertEquals( "Phase 1 has 2 components", 2,
@@ -284,7 +284,7 @@ public class SelectiveBackupRestoreCoordinationTest {
   @Test
   public void testComponentDependencyTracking() {
     // Setup: Assume schedules depend on datasources
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
 
     // Scenario: Want to restore schedules but not datasources
     config.setIncludeSchedules( true );
@@ -306,12 +306,12 @@ public class SelectiveBackupRestoreCoordinationTest {
   @Test
   public void testBackupRestoreConsistencyCheck() {
     // Setup: Compare backup and restore configs
-    BackupComponentConfig backup = new BackupComponentConfig();
+    ComponentConfig backup = new ComponentConfig();
     backup.setIncludeContent( true );
     backup.setIncludeUsers( false );
     backup.setIncludeDatasources( true );
 
-    BackupComponentConfig restore = new BackupComponentConfig();
+    ComponentConfig restore = new ComponentConfig();
     restore.setIncludeContent( true );
     restore.setIncludeUsers( true ); // Requesting more than what was backed up
     restore.setIncludeDatasources( true );

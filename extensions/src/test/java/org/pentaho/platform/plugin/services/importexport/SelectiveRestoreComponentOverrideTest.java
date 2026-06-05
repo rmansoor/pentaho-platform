@@ -15,20 +15,19 @@ package org.pentaho.platform.plugin.services.importexport;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
-import java.util.*;
 
 /**
  * Unit tests for selective restore with component override functionality
  */
 public class SelectiveRestoreComponentOverrideTest {
 
-  private BackupComponentConfig baseConfig;
-  private BackupComponentConfig overrideConfig;
+  private ComponentConfig baseConfig;
+  private ComponentConfig overrideConfig;
 
   @Before
   public void setUp() {
-    baseConfig = BackupComponentConfig.contentOnly();
-    overrideConfig = new BackupComponentConfig();
+    baseConfig = ComponentConfig.contentOnly();
+    overrideConfig = new ComponentConfig();
   }
 
   /**
@@ -55,7 +54,7 @@ public class SelectiveRestoreComponentOverrideTest {
   @Test
   public void testOverrideContentOnlyWithMultipleComponents() {
     // Setup
-    BackupComponentConfig override = BackupComponentConfig.contentOnly();
+    ComponentConfig override = ComponentConfig.contentOnly();
 
     // Act: Override to include users and schedules
     override.setIncludeUsers( true );
@@ -74,7 +73,7 @@ public class SelectiveRestoreComponentOverrideTest {
   @Test
   public void testDisableComponentFromFullSystem() {
     // Setup: Start with full system
-    BackupComponentConfig limited = BackupComponentConfig.fullSystem();
+    ComponentConfig limited = ComponentConfig.fullSystem();
     assertTrue( "Full system should include content", limited.isIncludeContent() );
 
     // Act: Remove datasources from the backup
@@ -93,7 +92,7 @@ public class SelectiveRestoreComponentOverrideTest {
   @Test
   public void testCustomConfigurationFromScratch() {
     // Setup: Start with defaults (all included)
-    BackupComponentConfig custom = new BackupComponentConfig();
+    ComponentConfig custom = new ComponentConfig();
 
     // Act: Configure exactly what we want
     custom.setIncludeContent( true );
@@ -120,7 +119,7 @@ public class SelectiveRestoreComponentOverrideTest {
   @Test
   public void testTogglingComponentsOnOff() {
     // Setup
-    BackupComponentConfig toggle = BackupComponentConfig.contentOnly();
+    ComponentConfig toggle = ComponentConfig.contentOnly();
 
     // Act & Assert: Toggle users
     assertFalse( "Users initially excluded", toggle.isIncludeUsers() );
@@ -136,7 +135,7 @@ public class SelectiveRestoreComponentOverrideTest {
   @Test
   public void testSelectiveRestoreComponentStrategy() {
     // Scenario: Restore content and users, but not system components
-    BackupComponentConfig restore = new BackupComponentConfig();
+    ComponentConfig restore = new ComponentConfig();
     restore.setIncludeContent( true );
     restore.setIncludeUsers( true );
     restore.setIncludeDatasources( false );
@@ -164,7 +163,7 @@ public class SelectiveRestoreComponentOverrideTest {
   @Test
   public void testBuildingConfigStepByStep() {
     // Setup: Start minimal
-    BackupComponentConfig builder = new BackupComponentConfig();
+    ComponentConfig builder = new ComponentConfig();
     builder.setIncludeContent( false );
     builder.setIncludeUsers( false );
     builder.setIncludeDatasources( false );
@@ -197,8 +196,8 @@ public class SelectiveRestoreComponentOverrideTest {
   @Test
   public void testConfigurationComposition() {
     // Setup: Create base configurations
-    BackupComponentConfig base = BackupComponentConfig.contentOnly();
-    BackupComponentConfig addon = new BackupComponentConfig();
+    ComponentConfig base = ComponentConfig.contentOnly();
+    ComponentConfig addon = new ComponentConfig();
 
     // Act: "Compose" them (apply addon settings to base)
     if ( addon.isIncludeUsers() ) {
@@ -221,11 +220,11 @@ public class SelectiveRestoreComponentOverrideTest {
   @Test
   public void testExclusiveComponentGroups() {
     // Scenario: Restore either users OR datasources, but not both
-    BackupComponentConfig userOnly = new BackupComponentConfig();
+    ComponentConfig userOnly = new ComponentConfig();
     userOnly.setIncludeUsers( true );
     userOnly.setIncludeDatasources( false );
 
-    BackupComponentConfig datasourceOnly = new BackupComponentConfig();
+    ComponentConfig datasourceOnly = new ComponentConfig();
     datasourceOnly.setIncludeUsers( false );
     datasourceOnly.setIncludeDatasources( true );
 
@@ -243,10 +242,10 @@ public class SelectiveRestoreComponentOverrideTest {
   @Test
   public void testConfigurationCopyBehavior() {
     // Setup: Create source config
-    BackupComponentConfig source = BackupComponentConfig.securityOnly();
+    ComponentConfig source = ComponentConfig.securityOnly();
 
     // Act: Create new config and copy settings
-    BackupComponentConfig copy = new BackupComponentConfig();
+    ComponentConfig copy = new ComponentConfig();
     copy.setIncludeContent( source.isIncludeContent() );
     copy.setIncludeUsers( source.isIncludeUsers() );
     copy.setIncludeDatasources( source.isIncludeDatasources() );
@@ -266,7 +265,7 @@ public class SelectiveRestoreComponentOverrideTest {
   @Test
   public void testComponentCountValidation() {
     // Setup
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeContent( true );
     config.setIncludeUsers( true );
     config.setIncludeDatasources( false );

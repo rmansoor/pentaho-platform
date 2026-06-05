@@ -23,12 +23,12 @@ import java.util.*;
 public class SelectiveRestoreCliParametersTest {
 
   private Map<String, String> cliParams;
-  private BackupComponentConfig configFromCli;
+  private ComponentConfig configFromCli;
 
   @Before
   public void setUp() {
     cliParams = new HashMap<>();
-    configFromCli = new BackupComponentConfig();
+    configFromCli = new ComponentConfig();
   }
 
   /**
@@ -145,12 +145,12 @@ public class SelectiveRestoreCliParametersTest {
 
     // Act: Apply profile
     String profile = cliParams.get( "profile" );
-    BackupComponentConfig profileConfig = null;
+    ComponentConfig profileConfig = null;
     
     if ( "CONTENT_ONLY".equals( profile ) ) {
-      profileConfig = BackupComponentConfig.contentOnly();
+      profileConfig = ComponentConfig.contentOnly();
     } else if ( "FULL_SYSTEM".equals( profile ) ) {
-      profileConfig = BackupComponentConfig.fullSystem();
+      profileConfig = ComponentConfig.fullSystem();
     }
 
     // Assert
@@ -169,7 +169,7 @@ public class SelectiveRestoreCliParametersTest {
     cliParams.put( "include-users", "true" ); // Override profile
 
     // Act: Apply profile then override
-    BackupComponentConfig config = BackupComponentConfig.contentOnly();
+    ComponentConfig config = ComponentConfig.contentOnly();
     boolean overrideUsers = cliParams.containsKey( "include-users" );
     if ( overrideUsers ) {
       config.setIncludeUsers( cliParams.get( "include-users" ).equalsIgnoreCase( "true" ) );
@@ -271,13 +271,13 @@ public class SelectiveRestoreCliParametersTest {
 
     // Act: Try to apply invalid profile
     String profileName = cliParams.get( "profile" );
-    BackupComponentConfig config = null;
+    ComponentConfig config = null;
     
     if ( "FULL_SYSTEM".equals( profileName ) ) {
-      config = BackupComponentConfig.fullSystem();
+      config = ComponentConfig.fullSystem();
     } else {
       // Default fallback
-      config = new BackupComponentConfig();
+      config = new ComponentConfig();
     }
 
     // Assert: Should use default config
@@ -295,7 +295,7 @@ public class SelectiveRestoreCliParametersTest {
     cliParams.put( "include-generated-content", "false" );
 
     // Act: Apply profile then component flags
-    BackupComponentConfig config = BackupComponentConfig.fullSystem();
+    ComponentConfig config = ComponentConfig.fullSystem();
     boolean hasGeneratedContent = cliParams.containsKey( "include-generated-content" );
     if ( hasGeneratedContent ) {
       config.setIncludeGeneratedContent( cliParams.get( "include-generated-content" ).equalsIgnoreCase( "true" ) );

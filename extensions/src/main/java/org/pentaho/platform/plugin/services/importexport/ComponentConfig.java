@@ -27,7 +27,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @author Pentaho Platform Team
  * @since 9.0
  */
-public class BackupComponentConfig implements Serializable {
+public class ComponentConfig implements Serializable {
   private static final long serialVersionUID = 1L;
 
   // Component flags
@@ -74,14 +74,14 @@ public class BackupComponentConfig implements Serializable {
   /**
    * Default constructor - includes all components
    */
-  public BackupComponentConfig() {
+  public ComponentConfig() {
     this.createdTimestamp = System.currentTimeMillis();
   }
 
   /**
    * Constructor with backup name
    */
-  public BackupComponentConfig( String backupName ) {
+  public ComponentConfig( String backupName ) {
     this();
     this.backupName = backupName;
   }
@@ -89,8 +89,8 @@ public class BackupComponentConfig implements Serializable {
   /**
    * Full system backup - includes all components
    */
-  public static BackupComponentConfig fullSystem() {
-    BackupComponentConfig config = new BackupComponentConfig( "Full System Backup" );
+  public static ComponentConfig fullSystem() {
+    ComponentConfig config = new ComponentConfig( "Full System Backup" );
     config.includeContent = true;
     config.includeUsers = true;
     config.includeDatasources = true;
@@ -105,8 +105,8 @@ public class BackupComponentConfig implements Serializable {
   /**
    * Content only backup - repository files/folders only
    */
-  public static BackupComponentConfig contentOnly() {
-    BackupComponentConfig config = new BackupComponentConfig( "Content Only Backup" );
+  public static ComponentConfig contentOnly() {
+    ComponentConfig config = new ComponentConfig( "Content Only Backup" );
     config.includeContent = true;
     config.includeUsers = false;
     config.includeDatasources = false;
@@ -121,8 +121,8 @@ public class BackupComponentConfig implements Serializable {
   /**
    * Content only backup - without generated content
    */
-  public static BackupComponentConfig contentOnlyWithoutGenerated() {
-    BackupComponentConfig config = contentOnly();
+  public static ComponentConfig contentOnlyWithoutGenerated() {
+    ComponentConfig config = contentOnly();
     config.includeGeneratedContent = false; // Exclude generated content
     config.backupName = "Content Only Backup (No Generated)";
     return config;
@@ -131,8 +131,8 @@ public class BackupComponentConfig implements Serializable {
   /**
    * Security only backup - users and roles
    */
-  public static BackupComponentConfig securityOnly() {
-    BackupComponentConfig config = new BackupComponentConfig( "Security Only Backup" );
+  public static ComponentConfig securityOnly() {
+    ComponentConfig config = new ComponentConfig( "Security Only Backup" );
     config.includeContent = false;
     config.includeUsers = true;
     config.includeDatasources = false;
@@ -147,8 +147,8 @@ public class BackupComponentConfig implements Serializable {
   /**
    * Data source backup - datasources and metadata
    */
-  public static BackupComponentConfig dataSource() {
-    BackupComponentConfig config = new BackupComponentConfig( "Data Source Backup" );
+  public static ComponentConfig dataSource() {
+    ComponentConfig config = new ComponentConfig( "Data Source Backup" );
     config.includeContent = false;
     config.includeUsers = false;
     config.includeDatasources = true;
@@ -172,8 +172,8 @@ public class BackupComponentConfig implements Serializable {
    * 
    * Use SETTINGS or FULL_SYSTEM profile if you need to export emails and groups.
    */
-  public static BackupComponentConfig schedules() {
-    BackupComponentConfig config = new BackupComponentConfig( "Schedules Backup" );
+  public static ComponentConfig schedules() {
+    ComponentConfig config = new ComponentConfig( "Schedules Backup" );
     config.includeContent = false;
     config.includeUsers = false;
     config.includeDatasources = false;
@@ -195,8 +195,8 @@ public class BackupComponentConfig implements Serializable {
    * This is separate from USER_SETTINGS flag and is used to control export of
    * emails/groups by EmailsGroupsExportUtil in the scheduler plugin.
    */
-  public static BackupComponentConfig settings() {
-    BackupComponentConfig config = new BackupComponentConfig( "Settings Backup" );
+  public static ComponentConfig settings() {
+    ComponentConfig config = new ComponentConfig( "Settings Backup" );
     config.includeContent = false;
     config.includeUsers = false;
     config.includeDatasources = false;
@@ -212,8 +212,8 @@ public class BackupComponentConfig implements Serializable {
    * Infrastructure backup - schedules and settings (deprecated, use schedules() or settings() instead)
    */
   @Deprecated
-  public static BackupComponentConfig infrastructure() {
-    BackupComponentConfig config = new BackupComponentConfig( "Infrastructure Backup" );
+  public static ComponentConfig infrastructure() {
+    ComponentConfig config = new ComponentConfig( "Infrastructure Backup" );
     config.includeContent = false;
     config.includeUsers = false;
     config.includeDatasources = false;
@@ -305,7 +305,7 @@ public class BackupComponentConfig implements Serializable {
   @Override
   public String toString() {
     return String.format(
-        "BackupComponentConfig{name='%s', components=%s, enabled=%d}",
+        "ComponentConfig{name='%s', components=%s, enabled=%d}",
         backupName,
         getEnabledComponents(),
         getComponentCount()

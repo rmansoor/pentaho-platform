@@ -29,7 +29,6 @@ import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -46,9 +45,7 @@ import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
-import org.pentaho.platform.plugin.services.importexport.ImportExportLogger;
-import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 
 /**
  * Test class for PentahoPlatformExporter folder export functionality and helper architecture.
@@ -69,7 +66,7 @@ import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
  * Tests that:
  * 1. Folders are exported independently with their own metadata
  * 2. Export helpers are properly registered and contain actual export logic
- * 3. Selective export based on BackupComponentConfig works correctly
+ * 3. Selective export based on ComponentConfig works correctly
  * 4. Helpers are invoked during export with proper delegation
  */
 @Ignore( "Folder export tests refactored: methods moved to RepositoryContentExportHelper. Test through performExport() or helper tests." )
@@ -160,12 +157,12 @@ public class PentahoPlatformExporterFolderExportTest {
   /**
    * Test B: Export helpers respect selective export configuration
    * Verifies that export helpers only execute when their component is enabled
-   * in BackupComponentConfig
+   * in ComponentConfig
    */
   @Test
   public void testExportHelpersRespectSelectiveExportConfig() throws ExportException {
     // Create a config that only includes repository content
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeContent( true );
     config.setIncludeDatasources( false );
     config.setIncludeSchedules( false );
@@ -469,7 +466,7 @@ public class PentahoPlatformExporterFolderExportTest {
    * - Helpers are now independently unit testable
    * - Each helper is responsible for one export component
    * - Easy to add new helpers or modify existing ones
-   * - Selective export based on BackupComponentConfig
+   * - Selective export based on ComponentConfig
    * - Clean delegation pattern instead of thin wrappers
    * - Metrics and logging are encapsulated per helper
    */

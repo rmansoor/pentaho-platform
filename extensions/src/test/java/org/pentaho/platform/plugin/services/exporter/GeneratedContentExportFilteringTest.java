@@ -19,7 +19,7 @@ import org.mockito.MockitoAnnotations;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.scheduler2.IScheduler;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -41,13 +41,13 @@ public class GeneratedContentExportFilteringTest {
   @Mock
   private RepositoryFile repositoryFile;
 
-  private BackupComponentConfig componentConfig;
+  private ComponentConfig componentConfig;
 
   @Before
   public void setUp() {
     MockitoAnnotations.openMocks( this );
     exporter = new PentahoPlatformExporter( repository );
-    componentConfig = new BackupComponentConfig();
+    componentConfig = new ComponentConfig();
   }
 
   /**
@@ -268,12 +268,12 @@ public class GeneratedContentExportFilteringTest {
   }
 
   /**
-   * Test: BackupComponentConfig default values
+   * Test: ComponentConfig default values
    */
   @Test
   public void testBackupComponentConfigDefaults() {
     // Setup
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
 
     // Assert - defaults should be safe
     assertNotNull( "Config should not be null", config );
@@ -288,7 +288,7 @@ public class GeneratedContentExportFilteringTest {
   @Test
   public void testSetIncludeGeneratedContentFalse() {
     // Setup
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeGeneratedContent( false );
 
     // Assert
@@ -301,7 +301,7 @@ public class GeneratedContentExportFilteringTest {
   @Test
   public void testSetIncludeGeneratedContentTrue() {
     // Setup
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeGeneratedContent( true );
 
     // Assert

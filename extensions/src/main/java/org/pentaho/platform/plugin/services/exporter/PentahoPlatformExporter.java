@@ -14,64 +14,34 @@
 package org.pentaho.platform.plugin.services.exporter;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.pentaho.database.model.IDatabaseConnection;
-import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.metadata.repository.IMetadataDomainRepository;
 import org.pentaho.metastore.api.IMetaStore;
-import org.pentaho.metastore.stores.xml.XmlMetaStore;
-import org.pentaho.metastore.util.MetaStoreUtil;
-import org.pentaho.platform.api.engine.IUserRoleListService;
 import org.pentaho.platform.api.engine.IPentahoSession;
-import org.pentaho.platform.api.mt.ITenant;
-import org.pentaho.platform.api.repository.datasource.DatasourceMgmtServiceException;
 import org.pentaho.platform.api.repository.datasource.IDatasourceMgmtService;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
-import org.pentaho.platform.api.scheduler2.IScheduler;
-import org.pentaho.platform.api.usersettings.IAnyUserSettingService;
-import org.pentaho.platform.api.usersettings.IUserSettingService;
-import org.pentaho.platform.api.usersettings.pojo.IUserSetting;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.api.util.IPentahoPlatformExporter;
-import org.pentaho.platform.engine.core.system.PentahoSystem;
-import org.pentaho.platform.engine.core.system.TenantUtils;
-import org.pentaho.platform.plugin.action.mondrian.catalog.IMondrianCatalogService;
-import org.pentaho.platform.plugin.action.mondrian.catalog.MondrianCatalog;
-import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.exporter.helper.DatasourcesExportHelper;
 import org.pentaho.platform.plugin.services.exporter.helper.MetadataExportHelper;
 import org.pentaho.platform.plugin.services.exporter.helper.MetastoreExportHelper;
 import org.pentaho.platform.plugin.services.exporter.helper.MondrianExportHelper;
 import org.pentaho.platform.plugin.services.exporter.helper.RepositoryContentExportHelper;
 import org.pentaho.platform.plugin.services.exporter.helper.UsersAndRolesExportHelper;
-import org.pentaho.platform.plugin.services.importexport.DatabaseConnectionConverter;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.DefaultExportHandler;
-import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.BackupInventory;
 import org.pentaho.platform.plugin.services.importexport.InventoryLogger;
 import org.pentaho.platform.plugin.services.importexport.ImportExportLogger;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetricsCollector;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
-import org.pentaho.platform.plugin.services.importexport.ExportManifestUserSetting;
-import org.pentaho.platform.plugin.services.importexport.RoleExport;
-import org.pentaho.platform.plugin.services.importexport.UserExport;
 import org.pentaho.platform.plugin.services.importexport.ZipExportProcessor;
-import org.pentaho.platform.plugin.services.importexport.exportManifest.Parameters;
-import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMetaStore;
-import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMetadata;
-import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMondrian;
 import org.pentaho.platform.plugin.services.importexport.legacy.MondrianCatalogRepositoryHelper;
 import org.pentaho.platform.plugin.services.messages.Messages;
-import org.pentaho.platform.plugin.services.metadata.IPentahoMetadataDomainRepositoryExporter;
-import org.pentaho.platform.repository.solution.filebased.MondrianVfs;
 import org.pentaho.platform.repository2.ClientRepositoryPaths;
-import org.pentaho.platform.security.policy.rolebased.IRoleAuthorizationPolicyRoleBindingDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -80,14 +50,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -106,7 +71,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   protected ZipOutputStream zos;
 
   private IMetaStore metastore;
-  private BackupComponentConfig componentConfig;
+  private ComponentConfig componentConfig;
   private BackupInventory backupInventory;
   private InventoryLogger inventoryLogger;
   private ImportExportLogger importExportLogger;
@@ -147,7 +112,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
   public File performExport() throws ExportException, IOException {
     if ( componentConfig == null ) {
-      componentConfig = BackupComponentConfig.fullSystem();
+      componentConfig = ComponentConfig.fullSystem();
     }
     return this.performExport( null );
   }
@@ -155,7 +120,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   /**
    * Perform selective export based on component configuration
    */
-  public File performSelectiveExport( RepositoryFile exportRepositoryFile, BackupComponentConfig config )
+  public File performSelectiveExport( RepositoryFile exportRepositoryFile, ComponentConfig config )
     throws ExportException, IOException {
     this.componentConfig = config;
     getRepositoryExportLogger().info( "Starting selective export: " + config.toString() );
@@ -165,7 +130,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
   /**
    * Perform selective export of root directory
    */
-  public File performSelectiveExport( BackupComponentConfig config ) throws ExportException, IOException {
+  public File performSelectiveExport( ComponentConfig config ) throws ExportException, IOException {
     return performSelectiveExport( null, config );
   }
 
@@ -289,7 +254,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
     // Initialize component config if not set (backward compatibility)
     if ( componentConfig == null ) {
-      componentConfig = BackupComponentConfig.fullSystem();
+      componentConfig = ComponentConfig.fullSystem();
     }
 
     // LOG COMPONENT CONFIG AT START
@@ -545,11 +510,11 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
 
 
 
-  public BackupComponentConfig getComponentConfig() {
+  public Object getComponentConfig() {
     return componentConfig;
   }
 
-  public void setComponentConfig( BackupComponentConfig componentConfig ) {
+  public void setComponentConfig( ComponentConfig componentConfig ) {
     this.componentConfig = componentConfig;
   }
 

@@ -18,6 +18,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.castor.core.util.Assert;
 import org.pentaho.platform.api.mimetype.IPlatformMimeResolver;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.pentaho.metadata.repository.DomainAlreadyExistsException;
@@ -41,7 +42,6 @@ import org.pentaho.platform.plugin.services.importexport.Log4JRepositoryImportLo
 import org.pentaho.platform.plugin.services.importexport.RepositoryFileBundle;
 import org.pentaho.platform.plugin.services.importexport.RoleExport;
 import org.pentaho.platform.plugin.services.importexport.UserExport;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.ExportManifestMetaStore;
 import org.pentaho.platform.plugin.services.importer.helper.UsersAndRolesImportHelper;
@@ -223,7 +223,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
 
     // Initialize helper settings before running helpers
     ExportManifest manifest = getImportSession().getManifest();
-    BackupComponentConfig componentOverrides = getImportSession().getComponentOverrides();
+    ComponentConfig componentOverrides = getImportSession().getComponentOverrides();
     
     if ( isPerformingRestore && componentOverrides != null ) {
       getLogger().debug( "Selective restore active with component overrides: Users=" + componentOverrides.isIncludeUsers() + 
@@ -815,7 +815,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
    * @param manifest the export manifest containing user and role information
    * @return true if user was imported successfully or already exists, false if user not found or import failed
    */
-  public boolean importScheduleOwnerUser( String username, ExportManifest manifest ) {
+  public boolean importUserAndRole( String username, ExportManifest manifest ) {
     UsersAndRolesImportHelper helper = getUsersAndRolesImportHelper();
     if ( helper != null ) {
       return helper.importUserAndRole( username, manifest, this );

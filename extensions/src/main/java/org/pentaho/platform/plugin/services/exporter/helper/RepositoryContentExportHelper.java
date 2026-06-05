@@ -16,7 +16,7 @@ import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.repository2.ClientRepositoryPaths;
 
@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 /**
  * Export helper for repository content (files and folders).
@@ -47,16 +46,16 @@ public class RepositoryContentExportHelper implements IExportHelper {
    * Determine if repository content export should be performed.
    * Content is only exported if explicitly requested in the backup profile configuration.
    */
-  public boolean shouldExecute( BackupComponentConfig config ) {
-    if ( config == null ) {
-      return true; // Full backup, include content
+  public boolean shouldExecute( Object config ) {
+    if ( config instanceof ComponentConfig ) {
+      return ( ( ComponentConfig ) config ).isIncludeContent();
     }
-    return config.isIncludeContent(); // Respect profile settings
+    return false;
   }
 
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    BackupComponentConfig config = exporter != null ? exporter.getComponentConfig() : null;
+    Object config = exporter != null ? exporter.getComponentConfig() : null;
     if ( !shouldExecute( config ) ) {
       return;
     }

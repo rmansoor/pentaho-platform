@@ -53,7 +53,7 @@ import org.pentaho.platform.plugin.services.importexport.BaseExportProcessor;
 import org.pentaho.platform.plugin.services.importexport.DefaultExportHandler;
 import org.pentaho.platform.plugin.services.importexport.RepositoryTextLayout;
 import org.pentaho.platform.plugin.services.importexport.ExportHandler;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
 import org.pentaho.platform.plugin.services.importexport.IRepositoryImportLogger;
 import org.pentaho.platform.plugin.services.importexport.ImportSession;
@@ -94,7 +94,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.channels.IllegalSelectorException;
 import java.nio.file.Files;
@@ -288,7 +287,7 @@ public class FileService {
    * @throws ExportException if export fails
    */
   public DownloadFileWrapper selectiveBackup( String logFile, String logLevel, String outputFile,
-      BackupComponentConfig componentConfig ) throws IllegalArgumentException, IOException, ExportException {
+      ComponentConfig componentConfig ) throws IllegalArgumentException, IOException, ExportException {
     if ( doCanAdminister() ) {
       if ( componentConfig == null || !componentConfig.isValid() ) {
         throw new IllegalArgumentException( "Invalid component configuration: at least one component must be selected" );
@@ -399,8 +398,8 @@ public class FileService {
    * @throws SecurityException if user lacks permissions
    */
   public void selectiveRestore( final InputStream fileUpload, String overwriteFile,
-      String applyAclSettings, String overwriteAclSettings, String logFile, String logLevel,
-      BackupComponentConfig componentOverrides, String backupBundlePath ) throws IllegalArgumentException, PlatformImportException,
+                                String applyAclSettings, String overwriteAclSettings, String logFile, String logLevel,
+                                ComponentConfig componentOverrides, String backupBundlePath ) throws IllegalArgumentException, PlatformImportException,
       SecurityException {
     if ( doCanAdminister() ) {
       boolean overwriteFileFlag = !"false".equals( overwriteFile );

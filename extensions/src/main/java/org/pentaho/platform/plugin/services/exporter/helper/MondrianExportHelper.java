@@ -20,7 +20,7 @@ import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.plugin.action.mondrian.catalog.IMondrianCatalogService;
 import org.pentaho.platform.plugin.action.mondrian.catalog.MondrianCatalog;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.Parameters;
@@ -53,13 +53,16 @@ public class MondrianExportHelper implements IExportHelper {
     return "MondrianExporter";
   }
 
-  public boolean shouldExecute( BackupComponentConfig config ) {
-    return config != null && config.isIncludeMondrian();
+  public boolean shouldExecute( Object config ) {
+    if ( config instanceof ComponentConfig ) {
+      return ( ( ComponentConfig ) config ).isIncludeMondrian();
+    }
+    return false;
   }
 
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    BackupComponentConfig config = exporter != null ? exporter.getComponentConfig() : null;
+    Object config = exporter != null ? exporter.getComponentConfig() : null;
     if ( !shouldExecute( config ) ) {
       return;
     }

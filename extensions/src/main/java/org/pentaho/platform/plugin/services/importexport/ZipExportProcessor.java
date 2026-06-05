@@ -572,7 +572,7 @@ public class ZipExportProcessor extends BaseExportProcessor {
    */
   protected boolean shouldSkipGeneratedContent( RepositoryFile repositoryFile ) {
     // This method is intended to be overridden by subclasses (like PentahoPlatformExporter)
-    // that have access to BackupComponentConfig for selective backup/restore
+    // that have access to ComponentConfig for selective backup/restore
     // By default, no filtering is applied
     return false;
   }

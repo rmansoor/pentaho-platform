@@ -12,6 +12,7 @@
 
 package org.pentaho.platform.plugin.services.exporter.helper;
 
+import org.pentaho.platform.api.engine.ISystemConfig;
 import org.pentaho.platform.api.engine.IUserRoleListService;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
@@ -22,11 +23,12 @@ import org.pentaho.platform.api.usersettings.pojo.IUserSetting;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.core.system.TenantUtils;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ExportManifestUserSetting;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.RoleExport;
 import org.pentaho.platform.plugin.services.importexport.UserExport;
+import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
 import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.security.policy.rolebased.IRoleAuthorizationPolicyRoleBindingDao;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -55,19 +57,34 @@ public class UsersAndRolesExportHelper implements IExportHelper {
     return "UsersAndRolesExporter";
   }
 
-  public boolean shouldExecute( BackupComponentConfig config ) {
-    return config != null && config.isIncludeUsers();
+
+  public boolean shouldExecute( Object config ) {
+    if ( config instanceof ComponentConfig ) {
+      return ( ( ComponentConfig ) config ).isIncludeUsers();
+    }
+    return false;
   }
 
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    BackupComponentConfig config = exporter != null ? exporter.getComponentConfig() : null;
+    Object config = exporter != null ? exporter.getComponentConfig() : null;
     if ( !shouldExecute( config ) ) {
       return;
     }
     
     try {
-      exportUsersAndRoles();
+      // Read property from system/security.properties
+      ISystemConfig systemConfig = PentahoSystem.get( ISystemConfig.class );
+      String provider = "jackrabbit";
+      if ( systemConfig != null ) {
+        provider = systemConfig.getProperty( "security.provider",  "jackrabbit");
+      }
+      if ( provider.equalsIgnoreCase( "jackrabbit" ) ) {
+        exportUsersAndRoles();
+      } else {
+        exporter.getRepositoryExportLogger().info( "Nothing to export from users and roles as the authentication is external");
+      }
+
       if ( exporter.getExportMetrics() != null ) {
         exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.USERS );
       }
@@ -129,7 +146,7 @@ public class UsersAndRolesExportHelper implements IExportHelper {
 
   /**
    * Export a single user and their roles.
-   * Public method to allow external callers (e.g., SchedulerExportHelper, IPentahoPlatformExporter stub)
+   * Public method to allow external callers (e.g.,  IPentahoPlatformExporter stub)
    * to export individual users as dependencies.
    * 
    * @param username the username to export

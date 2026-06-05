@@ -19,6 +19,7 @@ import org.pentaho.platform.api.repository.datasource.DatasourceMgmtServiceExcep
 import org.pentaho.platform.api.repository.datasource.IDatasourceMgmtService;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.DatabaseConnectionConverter;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.messages.Messages;
@@ -42,10 +43,18 @@ public class DatasourcesExportHelper implements IExportHelper {
     return "DatasourcesExporter";
   }
 
+
+  public boolean shouldExecute( Object config ) {
+    if ( config instanceof ComponentConfig ) {
+      return ( ( ComponentConfig ) config ).isIncludeDatasources();
+    }
+    return false;
+  }
+
   @Override
-  public void doExport( Object exportArg ) throws ExportException {
+  public void doExport( Object config ) throws ExportException {
     // Check if datasources should be exported
-    if ( !exporter.getComponentConfig().isIncludeDatasources() ) {
+    if ( !shouldExecute( config ) ) {
       exporter.getRepositoryExportLogger().debug( "Skipping datasources export (not included in backup configuration)" );
       return;
     }

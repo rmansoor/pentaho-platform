@@ -123,7 +123,7 @@ public class ZipExportProcessorGeneratedContentTest {
   public void testShouldSkipGeneratedContentAllConditionsMet() {
     // Setup
     fileMetadata.put( IScheduler.RESERVEDMAPKEY_LINEAGE_ID, "uuid-12345" );
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeContent( true );
     config.setIncludeGeneratedContent( false );
 
@@ -145,7 +145,7 @@ public class ZipExportProcessorGeneratedContentTest {
   public void testShouldNotSkipGeneratedContentWhenIncluded() {
     // Setup
     fileMetadata.put( IScheduler.RESERVEDMAPKEY_LINEAGE_ID, "uuid-12345" );
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeContent( true );
     config.setIncludeGeneratedContent( true ); // Include generated content
 
@@ -167,7 +167,7 @@ public class ZipExportProcessorGeneratedContentTest {
   public void testShouldNotSkipWhenContentNotIncluded() {
     // Setup
     fileMetadata.put( IScheduler.RESERVEDMAPKEY_LINEAGE_ID, "uuid-12345" );
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeContent( false ); // Content not included
     config.setIncludeGeneratedContent( false );
 
@@ -189,7 +189,7 @@ public class ZipExportProcessorGeneratedContentTest {
   public void testShouldNotSkipNonGeneratedContent() {
     // Setup: Regular file without lineage-id
     fileMetadata.put( "contentCreator", "admin" );
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeContent( true );
     config.setIncludeGeneratedContent( false );
 
@@ -331,7 +331,7 @@ public class ZipExportProcessorGeneratedContentTest {
     int generatedEntities = 1250; // 25%
     int exportedEntities = totalEntities - generatedEntities;
 
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     config.setIncludeGeneratedContent( false );
 
     // Assert

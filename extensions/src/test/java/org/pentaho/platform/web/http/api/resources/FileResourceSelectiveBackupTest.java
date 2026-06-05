@@ -25,11 +25,8 @@ import java.io.InputStream;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.web.http.api.resources.services.FileService;
-
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Response;
 
 /**
  * Test cases for selective backup/restore REST endpoints
@@ -48,7 +45,7 @@ public class FileResourceSelectiveBackupTest {
 
   @Test
   public void testSelectiveBackupWithValidConfig() {
-    BackupComponentConfig config = BackupComponentConfig.contentOnly();
+    ComponentConfig config = ComponentConfig.contentOnly();
     
     FileService.DownloadFileWrapper mockWrapper = mock( FileService.DownloadFileWrapper.class );
     try {
@@ -64,7 +61,7 @@ public class FileResourceSelectiveBackupTest {
 
   @Test
   public void testSelectiveBackupWithInvalidConfig() {
-    BackupComponentConfig config = new BackupComponentConfig();
+    ComponentConfig config = new ComponentConfig();
     // Don't select any components - should be invalid
 
     assertNotNull( config );
@@ -73,7 +70,7 @@ public class FileResourceSelectiveBackupTest {
 
   @Test
   public void testSelectiveBackupWithFullSystemConfig() {
-    BackupComponentConfig config = BackupComponentConfig.fullSystem();
+    ComponentConfig config = ComponentConfig.fullSystem();
 
     assertNotNull( config );
     assertTrue( config.isValid() );
@@ -82,7 +79,7 @@ public class FileResourceSelectiveBackupTest {
 
   @Test
   public void testSelectiveBackupWithSecurityOnlyConfig() {
-    BackupComponentConfig config = BackupComponentConfig.securityOnly();
+    ComponentConfig config = ComponentConfig.securityOnly();
 
     assertNotNull( config );
     assertTrue( config.isValid() );
@@ -91,7 +88,7 @@ public class FileResourceSelectiveBackupTest {
 
   @Test
   public void testSelectiveBackupWithDataSourceConfig() {
-    BackupComponentConfig config = BackupComponentConfig.dataSource();
+    ComponentConfig config = ComponentConfig.dataSource();
 
     assertNotNull( config );
     assertTrue( config.isValid() );
@@ -110,7 +107,7 @@ public class FileResourceSelectiveBackupTest {
 
   @Test
   public void testSelectiveRestoreWithComponentOverrides() {
-    BackupComponentConfig overrides = BackupComponentConfig.securityOnly();
+    ComponentConfig overrides = ComponentConfig.securityOnly();
     
     assertNotNull( overrides );
     assertTrue( overrides.isValid() );
@@ -135,7 +132,7 @@ public class FileResourceSelectiveBackupTest {
 
   @Test
   public void testSelectiveBackupLogging() {
-    BackupComponentConfig config = BackupComponentConfig.contentOnly();
+    ComponentConfig config = ComponentConfig.contentOnly();
     
     assertEquals( 1, config.getComponentCount() );
     assertEquals( 1, config.getEnabledComponents().size() );
@@ -143,7 +140,7 @@ public class FileResourceSelectiveBackupTest {
 
   @Test
   public void testSelectiveRestoreACLSettings() {
-    BackupComponentConfig config = BackupComponentConfig.fullSystem();
+    ComponentConfig config = ComponentConfig.fullSystem();
     
     assertNotNull( config );
     assertTrue( config.isValid() );
@@ -159,7 +156,7 @@ public class FileResourceSelectiveBackupTest {
 
   @Test
   public void testSelectiveRestoreIntegration() {
-    BackupComponentConfig config = BackupComponentConfig.dataSource();
+    ComponentConfig config = ComponentConfig.dataSource();
     
     assertNotNull( config );
     assertTrue( config.isValid() );

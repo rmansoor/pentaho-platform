@@ -62,7 +62,6 @@ import java.nio.file.NoSuchFileException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
 
 /**
  * Handles the parsing of command line arguments and creates an import process based upon them
@@ -946,7 +945,7 @@ public class CommandLineProcessor {
     boolean enableStreamingLogs = "true".equalsIgnoreCase( streamLogs );
     
     // Check if selective backup (profile or component flags) is requested
-    BackupComponentConfig componentConfig = buildBackupComponentConfig();
+    ComponentConfig componentConfig = buildBackupComponentConfig();
     
     if ( componentConfig != null ) {
       // Selective backup requested
@@ -969,7 +968,7 @@ public class CommandLineProcessor {
    * Perform selective backup with specific component configuration
    */
   private void performSelectiveBackup( String contextURL, String logFile, String logLevel, String outputFile,
-      BackupComponentConfig componentConfig ) throws ParseException, KettleException, URISyntaxException {
+      ComponentConfig componentConfig ) throws ParseException, KettleException, URISyntaxException {
     String backupURL = buildURL( contextURL, API_REPO_FILES_SELECTIVE_BACKUP );
     WebResource resource = client.resource( backupURL );
 
@@ -1088,7 +1087,7 @@ public class CommandLineProcessor {
    * Perform selective backup with real-time log streaming to console
    */
   private void performSelectiveBackupWithStreaming( String contextURL, String logFile, String logLevel, String outputFile,
-      BackupComponentConfig componentConfig ) throws ParseException, KettleException, URISyntaxException {
+      ComponentConfig componentConfig ) throws ParseException, KettleException, URISyntaxException {
     
     System.out.println( "Starting selective backup with log streaming..." );
     System.out.println( "Backup log file: " + logFile );
@@ -1125,9 +1124,9 @@ public class CommandLineProcessor {
   }
 
   /**
-   * Serialize BackupComponentConfig to JSON string for REST request
+   * Serialize ComponentConfig to JSON string for REST request
    */
-  private String serializeComponentConfig( BackupComponentConfig config ) {
+  private String serializeComponentConfig( ComponentConfig config ) {
     try {
       ObjectMapper mapper = new ObjectMapper();
       return mapper.writeValueAsString( config );
@@ -1241,7 +1240,7 @@ public class CommandLineProcessor {
 
     // Check if selective restore is requested (component overrides provided via restore-profile or component flags)
     System.out.println( "DEBUG: performRestore() starting - checking for restore profile..." );
-    BackupComponentConfig componentOverrides = buildRestoreComponentConfig();
+    ComponentConfig componentOverrides = buildRestoreComponentConfig();
     
     if ( componentOverrides != null && componentOverrides.isValid() ) {
       System.out.println( "DEBUG: Selective restore detected with profile:" );
@@ -1320,7 +1319,7 @@ public class CommandLineProcessor {
    * Perform selective restore (chosen components only - overrides manifest configuration)
    */
   private void performSelectiveRestore( String contextURL, String filePath, String logFile, String logLevel,
-      BackupComponentConfig componentOverrides ) throws ParseException {
+      ComponentConfig componentOverrides ) throws ParseException {
     String importURL = contextURL + API_REPO_FILES_SELECTIVE_RESTORE;
     File fileIS = new File( filePath );
     try ( InputStream in = Files.newInputStream( fileIS.toPath() );
@@ -1547,17 +1546,17 @@ public class CommandLineProcessor {
   }
 
   /**
-   * Build BackupComponentConfig from command line options.
+   * Build ComponentConfig from command line options.
    * Supports two approaches:
    * 1. Using a predefined profile: --backup-profile=CONTENT_ONLY|FULL_SYSTEM|SECURITY|DATA_SOURCE|INFRASTRUCTURE
    * 2. Using individual component flags: --backup-content=true --backup-users=true etc.
    *
-   * @return BackupComponentConfig if any components are selected, null if using full system backup
+   * @return ComponentConfig if any components are selected, null if using full system backup
    * @throws ParseException if invalid option values provided
    */
-  private BackupComponentConfig buildBackupComponentConfig() throws ParseException {
+  private ComponentConfig buildBackupComponentConfig() throws ParseException {
     try {
-      BackupComponentConfig config = null;
+      ComponentConfig config = null;
       
       // Check for backup profile option first
       String profileOption = getOptionValue( INFO_OPTION_BACKUP_PROFILE_NAME, false, true );
@@ -1600,34 +1599,34 @@ public class CommandLineProcessor {
   }
 
   /**
-   * Build BackupComponentConfig from a predefined profile
+   * Build ComponentConfig from a predefined profile
    *
    * @param profile Profile name (FULL_SYSTEM, CONTENT_ONLY, SECURITY, DATA_SOURCE, SCHEDULES, SETTINGS, INFRASTRUCTURE)
-   * @return BackupComponentConfig based on profile
+   * @return ComponentConfig based on profile
    */
-  private BackupComponentConfig buildProfileBasedConfig( String profile ) {
-    BackupComponentConfig config = null;
+  private ComponentConfig buildProfileBasedConfig( String profile ) {
+    ComponentConfig config = null;
     switch ( profile.toUpperCase() ) {
       case "FULL_SYSTEM":
-        config = BackupComponentConfig.fullSystem();
+        config = ComponentConfig.fullSystem();
         break;
       case "CONTENT_ONLY":
-        config = BackupComponentConfig.contentOnly();
+        config = ComponentConfig.contentOnly();
         break;
       case "SECURITY":
-        config = BackupComponentConfig.securityOnly();
+        config = ComponentConfig.securityOnly();
         break;
       case "DATA_SOURCE":
-        config = BackupComponentConfig.dataSource();
+        config = ComponentConfig.dataSource();
         break;
       case "SCHEDULES":
-        config = BackupComponentConfig.schedules();
+        config = ComponentConfig.schedules();
         break;
       case "SETTINGS":
-        config = BackupComponentConfig.settings();
+        config = ComponentConfig.settings();
         break;
       case "INFRASTRUCTURE":
-        config = BackupComponentConfig.infrastructure();
+        config = ComponentConfig.infrastructure();
         break;
       default:
         System.err.println( "Unknown backup profile: " + profile +
@@ -1638,12 +1637,12 @@ public class CommandLineProcessor {
   }
 
   /**
-   * Build BackupComponentConfig from individual component flags
+   * Build ComponentConfig from individual component flags
    */
-  private BackupComponentConfig buildCustomConfig( String contentFlag, String usersFlag,
-      String datasourcesFlag, String metastoreFlag, String schedulesFlag, String settingsFlag,
-      String mondrianFlag ) {
-    BackupComponentConfig config = new BackupComponentConfig( "CLI Selective Backup" );
+  private ComponentConfig buildCustomConfig( String contentFlag, String usersFlag,
+                                             String datasourcesFlag, String metastoreFlag, String schedulesFlag, String settingsFlag,
+                                             String mondrianFlag ) {
+    ComponentConfig config = new ComponentConfig( "CLI Selective Backup" );
     config.setDescription( "Backup configuration from command line options" );
 
     // Parse individual component flags
@@ -1679,18 +1678,18 @@ public class CommandLineProcessor {
   }
 
   /**
-   * Build BackupComponentConfig for restore, checking restore profile first
+   * Build ComponentConfig for restore, checking restore profile first
    * Falls back to backup profile options and individual component flags
    *
-   * @return BackupComponentConfig for selective restore, or null for full restore
+   * @return ComponentConfig for selective restore, or null for full restore
    * @throws ParseException
    */
-  private BackupComponentConfig buildRestoreComponentConfig() throws ParseException {
+  private ComponentConfig buildRestoreComponentConfig() throws ParseException {
     try {
       // Check for restore profile option first
       String restoreProfile = getOptionValue( INFO_OPTION_RESTORE_PROFILE_NAME, false, true );
       if ( restoreProfile != null && !restoreProfile.isEmpty() ) {
-        BackupComponentConfig config = buildProfileBasedConfig( restoreProfile );
+        ComponentConfig config = buildProfileBasedConfig( restoreProfile );
         
         // Apply generated content filter if specified
         String includeGenerated = getOptionValue( INFO_OPTION_INCLUDE_GENERATED_CONTENT_NAME, false, true );
@@ -1705,7 +1704,7 @@ public class CommandLineProcessor {
       // Fall back to backup profile option (backwards compatibility)
       String backupProfile = getOptionValue( INFO_OPTION_BACKUP_PROFILE_NAME, false, true );
       if ( backupProfile != null && !backupProfile.isEmpty() ) {
-        BackupComponentConfig config = buildProfileBasedConfig( backupProfile );
+        ComponentConfig config = buildProfileBasedConfig( backupProfile );
         
         // Apply generated content filter if specified
         String includeGenerated = getOptionValue( INFO_OPTION_INCLUDE_GENERATED_CONTENT_NAME, false, true );
@@ -1743,7 +1742,7 @@ public class CommandLineProcessor {
       if ( contentFlag != null || usersFlag != null || datasourcesFlag != null ||
            metastoreFlag != null || schedulesFlag != null || settingsFlag != null ||
            mondrianFlag != null ) {
-        BackupComponentConfig config = buildCustomConfig( contentFlag, usersFlag, datasourcesFlag, metastoreFlag,
+        ComponentConfig config = buildCustomConfig( contentFlag, usersFlag, datasourcesFlag, metastoreFlag,
             schedulesFlag, settingsFlag, mondrianFlag );
         
         // Apply generated content filter if specified

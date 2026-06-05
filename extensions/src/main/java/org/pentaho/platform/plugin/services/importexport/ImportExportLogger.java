@@ -15,10 +15,7 @@ package org.pentaho.platform.plugin.services.importexport;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
-import org.pentaho.platform.api.scheduler2.IScheduler;
 
-import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -54,7 +51,7 @@ public class ImportExportLogger {
   /**
    * Log backup operation start
    */
-  public void logBackupStart( BackupComponentConfig config ) {
+  public void logBackupStart( ComponentConfig config ) {
     logger.info( SEPARATOR );
     logger.info( "BACKUP OPERATION STARTED" );
     logger.info( "────────────────────────────────────────────────" );
@@ -66,7 +63,7 @@ public class ImportExportLogger {
   /**
    * Log restore operation start
    */
-  public void logRestoreStart( BackupComponentConfig config ) {
+  public void logRestoreStart( ComponentConfig config ) {
     logger.info( SEPARATOR );
     logger.info( "RESTORE OPERATION STARTED" );
     logger.info( "────────────────────────────────────────────────" );
@@ -234,7 +231,7 @@ public class ImportExportLogger {
 
   // ===== Private Helper Methods =====
 
-  private void logConfiguration( BackupComponentConfig config ) {
+  private void logConfiguration( ComponentConfig config ) {
     logger.info( "Generated Content: " + ( config.isIncludeGeneratedContent() ? "INCLUDED" : "EXCLUDED" ) );
     logger.info( "Components Enabled:" );
     logger.info( "  Repository Content: " + ( config.isIncludeContent() ? "✓" : "✗" ) );

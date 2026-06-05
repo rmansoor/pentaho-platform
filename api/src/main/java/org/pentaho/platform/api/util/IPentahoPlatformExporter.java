@@ -39,4 +39,6 @@ public interface IPentahoPlatformExporter {
    */
   boolean exportUserAndRole( String username );
 
+  Object getComponentConfig();
+
 }

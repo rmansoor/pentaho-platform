@@ -28,7 +28,7 @@ import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.scheduler2.IScheduler;
 import org.pentaho.platform.api.mimetype.IPlatformMimeResolver;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
-import org.pentaho.platform.plugin.services.importexport.BackupComponentConfig;
+import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
 import org.pentaho.platform.plugin.services.importer.IPlatformImporter;
 import org.pentaho.platform.plugin.services.importer.LocaleFilesProcessor;
@@ -38,7 +38,6 @@ import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportMa
 import org.pentaho.platform.plugin.services.importexport.ImportSession.ManifestFile;
 import org.pentaho.platform.plugin.services.importexport.ImportSource.IRepositoryFileBundle;
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
-import org.pentaho.platform.plugin.services.importer.SolutionFileImportHelper;
 import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.repository.RepositoryFilenameUtils;
 import org.pentaho.platform.plugin.services.importer.SolutionImportHandler;
@@ -60,30 +59,19 @@ public class RepositoryFilesImportHelper implements IImportHelper {
     return "Repository Files and Folders Import Helper";
   }
 
-  @Override
-  public boolean shouldExecute( Object componentOverrides ) {
-    // Execute if:
-    // 1. Content is included in the profile, OR
-    // 2. Schedules are included in the profile, OR  
-    // 3. There are files in the manifest (for dependencies like schedule inputs)
-    if ( componentOverrides == null ) {
-      return true; // Full restore, include content
+  public boolean shouldExecute( Object config ) {
+    if ( config instanceof ComponentConfig ) {
+      return ( ( ComponentConfig ) config ).isIncludeContent();
     }
-
-    // Cast to BackupComponentConfig if available
-    if ( componentOverrides instanceof BackupComponentConfig ) {
-      BackupComponentConfig config = (BackupComponentConfig) componentOverrides;
-      return config.isIncludeContent();
-    }
-
-    // If type is unknown, default to include
-    return true;
+    return false;
   }
 
   @Override
   public void doImport( Object importArg ) throws ImportException {
     solutionImportHandler = (SolutionImportHandler) importArg;
-
+    if ( !shouldExecute( solutionImportHandler.getImportSession().getComponentOverrides() ) ) {
+      return;
+    }
     try {
       ExportManifest manifest = solutionImportHandler.getImportSession().getManifest();
 
@@ -420,7 +408,7 @@ public class RepositoryFilesImportHelper implements IImportHelper {
               (org.pentaho.platform.api.repository2.unified.RepositoryFileExtraMetaData) metadata;
           java.util.Map<String, java.io.Serializable> extraMap = extraMetaData.getExtraMetaData();
           boolean isFileAGC = extraMap.containsKey( IScheduler.RESERVEDMAPKEY_LINEAGE_ID );
-          BackupComponentConfig componentOverrides = solutionImportHandler.getImportSession().getComponentOverrides();
+          ComponentConfig componentOverrides = solutionImportHandler.getImportSession().getComponentOverrides();
           if ( componentOverrides != null && !componentOverrides.isIncludeGeneratedContent() && isFileAGC ) {
             if ( solutionImportHandler.isPerformingRestore() ) {
               solutionImportHandler.getLogger().debug( "Skipping generated content file during restore: " + sourcePath
@@ -458,7 +446,7 @@ public class RepositoryFilesImportHelper implements IImportHelper {
       IPlatformImportBundle platformImportBundle = solutionImportHandler.build( bundleBuilder );
       try {
         // Skip metadata files if datasources are not included in selective restore
-        BackupComponentConfig componentOverrides = solutionImportHandler.getImportSession().getComponentOverrides();
+        ComponentConfig componentOverrides = solutionImportHandler.getImportSession().getComponentOverrides();
         if ( componentOverrides != null && !componentOverrides.isIncludeDatasources() ) {
           String bundlePath = platformImportBundle.getPath() + platformImportBundle.getName();
           if ( bundlePath != null && bundlePath.endsWith( ".xmi" ) ) {
