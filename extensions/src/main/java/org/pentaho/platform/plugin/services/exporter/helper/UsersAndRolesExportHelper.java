@@ -12,6 +12,7 @@
 
 package org.pentaho.platform.plugin.services.exporter.helper;
 
+import org.castor.core.util.Assert;
 import org.pentaho.platform.api.engine.ISystemConfig;
 import org.pentaho.platform.api.engine.IUserRoleListService;
 import org.pentaho.platform.api.importexport.ExportException;
@@ -20,6 +21,7 @@ import org.pentaho.platform.api.mt.ITenant;
 import org.pentaho.platform.api.usersettings.IAnyUserSettingService;
 import org.pentaho.platform.api.usersettings.IUserSettingService;
 import org.pentaho.platform.api.usersettings.pojo.IUserSetting;
+import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.core.system.TenantUtils;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
@@ -28,14 +30,11 @@ import org.pentaho.platform.plugin.services.importexport.ExportManifestUserSetti
 import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importexport.RoleExport;
 import org.pentaho.platform.plugin.services.importexport.UserExport;
-import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
 import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.security.policy.rolebased.IRoleAuthorizationPolicyRoleBindingDao;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Export helper for users and roles.
@@ -45,12 +44,7 @@ import java.util.Set;
  * - Schedule owner selective export
  */
 public class UsersAndRolesExportHelper implements IExportHelper {
-  private PentahoPlatformExporter exporter;
   private IUserSettingService userSettingService;
-
-  public UsersAndRolesExportHelper( PentahoPlatformExporter exporter ) {
-    this.exporter = exporter;
-  }
 
   @Override
   public String getName() {
@@ -67,7 +61,10 @@ public class UsersAndRolesExportHelper implements IExportHelper {
 
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    Object config = exporter != null ? exporter.getComponentConfig() : null;
+    Assert.notNull( exportArg, "PentahoPlatformExporter is expected to be not null");
+    PentahoPlatformExporter exporter = (PentahoPlatformExporter) exportArg;
+
+    Object config = exporter.getComponentConfig();
     if ( !shouldExecute( config ) ) {
       return;
     }
@@ -80,7 +77,7 @@ public class UsersAndRolesExportHelper implements IExportHelper {
         provider = systemConfig.getProperty( "security.provider",  "jackrabbit");
       }
       if ( provider.equalsIgnoreCase( "jackrabbit" ) ) {
-        exportUsersAndRoles();
+        exportUsersAndRoles( exporter );
       } else {
         exporter.getRepositoryExportLogger().info( "Nothing to export from users and roles as the authentication is external");
       }
@@ -99,7 +96,7 @@ public class UsersAndRolesExportHelper implements IExportHelper {
   /**
    * Export all users and their roles
    */
-  protected void exportUsersAndRoles() {
+  protected void exportUsersAndRoles( PentahoPlatformExporter exporter ) {
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_USER" ) );
     int successfulExportUsers = 0;
     int usersSize = 0;
@@ -119,7 +116,7 @@ public class UsersAndRolesExportHelper implements IExportHelper {
 
     // Export each user and their roles
     for ( String user : userList ) {
-      if ( exportUserAndRole( user ) ) {
+      if ( exportUserAndRole( user, exporter ) ) {
         successfulExportUsers++;
       }
     }
@@ -141,7 +138,7 @@ public class UsersAndRolesExportHelper implements IExportHelper {
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_END_EXPORT_USER" ) );
 
     // Export roles
-    exportRoles();
+    exportRoles( exporter );
   }
 
   /**
@@ -152,7 +149,7 @@ public class UsersAndRolesExportHelper implements IExportHelper {
    * @param username the username to export
    * @return true if the user was successfully exported, false otherwise
    */
-  public boolean exportUserAndRole( String username ) {
+  public boolean exportUserAndRole( String username, PentahoPlatformExporter exporter ) {
     if ( username == null || username.trim().isEmpty() ) {
       return false;
     }
@@ -212,7 +209,7 @@ public class UsersAndRolesExportHelper implements IExportHelper {
   /**
    * Export all roles in the system
    */
-  protected void exportRoles() {
+  protected void exportRoles( PentahoPlatformExporter exporter ) {
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_ROLE" ) );
     int successfulExportRoles = 0;
     int rolesSize = 0;
@@ -255,95 +252,9 @@ public class UsersAndRolesExportHelper implements IExportHelper {
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_END_EXPORT_ROLE" ) );
   }
 
-  /**
-   * Export only selected users and their roles (used by plugins like scheduler to export dependencies)
-   * @param selectedUsernames Set of usernames to export
-   */
-  public void exportScheduleOwnersAndRoles( Set<String> selectedUsernames ) {
-    if ( selectedUsernames == null || selectedUsernames.isEmpty() ) {
-      return;
-    }
-
-    exporter.getRepositoryExportLogger().info( "Exporting schedule owner users" );
-    int successfulExportUsers = 0;
-
-    IUserRoleListService userRoleListService = PentahoSystem.get( IUserRoleListService.class );
-    UserDetailsService userDetailsService = PentahoSystem.get( UserDetailsService.class );
-    IRoleAuthorizationPolicyRoleBindingDao roleBindingDao = PentahoSystem.get(
-        IRoleAuthorizationPolicyRoleBindingDao.class );
-    ITenant tenant = TenantUtils.getCurrentTenant();
-
-    if ( userRoleListService == null || userDetailsService == null ) {
-      exporter.getRepositoryExportLogger().warn( "Could not export schedule owners: UserRoleListService or UserDetailsService not available" );
-      return;
-    }
-
-    // Export only the selected users
-    Set<String> exportedRoles = new HashSet<>();
-    for ( String username : selectedUsernames ) {
-      try {
-        exporter.getRepositoryExportLogger().debug( "Exporting schedule owner user [ " + username + " ]" );
-        UserExport userExport = new UserExport();
-        userExport.setUsername( username );
-
-        try {
-          userExport.setPassword( userDetailsService.loadUserByUsername( username ).getPassword() );
-        } catch ( Exception e ) {
-          exporter.getRepositoryExportLogger().warn( "Could not load password for user [ " + username + " ]: " + e.getMessage() );
-          // Continue - user will still be exported without password
-        }
-
-        // Add the user's roles
-        for ( String role : userRoleListService.getRolesForUser( tenant, username ) ) {
-          exporter.getRepositoryExportLogger().trace( "Schedule owner [ " + username + " ] has role [ " + role + " ]" );
-          userExport.setRole( role );
-          exportedRoles.add( role );
-        }
-
-        exporter.getExportManifest().addUserExport( userExport );
-        successfulExportUsers++;
-        if ( exporter.getExportMetrics() != null ) {
-          exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.USERS );
-        }
-        exporter.getRepositoryExportLogger().debug( "Successfully exported schedule owner user [ " + username + " ]" );
-      } catch ( Exception e ) {
-        exporter.getRepositoryExportLogger().warn( "Failed to export schedule owner user [ " + username + " ]: " + e.getMessage(), e );
-        if ( exporter.getExportMetrics() != null ) {
-          exporter.getExportMetrics().recordFailure( ImportExportMetrics.Category.USERS, username, e );
-        }
-        // Continue with next user
-      }
-    }
-
-    // Export only the roles referenced by the selected users
-    for ( String role : exportedRoles ) {
-      try {
-        exporter.getRepositoryExportLogger().debug( "Exporting role [ " + role + " ] for schedule owners" );
-        RoleExport roleExport = new RoleExport();
-        roleExport.setRolename( role );
-        if ( roleBindingDao != null ) {
-          roleExport.setPermission( roleBindingDao.getRoleBindingStruct( null ).bindingMap.get( role ) );
-        }
-        exporter.getExportManifest().addRoleExport( roleExport );
-        if ( exporter.getExportMetrics() != null ) {
-          exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.ROLES );
-        }
-        exporter.getRepositoryExportLogger().debug( "Successfully exported role [ " + role + " ]" );
-      } catch ( Exception e ) {
-        exporter.getRepositoryExportLogger().warn( "Failed to export role [ " + role + " ]: " + e.getMessage(), e );
-        if ( exporter.getExportMetrics() != null ) {
-          exporter.getExportMetrics().recordFailure( ImportExportMetrics.Category.ROLES, role, e );
-        }
-        // Continue with next role
-      }
-    }
-
-    exporter.getRepositoryExportLogger().info( "Successfully exported " + successfulExportUsers + " schedule owner users" );
-  }
-
   public IUserSettingService getUserSettingService() {
     if ( userSettingService == null ) {
-      userSettingService = PentahoSystem.get( IUserSettingService.class, exporter.getPublicSession() );
+      userSettingService = PentahoSystem.get( IUserSettingService.class, PentahoSessionHolder.getSession() );
     }
     return userSettingService;
   }

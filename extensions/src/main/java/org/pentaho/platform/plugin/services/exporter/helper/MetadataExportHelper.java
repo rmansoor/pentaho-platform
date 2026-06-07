@@ -13,9 +13,11 @@
 package org.pentaho.platform.plugin.services.exporter.helper;
 
 import org.apache.commons.io.IOUtils;
+import org.castor.core.util.Assert;
 import org.pentaho.metadata.repository.IMetadataDomainRepository;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
+import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
@@ -35,12 +37,8 @@ import java.util.zip.ZipEntry;
  * Export helper for metadata models.
  */
 public class MetadataExportHelper implements IExportHelper {
-  private PentahoPlatformExporter exporter;
   private IMetadataDomainRepository metadataDomainRepository;
 
-  public MetadataExportHelper( PentahoPlatformExporter exporter ) {
-    this.exporter = exporter;
-  }
 
   @Override
   public String getName() {
@@ -56,13 +54,16 @@ public class MetadataExportHelper implements IExportHelper {
 
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    Object config = exporter != null ? exporter.getComponentConfig() : null;
+    Assert.notNull( exportArg, "PentahoPlatformExporter is expected to be not null");
+    PentahoPlatformExporter exporter = (PentahoPlatformExporter) exportArg;
+
+    Object config = exporter.getComponentConfig();
     if ( !shouldExecute( config ) ) {
       return;
     }
 
     try {
-      exportMetadataModels();
+      exportMetadataModels( exporter );
       if ( exporter.getExportMetrics() != null ) {
         exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.METADATA );
       }
@@ -80,7 +81,7 @@ public class MetadataExportHelper implements IExportHelper {
    * 
    * @throws IOException if I/O error occurs
    */
-  protected void exportMetadataModels() throws IOException {
+  protected void exportMetadataModels( PentahoPlatformExporter exporter ) throws IOException {
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_METADATA" ) );
     int successfulExportMetadataDSCount = 0;
     int metadataDSSize = 0;
@@ -141,7 +142,7 @@ public class MetadataExportHelper implements IExportHelper {
 
   public IMetadataDomainRepository getMetadataDomainRepository() {
     if ( metadataDomainRepository == null ) {
-      metadataDomainRepository = PentahoSystem.get( IMetadataDomainRepository.class, exporter.getPublicSession() );
+      metadataDomainRepository = PentahoSystem.get( IMetadataDomainRepository.class, PentahoSessionHolder.getSession() );
     }
     return metadataDomainRepository;
   }

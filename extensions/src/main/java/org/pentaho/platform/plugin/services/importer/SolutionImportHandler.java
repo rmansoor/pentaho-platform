@@ -76,7 +76,6 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   private static final String EXPORT_MANIFEST_XML_FILE = "exportManifest.xml";
   private static final String DOMAIN_ID = "domain-id";
   private static final String UTF_8 = StandardCharsets.UTF_8.name();
-
   private IUnifiedRepository repository; // TODO inject via Spring
   protected Map<String, RepositoryFileImportBundle.Builder> cachedImports;
   private SolutionFileImportHelper solutionHelper;
@@ -92,6 +91,8 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   
   // Instance logger for post-context operations (requires MDC setup)
   IRepositoryImportLogger logger = new Log4JRepositoryImportLogger();
+
+  ImportState importState;
 
   public SolutionImportHandler( List<IMimeType> mimeTypes ) {
     this.mimeTypes = mimeTypes;
@@ -190,32 +191,40 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
   }
 
+  public ImportState getImportState() {
+    return importState;
+  }
+
   @Override
   public void importFile( IPlatformImportBundle bundle ) throws PlatformImportException, DomainIdNullException,
       DomainAlreadyExistsException, DomainStorageException, IOException {
+    importState = new ImportState();
     IPlatformImporter platformImporter = PentahoSystem.get( IPlatformImporter.class );
-    isPerformingRestore = platformImporter.getRepositoryImportLogger().isPerformingRestore();
-    
+    importState.setPerformingRestore( platformImporter.getRepositoryImportLogger().isPerformingRestore() );
+    if ( importState.isPerformingRestore() ) {
+      getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_PROCESS" ) );
+    }
+
     // Initialize metrics collector
     metrics = new ImportExportMetrics( ImportExportMetrics.OperationType.RESTORE );
     
-    if ( isPerformingRestore ) {
+    if ( importState.isPerformingRestore()  ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_PROCESS" ) );
     }
     RepositoryFileImportBundle importBundle = (RepositoryFileImportBundle) bundle;
 
     // Processing file
-    if ( isPerformingRestore ) {
+    if ( importState.isPerformingRestore()  ) {
       getLogger().debug( " Start:  pre processing files and folder from the bundle" );
     }
-    if ( !processZip( bundle.getInputStream() ) ) {
+    if ( !processZip( bundle.getInputStream(), importState ) ) {
       // Something went wrong, do not proceed!
-      if ( isPerformingRestore ) {
+      if ( importState.isPerformingRestore()  ) {
         getLogger().error( "Failed to process ZIP file during restore" );
       }
       return;
     }
-    if ( isPerformingRestore ) {
+    if ( importState.isPerformingRestore()  ) {
       getLogger().debug( " End:  pre processing files and folder from the bundle" );
     }
     setOverwriteFile( bundle.overwriteInRepository() );
@@ -225,7 +234,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     ExportManifest manifest = getImportSession().getManifest();
     ComponentConfig componentOverrides = getImportSession().getComponentOverrides();
     
-    if ( isPerformingRestore && componentOverrides != null ) {
+    if ( importState.isPerformingRestore()  && componentOverrides != null ) {
       getLogger().debug( "Selective restore active with component overrides: Users=" + componentOverrides.isIncludeUsers() + 
         ", Content=" + componentOverrides.isIncludeContent() + ", Datasources=" + componentOverrides.isIncludeDatasources() );
     }
@@ -249,7 +258,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       try {
         runImportHelpers();
       } catch ( Exception e ) {
-        if ( isPerformingRestore ) {
+        if ( importState.isPerformingRestore()  ) {
           getLogger().error( "Failed to run import helpers: " + e.getMessage() );
           getLogger().debug( "Import helpers error", e );
         }
@@ -257,7 +266,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
     
     // Output metrics report
-    if ( isPerformingRestore && metrics != null ) {
+    if ( importState.isPerformingRestore()  && metrics != null ) {
       getLogger().info( metrics.generateDetailedReport() );
     }
   }
@@ -433,92 +442,6 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
     return false;
   }
-
-  /**
-   * Imports a file to the repository using the same logic as importRepositoryFilesAndFolders.
-   * This properly handles all the import details: mime types, ACLs, metadata, etc.
-   * 
-   * @param fileBundle the file bundle to import
-   * @param importManifest the export manifest (may be null)
-   * @return true if successfully imported, false otherwise
-   */
-  protected boolean importFileBundle( IRepositoryFileBundle fileBundle, ExportManifest importManifest ) {
-    try {
-      String fileName = fileBundle.getFile().getName();
-      String actualFilePath = fileBundle.getPath();
-      String manifestVersion = null;
-      
-      if ( importManifest != null ) {
-        manifestVersion = importManifest.getManifestInformation().getManifestVersion();
-        if ( manifestVersion != null ) {
-          fileName = ExportFileNameEncoder.decodeZipFileName( fileName );
-          actualFilePath = ExportFileNameEncoder.decodeZipFileName( actualFilePath );
-        }
-      }
-      
-      // Skip folders for schedule dependencies - only import actual files
-      if ( fileBundle.getFile().isFolder() ) {
-        return true;
-      }
-      
-      byte[] fileBytes = IOUtils.toByteArray( fileBundle.getInputStream() );
-      InputStream bundleInputStream = new ByteArrayInputStream( fileBytes );
-      
-      String decodedFilePath = actualFilePath;
-      RepositoryFile decodedFile = fileBundle.getFile();
-      if ( manifestVersion != null ) {
-        decodedFile = new RepositoryFile.Builder( decodedFile ).path( decodedFilePath ).name( fileName ).title( fileName ).build();
-        decodedFilePath = ExportFileNameEncoder.decodeZipFileName( fileBundle.getPath() );
-      }
-      
-      RepositoryFileImportBundle.Builder bundleBuilder = new RepositoryFileImportBundle.Builder();
-      
-      String filePath = ( decodedFilePath.equals( "/" ) || decodedFilePath.equals( "\\" ) ) ? "" : decodedFilePath;
-      String repositoryFilePath = RepositoryFilenameUtils.concat( "/", filePath );
-      
-      bundleBuilder.name( fileName );
-      bundleBuilder.path( repositoryFilePath );
-      bundleBuilder.input( bundleInputStream );
-      bundleBuilder.mime( solutionHelper.getMime( fileName ) );
-      
-      String sourcePath = RepositoryFilenameUtils.concat( PentahoPlatformImporter.computeBundlePath( actualFilePath ), fileName );
-      
-      bundleBuilder.charSet( UTF_8 );
-      bundleBuilder.overwriteFile( overwriteFile );
-      bundleBuilder.applyAclSettings( true );
-      bundleBuilder.retainOwnership( false );
-      bundleBuilder.overwriteAclSettings( false );
-      
-      // Process extra metadata and ACLs
-      RepositoryFileExtraMetaData repositoryFileExtraMetaData = getImportSession().processExtraMetaDataForFile( sourcePath );
-      if ( repositoryFileExtraMetaData != null ) {
-        bundleBuilder.extraMetaData( repositoryFileExtraMetaData );
-        bundleBuilder.acl( getImportSession().processAclForFile( sourcePath ) );
-      }
-      
-      // Mark as schedulable if it's referenced by a schedule
-      boolean isSchedulable = importManifest != null && fileIsScheduleInputSource( importManifest, sourcePath );
-      if ( isSchedulable ) {
-        bundleBuilder.schedulable( true );
-      }
-      
-      IPlatformImportBundle platformImportBundle = build( bundleBuilder );
-      IPlatformImporter importer = PentahoSystem.get( IPlatformImporter.class );
-      importer.importFile( platformImportBundle );
-      
-      if ( isPerformingRestore ) {
-        getLogger().debug( "Successfully imported file for schedule dependency: [ " + repositoryFilePath + " ]" );
-      }
-      return true;
-      
-    } catch ( Exception e ) {
-      if ( isPerformingRestore ) {
-        getLogger().error( "Failed to import file bundle for schedule: " + e.getMessage(), e );
-      }
-      return false;
-    }
-  }
-
   /**
    * Import global user settings into the platform.
    * Delegates to UsersAndRolesImportHelper
@@ -596,9 +519,8 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     return path;
   }
 
-  private boolean processZip( InputStream inputStream ) {
-    this.files = new ArrayList<>();
-    if ( isPerformingRestore ) {
+  private boolean processZip( InputStream inputStream, ImportState importState ) {
+    if ( importState.isPerformingRestore() ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_REPOSITORY_OBJECT" ) );
     }
     try ( ZipInputStream zipInputStream = new ZipInputStream( inputStream ) ) {
@@ -614,6 +536,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
           if ( !solutionHelper.isInApprovedExtensionList( entryName ) ) {
             zipInputStream.closeEntry();
             entry = zipInputStream.getNextEntry();
+            importState.setPartialImport( true );
             continue;
           }
 
@@ -649,10 +572,10 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         if ( EXPORT_MANIFEST_XML_FILE.equals( file.getName() ) ) {
           initializeAclManifest( repoFileBundle );
         } else {
-          if ( isPerformingRestore ) {
+          if ( importState.isPerformingRestore() ) {
             getLogger().debug( "Adding file " + repoFile.getName() + " to list for later processing " );
           }
-          files.add( repoFileBundle );
+          importState.getFiles().add( repoFileBundle );
         }
         zipInputStream.closeEntry();
         entry = zipInputStream.getNextEntry();
@@ -662,7 +585,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
           .getErrorString( "ZIPFILE.ExceptionOccurred", e.getLocalizedMessage() ), e );
       return false;
     }
-    if ( isPerformingRestore ) {
+    if ( importState.isPerformingRestore() ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_REPOSITORY_OBJECT" ) );
     }
     return true;

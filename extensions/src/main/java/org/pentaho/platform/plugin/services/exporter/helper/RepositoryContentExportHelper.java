@@ -12,6 +12,7 @@
 
 package org.pentaho.platform.plugin.services.exporter.helper;
 
+import org.castor.core.util.Assert;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
@@ -30,12 +31,6 @@ import java.util.zip.ZipEntry;
  * Handles conditional export of repository content based on backup profile settings.
  */
 public class RepositoryContentExportHelper implements IExportHelper {
-  
-  private PentahoPlatformExporter exporter;
-
-  public RepositoryContentExportHelper( PentahoPlatformExporter exporter ) {
-    this.exporter = exporter;
-  }
 
   @Override
   public String getName() {
@@ -55,14 +50,17 @@ public class RepositoryContentExportHelper implements IExportHelper {
 
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    Object config = exporter != null ? exporter.getComponentConfig() : null;
+    Assert.notNull( exportArg, "PentahoPlatformExporter is expected to be not null");
+    PentahoPlatformExporter exporter = (PentahoPlatformExporter) exportArg;
+
+    Object config = exporter.getComponentConfig();
     if ( !shouldExecute( config ) ) {
       return;
     }
 
     try {
       RepositoryFile rootFolder = exporter.getUnifiedRepository().getFile( "/" );
-      exportFileContent( rootFolder );
+      exportFileContent( rootFolder, exporter );
     } catch ( Exception e ) {
       throw new ExportException( "Failed to export repository content: " + e.getMessage(), e );
     }
@@ -75,7 +73,7 @@ public class RepositoryContentExportHelper implements IExportHelper {
    * @throws IOException if I/O error occurs
    * @throws ExportException if export error occurs
    */
-  protected void exportFileContent( RepositoryFile exportRepositoryFile ) throws IOException, ExportException {
+  protected void exportFileContent( RepositoryFile exportRepositoryFile, PentahoPlatformExporter exporter ) throws IOException, ExportException {
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_REPOSITORY_OBJECT" ) );
     // get the file path
     String filePath = new File( exporter.getPath() ).getParent();

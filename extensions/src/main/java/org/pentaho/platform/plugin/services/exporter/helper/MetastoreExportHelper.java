@@ -13,6 +13,7 @@
 package org.pentaho.platform.plugin.services.exporter.helper;
 
 import org.apache.commons.io.IOUtils;
+import org.castor.core.util.Assert;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.metastore.api.IMetaStore;
 import org.pentaho.metastore.stores.xml.XmlMetaStore;
@@ -46,12 +47,7 @@ import java.util.zip.ZipOutputStream;
  * to consolidate metastore handling within the helper itself.
  */
 public class MetastoreExportHelper implements IExportHelper {
-  private PentahoPlatformExporter exporter;
   private IMetaStore cachedMetastore;
-
-  public MetastoreExportHelper( PentahoPlatformExporter exporter ) {
-    this.exporter = exporter;
-  }
 
   @Override
   public String getName() {
@@ -67,12 +63,14 @@ public class MetastoreExportHelper implements IExportHelper {
 
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    Object config = exporter != null ? exporter.getComponentConfig() : null;
+    Assert.notNull( exportArg, "PentahoPlatformExporter is expected to be not null");
+    PentahoPlatformExporter exporter = (PentahoPlatformExporter) exportArg;
+    Object config = exporter.getComponentConfig();
     if ( !shouldExecute( config ) ) {
       return;
     }
     try {
-      exportMetastore();
+      exportMetastore( exporter );
       if ( exporter.getExportMetrics() != null ) {
         exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.METASTORE );
       }
@@ -90,18 +88,18 @@ public class MetastoreExportHelper implements IExportHelper {
    * 
    * @throws IOException if I/O error occurs
    */
-  protected void exportMetastore() throws IOException {
+  protected void exportMetastore( PentahoPlatformExporter exporter ) throws IOException {
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_METASTORE" ) );
     try {
       exporter.getRepositoryExportLogger().debug( "Starting to copy metastore to a temp location" );
       Path tempDirectory = Files.createTempDirectory( "metastore" );
       IMetaStore xmlMetaStore = new XmlMetaStore( tempDirectory.toString() );
-      MetaStoreUtil.copy( getRepoMetaStore(), xmlMetaStore );
+      MetaStoreUtil.copy( getRepoMetaStore( exporter ), xmlMetaStore );
       exporter.getRepositoryExportLogger().debug( "Finished to copying metastore to a temp location" );
       exporter.getRepositoryExportLogger().debug( "Starting to zip the metastore" );
       File zippedMetastore = Files.createTempFile( "metastore", ".zip" ).toFile();
       ZipOutputStream zipOutputStream = new ZipOutputStream( new FileOutputStream( zippedMetastore ) );
-      zipFolder( tempDirectory.toFile(), zipOutputStream, tempDirectory.toString() );
+      zipFolder( tempDirectory.toFile(), zipOutputStream, tempDirectory.toString(), exporter );
       zipOutputStream.close();
       exporter.getRepositoryExportLogger().debug( "Finished zipping the metastore" );
       // now that we have the zipped content of an xml metastore, we need to write that to the export bundle
@@ -123,8 +121,8 @@ public class MetastoreExportHelper implements IExportHelper {
       exporter.getRepositoryExportLogger().debug( "Starting to add the metastore to the manifest" );
       // add an ExportManifest entry for the metastore.
       ExportManifestMetaStore exportManifestMetaStore = new ExportManifestMetaStore( zipFileLocation,
-          getRepoMetaStore().getName(),
-          getRepoMetaStore().getDescription() );
+          getRepoMetaStore( exporter ).getName(),
+          getRepoMetaStore( exporter ).getDescription() );
 
       exporter.getExportManifest().setMetaStore( exportManifestMetaStore );
 
@@ -144,7 +142,7 @@ public class MetastoreExportHelper implements IExportHelper {
    * 
    * @return IMetaStore instance, or null if unable to initialize
    */
-  protected IMetaStore getRepoMetaStore() {
+  protected IMetaStore getRepoMetaStore(PentahoPlatformExporter exporter ) {
     if ( cachedMetastore == null ) {
       try {
         cachedMetastore = MetaStoreExportUtil.connectToRepository( null ).getRepositoryMetaStore();
@@ -156,12 +154,12 @@ public class MetastoreExportHelper implements IExportHelper {
     return cachedMetastore;
   }
 
-  protected void zipFolder( File file, ZipOutputStream zos, String pathPrefixToRemove ) {
+  protected void zipFolder( File file, ZipOutputStream zos, String pathPrefixToRemove, PentahoPlatformExporter exporter ) {
     if ( file.isDirectory() ) {
       File[] listFiles = file.listFiles();
       for ( File listFile : listFiles ) {
         if ( listFile.isDirectory() ) {
-          zipFolder( listFile, zos, pathPrefixToRemove );
+          zipFolder( listFile, zos, pathPrefixToRemove, exporter );
         } else {
           if ( !pathPrefixToRemove.endsWith( File.separator ) ) {
             pathPrefixToRemove += File.separator;

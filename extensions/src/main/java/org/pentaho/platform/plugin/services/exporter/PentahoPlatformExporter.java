@@ -98,12 +98,12 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
    */
   protected void registerBuiltInExportHelpers( IUnifiedRepository repository ) {
     // Register helpers in order of typical export flow
-    addExportHelper( new RepositoryContentExportHelper( this ) );
-    addExportHelper( new DatasourcesExportHelper( this ) );
-    addExportHelper( new MetadataExportHelper( this ) );
-    addExportHelper( new MondrianExportHelper( this ) );
-    addExportHelper( new UsersAndRolesExportHelper( this ) );
-    addExportHelper( new MetastoreExportHelper( this ) );
+    addExportHelper( new RepositoryContentExportHelper(  ) );
+    addExportHelper( new DatasourcesExportHelper(  ) );
+    addExportHelper( new MetadataExportHelper( ) );
+    addExportHelper( new MondrianExportHelper( ) );
+    addExportHelper( new UsersAndRolesExportHelper( ) );
+    addExportHelper( new MetastoreExportHelper( ) );
   }
 
   // ========== Public Delegation Methods for Export Helpers ==========
@@ -412,7 +412,7 @@ public class PentahoPlatformExporter extends ZipExportProcessor implements IPent
       if ( helper instanceof UsersAndRolesExportHelper ) {
         try {
           UsersAndRolesExportHelper usersHelper = (UsersAndRolesExportHelper) helper;
-          return usersHelper.exportUserAndRole( username );
+          return usersHelper.exportUserAndRole( username, this );
         } catch ( Exception e ) {
           getRepositoryExportLogger().error( "Error exporting user [ " + username + " ]: " + e.getMessage(), e );
           return false;

@@ -14,8 +14,10 @@ package org.pentaho.platform.plugin.services.exporter.helper;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringEscapeUtils;
+import org.castor.core.util.Assert;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
+import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.plugin.action.mondrian.catalog.IMondrianCatalogService;
 import org.pentaho.platform.plugin.action.mondrian.catalog.MondrianCatalog;
@@ -40,13 +42,8 @@ import java.util.zip.ZipEntry;
  * Export helper for Mondrian OLAP schemas.
  */
 public class MondrianExportHelper implements IExportHelper {
-  private PentahoPlatformExporter exporter;
   private IMondrianCatalogService mondrianCatalogService;
   private MondrianCatalogRepositoryHelper mondrianCatalogRepositoryHelper;
-
-  public MondrianExportHelper( PentahoPlatformExporter exporter ) {
-    this.exporter = exporter;
-  }
 
   @Override
   public String getName() {
@@ -62,12 +59,15 @@ public class MondrianExportHelper implements IExportHelper {
 
   @Override
   public void doExport( Object exportArg ) throws ExportException {
-    Object config = exporter != null ? exporter.getComponentConfig() : null;
+    Assert.notNull( exportArg, "PentahoPlatformExporter is expected to be not null");
+    PentahoPlatformExporter exporter = (PentahoPlatformExporter) exportArg;
+
+    Object config = exporter.getComponentConfig();
     if ( !shouldExecute( config ) ) {
       return;
     }
     try {
-      exportMondrianSchemas();
+      exportMondrianSchemas( exporter );
       if ( exporter.getExportMetrics() != null ) {
         exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.MONDRIAN );
       }
@@ -85,7 +85,7 @@ public class MondrianExportHelper implements IExportHelper {
    * 
    * @throws IOException if I/O error occurs
    */
-  protected void exportMondrianSchemas() throws IOException {
+  protected void exportMondrianSchemas(PentahoPlatformExporter exporter ) throws IOException {
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_MONDRIAN_DATASOURCE" ) );
     // Get the mondrian catalogs available in the repo
     int successfulExportMondrianDSCount = 0;
@@ -98,7 +98,7 @@ public class MondrianExportHelper implements IExportHelper {
     for ( MondrianCatalog catalog : catalogs ) {
       exporter.getRepositoryExportLogger().debug( "Starting to perform backup mondrian datasource [ " + catalog.getName() + " ]" );
       // get the files for this catalog
-      Map<String, InputStream> files = getMondrianCatalogRepositoryHelper().getModrianSchemaFiles( catalog.getName() );
+      Map<String, InputStream> files = getMondrianCatalogRepositoryHelper( exporter ).getModrianSchemaFiles( catalog.getName() );
 
       ExportManifestMondrian mondrian = new ExportManifestMondrian();
       for ( String fileName : files.keySet() ) {
@@ -168,7 +168,7 @@ public class MondrianExportHelper implements IExportHelper {
 
   public IMondrianCatalogService getMondrianCatalogService() {
     if ( mondrianCatalogService == null ) {
-      mondrianCatalogService = PentahoSystem.get( IMondrianCatalogService.class, exporter.getPublicSession() );
+      mondrianCatalogService = PentahoSystem.get( IMondrianCatalogService.class, PentahoSessionHolder.getSession() );
     }
     return mondrianCatalogService;
   }
@@ -177,7 +177,7 @@ public class MondrianExportHelper implements IExportHelper {
     this.mondrianCatalogService = mondrianCatalogService;
   }
 
-  public MondrianCatalogRepositoryHelper getMondrianCatalogRepositoryHelper() {
+  public MondrianCatalogRepositoryHelper getMondrianCatalogRepositoryHelper( PentahoPlatformExporter exporter ) {
     if ( this.mondrianCatalogRepositoryHelper == null ) {
       mondrianCatalogRepositoryHelper = new MondrianCatalogRepositoryHelper( exporter.getUnifiedRepository() );
     }
