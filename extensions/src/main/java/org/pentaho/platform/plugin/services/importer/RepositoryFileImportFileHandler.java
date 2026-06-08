@@ -80,6 +80,16 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
       throw new PlatformImportException( "Error importing bundle. RepositoryFileImportBundle expected" );
     }
     RepositoryFileImportBundle bundle = (RepositoryFileImportBundle) bnd;
+    
+    getLogger().info( "=== importFile START ===" );
+    getLogger().info( "  Bundle path: " + bundle.getPath() );
+    getLogger().info( "  Bundle name: " + bundle.getName() );
+    getLogger().info( "  Bundle.getAcl() at entry: " + (bundle.getAcl() == null ? "NULL" : "NOT null") );
+    getLogger().info( "  ImportSession.isApplyAclSettings: " + getImportSession().isApplyAclSettings() );
+    getLogger().info( "  ImportSession.isRetainOwnership: " + getImportSession().isRetainOwnership() );
+    getLogger().info( "  ImportSession.isOverwriteAclSettings: " + getImportSession().isOverwriteAclSettings() );
+    getLogger().info( "=== END importFile START INFO ===" );
+    
     if ( bundle.isSchedulable() == null ) {
       bundle.setSchedulable( RepositoryFile.SCHEDULABLE_BY_DEFAULT );
     }
@@ -355,7 +365,7 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
       getLogger().debug( messages.getString( "RepositoryFileImportFileHandler.FileExists" ) );
     }
     if ( repositoryFileAcl != null
-        && ( getImportSession().isApplyAclSettings() || !getImportSession().isRetainOwnership() ) ) {
+        && ( getImportSession().isApplyAclSettings() || getImportSession().isRetainOwnership() ) ) {
       RepositoryFileAcl manifestAcl = repositoryFileAcl;
       RepositoryFileAcl originalAcl = repository.getAcl( repositoryFile.getId() );
 
@@ -459,6 +469,17 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
       final Serializable parentId = checkAndCreatePath( repositoryPath, getImportSession().getCurrentManifestKey() );
 
       final RepositoryFileAcl acl = bundle.getAcl();
+      
+      getLogger().info( "=== createFile DEBUG ===" );
+      getLogger().info( "  repositoryPath: " + repositoryPath );
+      getLogger().info( "  bundle.getAcl() is " + (acl == null ? "NULL" : "NOT null") );
+      if ( acl != null ) {
+        getLogger().info( "       ACL owner: " + acl.getOwner() );
+        getLogger().info( "       ACL aces count: " + (acl.getAces() != null ? acl.getAces().size() : 0) );
+      }
+      getLogger().info( "  -> Creating file " + (acl != null ? "WITH explicit ACL" : "WITHOUT explicit ACL (will use defaults)") );
+      getLogger().info( "=== END createFile DEBUG ===" );
+      
       if ( null == acl ) {
         return repository.createFile( parentId, file, data, bundle.getComment() );
       } else {

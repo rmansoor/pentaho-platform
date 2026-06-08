@@ -14,6 +14,7 @@
 package org.pentaho.platform.plugin.services.importexport;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -27,6 +28,8 @@ import org.pentaho.platform.plugin.services.importer.IPlatformImporter;
 import org.pentaho.platform.plugin.services.importer.RepositoryFileImportFileHandler;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifestEntity;
+import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
+import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
 
 /**
  * General purpose objects whose lifecycle is that of an formal import session
@@ -139,18 +142,89 @@ public class ImportSession {
     // If we are writing ACL's we'll have to check later in RepositoryFileImportHandler whether to overwrite
     // based on the isOverwriteAcl setting and whether we are creating or updating the RepositoryFile.
     RepositoryFileAcl acl = null;
+    
+    getLogger().info( "=== processAclForFile DEBUG ===" );
+    getLogger().info( "  filePath (decoded): " + filePath );
+    
+    // CRITICAL FIX: The manifest stores paths with URL encoding ONLY for the filename part
+    // e.g., "home/mike/Buyer+Report+%28sparkline+report%292026-06-02.html" 
+    // We need to try multiple encoding strategies for backward compatibility
+    
+    List<String> pathsToTry = new ArrayList<>();
+    pathsToTry.add( filePath );  // First try: decoded (legacy format)
+    
+    // Second try: encode using the proper path encoder that preserves separators
+    try {
+      String encodedPath = ExportFileNameEncoder.encodeZipPathName( filePath );
+      if ( !pathsToTry.contains( encodedPath ) ) {
+        pathsToTry.add( encodedPath );
+        getLogger().info( "  encodeZipPathName result: " + encodedPath );
+      }
+    } catch ( Exception e ) {
+      getLogger().debug( "Failed with encodeZipPathName: " + e.getMessage() );
+    }
+    
+    // Third try: encode only the filename part manually (in case path has mixed separators)
+    try {
+      int lastSlash = filePath.lastIndexOf( '/' );
+      if ( lastSlash >= 0 ) {
+        String pathPart = filePath.substring( 0, lastSlash + 1 );  // e.g., "home/mike/"
+        String namePart = filePath.substring( lastSlash + 1 );      // e.g., "Buyer Report..."
+        String encodedName = ExportFileNameEncoder.encodeZipFileName( namePart );
+        String result = pathPart + encodedName;
+        if ( !pathsToTry.contains( result ) ) {
+          pathsToTry.add( result );
+          getLogger().info( "  Selective encoding result: " + result );
+        }
+      }
+    } catch ( Exception e ) {
+      getLogger().debug( "Failed with selective encoding: " + e.getMessage() );
+    }
+    
+    getLogger().info( "  Paths to try (in order): " + pathsToTry );
+    getLogger().info( "  applyAclSettings: " + applyAclSettings );
+    getLogger().info( "  retainOwnership: " + retainOwnership );
+    getLogger().info( "  Condition (applyAclSettings || !retainOwnership): " + ( applyAclSettings || !retainOwnership ) );
+    getLogger().info( "  manifest is null: " + (manifest == null) );
+    
     if ( applyAclSettings || !retainOwnership ) {
+      getLogger().info( "  -> CONDITION PASSED, attempting to fetch ACL from manifest" );
       try {
         if ( manifest != null ) {
-          ExportManifestEntity entity = manifest.getExportManifestEntity( filePath );
-          if ( entity != null ) {
-            acl = entity.getRepositoryFileAcl();
+          // Try all path formats until one matches
+          for ( String pathToTry : pathsToTry ) {
+            getLogger().info( "  -> Trying path: '" + pathToTry + "'" );
+            ExportManifestEntity entity = manifest.getExportManifestEntity( pathToTry );
+            if ( entity != null ) {
+              acl = entity.getRepositoryFileAcl();
+              getLogger().info( "  -> FOUND! Using: " + pathToTry + ". ACL is " + (acl != null ? "NOT null (has permissions)" : "null (no permissions)") );
+              if ( acl != null ) {
+                getLogger().info( "       ACL owner: " + acl.getOwner() );
+                getLogger().info( "       ACL aces count: " + (acl.getAces() != null ? acl.getAces().size() : 0) );
+              }
+              break;  // Found it, stop trying
+            }
           }
+          
+          if ( acl == null ) {
+            getLogger().info( "  -> Manifest entity NOT FOUND for any format: " + pathsToTry );
+            getLogger().info( "  -> Note: File entities may not be indexed in manifest HashMap due to namespace issues" );
+            getLogger().info( "  -> ACL will be null, using default permissions" );
+          }
+        } else {
+          getLogger().info( "  -> Manifest is null, cannot fetch ACL" );
         }
       } catch ( Exception e ) {
+        getLogger().info( "  -> Exception when fetching ACL: " + e.getMessage() );
         getLogger().trace( e );
       }
+    } else {
+      getLogger().info( "  -> CONDITION FAILED (applyAclSettings=false AND retainOwnership=true), returning null WITHOUT checking manifest" );
     }
+    
+    getLogger().info( "  -> RETURNING: " + (acl != null ? "ACL object" : "NULL") );
+    getLogger().info( "=== END processAclForFile DEBUG ===" );
+    
     return acl;
   }
 

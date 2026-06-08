@@ -398,13 +398,14 @@ public class FileService {
    * @throws SecurityException if user lacks permissions
    */
   public void selectiveRestore( final InputStream fileUpload, String overwriteFile,
-                                String applyAclSettings, String overwriteAclSettings, String logFile, String logLevel,
+                                String applyAclSettings, String overwriteAclSettings, String retainOwnership, String logFile, String logLevel,
                                 ComponentConfig componentOverrides, String backupBundlePath ) throws IllegalArgumentException, PlatformImportException,
       SecurityException {
     if ( doCanAdminister() ) {
       boolean overwriteFileFlag = !"false".equals( overwriteFile );
       boolean applyAclSettingsFlag = !"false".equals( applyAclSettings );
       boolean overwriteAclSettingsFlag = "true".equals( overwriteAclSettings );
+      boolean retainOwnershipFlag = "true".equals( retainOwnership );
       IRepositoryImportLogger importLogger;
       Level level = Level.valueOf( logLevel );
 
@@ -431,7 +432,7 @@ public class FileService {
       bundleBuilder.name( backupBundlePath != null ? backupBundlePath : "backup.zip" );
       bundleBuilder.applyAclSettings( applyAclSettingsFlag );
       bundleBuilder.overwriteAclSettings( overwriteAclSettingsFlag );
-      bundleBuilder.retainOwnership( false );
+      bundleBuilder.retainOwnership( retainOwnershipFlag );
       bundleBuilder.preserveDsw( true );
 
       // Store component overrides on ImportSession for use during import filtering

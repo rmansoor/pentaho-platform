@@ -329,6 +329,7 @@ public class FileResource extends AbstractJaxRSResource {
       @FormDataParam( "overwriteFile" ) String overwriteFile,
       @FormDataParam( "applyAclSettings" ) String applyAclSettings,
       @FormDataParam( "overwriteAclSettings" ) String overwriteAclSettings,
+      @FormDataParam( "retainOwnership" ) String retainOwnership,
       @FormDataParam( "logFile" ) String logFile,
       @FormDataParam( "logLevel" ) String logLevel,
       @FormDataParam( "backupBundlePath" ) String backupBundlePath ) {
@@ -339,7 +340,7 @@ public class FileResource extends AbstractJaxRSResource {
         componentOverrides = parseComponentConfigJson( componentOverridesJson );
       }
 
-      fileService.selectiveRestore( fileUpload, overwriteFile, applyAclSettings, overwriteAclSettings,
+      fileService.selectiveRestore( fileUpload, overwriteFile, applyAclSettings, overwriteAclSettings, retainOwnership,
           logFile, logLevel, componentOverrides, backupBundlePath );
       return Response.ok().build();
     } catch ( IllegalArgumentException iae ) {

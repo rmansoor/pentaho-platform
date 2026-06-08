@@ -1286,6 +1286,9 @@ public class CommandLineProcessor {
       String overwriteAclSettings = getOptionValue( INFO_OPTION_OVERWRITE_ACL_SETTINGS_NAME, false, true );
       part.field( MULTIPART_FIELD_OVERWRITE_ACL_SETTINGS, "true".equals( overwriteAclSettings ) ? "true" : "false",
           MediaType.MULTIPART_FORM_DATA_TYPE );
+      String retainOwnership = getOptionValue( INFO_OPTION_RETAIN_OWNERSHIP_NAME, false, true );
+      part.field( MULTIPART_FIELD_RETAIN_OWNERSHIP, "true".equals( retainOwnership ) ? "true" : "false",
+          MediaType.MULTIPART_FORM_DATA_TYPE );
       part.field( MULTIVALUE_FIELD_LOG_FILE, logFile, MediaType.MULTIPART_FORM_DATA_TYPE );
       part.field( MULTIVALUE_FIELD_LOG_LEVEL, logLevel != null && logLevel.length() > 0 ? logLevel : DEFAULT_LOG_LEVEL, MediaType.MULTIPART_FORM_DATA_TYPE );
       part.field( MULTIVALUE_FIELD_BACKUP_BUNDLE_PATH, filePath, MediaType.MULTIPART_FORM_DATA_TYPE );
@@ -1349,6 +1352,9 @@ public class CommandLineProcessor {
           MediaType.MULTIPART_FORM_DATA_TYPE );
       String overwriteAclSettings = getOptionValue( INFO_OPTION_OVERWRITE_ACL_SETTINGS_NAME, false, true );
       part.field( MULTIPART_FIELD_OVERWRITE_ACL_SETTINGS, "true".equals( overwriteAclSettings ) ? "true" : "false",
+          MediaType.MULTIPART_FORM_DATA_TYPE );
+      String retainOwnership = getOptionValue( INFO_OPTION_RETAIN_OWNERSHIP_NAME, false, true );
+      part.field( MULTIPART_FIELD_RETAIN_OWNERSHIP, "true".equals( retainOwnership ) ? "true" : "false",
           MediaType.MULTIPART_FORM_DATA_TYPE );
       part.field( MULTIVALUE_FIELD_LOG_FILE, logFile, MediaType.MULTIPART_FORM_DATA_TYPE );
       part.field( MULTIVALUE_FIELD_LOG_LEVEL, logLevel != null && logLevel.length() > 0 ? logLevel : DEFAULT_LOG_LEVEL, MediaType.MULTIPART_FORM_DATA_TYPE );
