@@ -48,10 +48,13 @@ public class MondrianImportHelper implements IImportHelper {
   }
 
   public boolean shouldExecute( Object config ) {
+    if ( config == null ) {
+      return true; // Full restore - include all content
+    }
     if ( config instanceof ComponentConfig ) {
       return ( ( ComponentConfig ) config ).isIncludeMondrian();
     }
-    return false;
+    return true; // Unknown type - default to include
   }
 
 

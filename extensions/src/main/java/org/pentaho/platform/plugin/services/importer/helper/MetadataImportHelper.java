@@ -47,10 +47,13 @@ public class MetadataImportHelper implements IImportHelper {
 
   @Override
   public boolean shouldExecute( Object config ) {
+    if ( config == null ) {
+      return true; // Full restore - include all content
+    }
     if ( config instanceof ComponentConfig ) {
       return ( ( ComponentConfig ) config ).isIncludeDatasources();
     }
-    return false;
+    return true; // Unknown type - default to include
   }
 
   @Override

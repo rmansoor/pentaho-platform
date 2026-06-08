@@ -365,7 +365,7 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
       getLogger().debug( messages.getString( "RepositoryFileImportFileHandler.FileExists" ) );
     }
     if ( repositoryFileAcl != null
-        && ( getImportSession().isApplyAclSettings() || getImportSession().isRetainOwnership() ) ) {
+        && ( getImportSession().isApplyAclSettings() || !getImportSession().isRetainOwnership() ) ) {
       RepositoryFileAcl manifestAcl = repositoryFileAcl;
       RepositoryFileAcl originalAcl = repository.getAcl( repositoryFile.getId() );
 
