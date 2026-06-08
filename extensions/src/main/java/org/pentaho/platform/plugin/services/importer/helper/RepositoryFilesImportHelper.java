@@ -186,6 +186,16 @@ public class RepositoryFilesImportHelper implements IImportHelper {
             .getString( "SolutionImportHandler.SkipLocaleFile", repositoryFilePath ) );
           continue;
         }
+        // Skip metadata files (.xmi) - they are pre-processed by MetadataImportHelper with domain-id parameter
+        if ( fileName.endsWith( ".xmi" ) ) {
+          solutionImportHandler.getLogger().trace( "Skipping metadata file (will be processed by MetadataImportHelper): " + fileName );
+          continue;
+        }
+        // Skip Mondrian catalog files (.mondrian.xml) - they are pre-processed by MondrianImportHelper with domain-id parameter
+        if ( fileName.endsWith( ".mondrian.xml" ) ) {
+          solutionImportHandler.getLogger().trace( "Skipping Mondrian catalog file (will be processed by MondrianImportHelper): " + fileName );
+          continue;
+        }
         bundleBuilder.input( bundleInputStream );
         bundleBuilder.mime( mimeResolver.resolveMimeForFileName( fileName ));
 
