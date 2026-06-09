@@ -139,7 +139,16 @@ public class MetadataImportHelper implements IImportHelper {
                   .mime( "text/xmi+xml" )
                   .withParam( "domain-id", domainId );
 
-          solutionImportHandler.getCachedImports().put( exportManifestMetadata.getFile(), bundleBuilder );
+          // Cache with manifest file path AND normalized path for lookup
+          String manifestFile = exportManifestMetadata.getFile();
+          solutionImportHandler.getCachedImports().put( manifestFile, bundleBuilder );
+          
+          // Also cache with normalized path for different path computations
+          String normalizedPath = manifestFile.replace( "\\", "/" );
+          if ( !normalizedPath.equals( manifestFile ) ) {
+            solutionImportHandler.getCachedImports().put( normalizedPath, bundleBuilder );
+          }
+          
           if ( solutionImportHandler.isPerformingRestore() ) {
             solutionImportHandler.getLogger().debug( " Successfully prepared  [ " + exportManifestMetadata.getDomainId() + " ] datasource for import" );
           }

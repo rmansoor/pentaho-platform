@@ -141,7 +141,15 @@ public class MondrianImportHelper implements IImportHelper {
           String xmlaEnabled = "" + exportManifestMondrian.isXmlaEnabled();
           bundleBuilder.withParam( "EnableXmla", xmlaEnabled );
 
-          solutionImportHandler.getCachedImports().put( exportManifestMondrian.getFile(), bundleBuilder );
+          // Cache with manifest file path AND normalized path for lookup
+          String manifestFile = exportManifestMondrian.getFile();
+          solutionImportHandler.getCachedImports().put( manifestFile, bundleBuilder );
+          
+          // Also cache with normalized path for different path computations
+          String normalizedPath = manifestFile.replace( "\\", "/" );
+          if ( !normalizedPath.equals( manifestFile ) ) {
+            solutionImportHandler.getCachedImports().put( normalizedPath, bundleBuilder );
+          }
 
           String annotationsFile = exportManifestMondrian.getAnnotationsFile();
           if ( annotationsFile != null ) {
@@ -150,7 +158,12 @@ public class MondrianImportHelper implements IImportHelper {
                     + RepositoryFile.SEPARATOR + catName ).name( "annotations.xml" ).charSet( "UTF-8" ).overwriteFile(
                     solutionImportHandler.isOverwriteFile() ).mime( "text/xml" ).hidden( RepositoryFile.HIDDEN_BY_DEFAULT ).schedulable(
                     RepositoryFile.SCHEDULABLE_BY_DEFAULT ).withParam( "domain-id", catName );
+            // Cache with both manifest path and normalized
             solutionImportHandler.getCachedImports().put( annotationsFile, annotationsBundle );
+            String normalizedAnnotationsPath = annotationsFile.replace( "\\", "/" );
+            if ( !normalizedAnnotationsPath.equals( annotationsFile ) ) {
+              solutionImportHandler.getCachedImports().put( normalizedAnnotationsPath, annotationsBundle );
+            }
           }
           successfulMondrianSchemaImport++;
           if ( solutionImportHandler.isPerformingRestore() ) {

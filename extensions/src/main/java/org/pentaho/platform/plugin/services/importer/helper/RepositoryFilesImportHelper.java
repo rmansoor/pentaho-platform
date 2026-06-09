@@ -142,14 +142,27 @@ public class RepositoryFilesImportHelper implements IImportHelper {
         RepositoryFilenameUtils.concat( PentahoPlatformImporter.computeBundlePath( actualFilePath ), fileName );
 
       Map<String, RepositoryFileImportBundle.Builder> cachedImports = importState.getCachedImports();
+      
+      // Try to find in cache - check both original and normalized paths
+      RepositoryFileImportBundle.Builder cachedBuilder = null;
+      
       if ( cachedImports.containsKey( repositoryFilePath ) ) {
+        cachedBuilder = cachedImports.get( repositoryFilePath );
+      } else {
+        // Try normalized path (convert backslashes to forward slashes)
+        String normalizedPath = repositoryFilePath.replace( "\\", "/" );
+        if ( !normalizedPath.equals( repositoryFilePath ) && cachedImports.containsKey( normalizedPath ) ) {
+          cachedBuilder = cachedImports.get( normalizedPath );
+        }
+      }
+      
+      if ( cachedBuilder != null ) {
         solutionImportHandler.getLogger().debug( "Repository object with path [ " + repositoryFilePath + " ] found in the cache" );
         byte[] bytes = IOUtils.toByteArray( fileBundle.getInputStream() );
-        RepositoryFileImportBundle.Builder builder = cachedImports.get( repositoryFilePath );
-        builder.input( new ByteArrayInputStream( bytes ) );
+        cachedBuilder.input( new ByteArrayInputStream( bytes ) );
 
         try {
-          importer.importFile( solutionImportHandler.build( builder ) );
+          importer.importFile( solutionImportHandler.build( cachedBuilder ) );
           if ( importState.isPerformingRestore() ) {
             solutionImportHandler.getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ] from the cache" );
           }
@@ -186,17 +199,7 @@ public class RepositoryFilesImportHelper implements IImportHelper {
             .getString( "SolutionImportHandler.SkipLocaleFile", repositoryFilePath ) );
           continue;
         }
-        // Skip metadata files (.xmi) - they are pre-processed by MetadataImportHelper with domain-id parameter
-        if ( fileName.endsWith( ".xmi" ) ) {
-          solutionImportHandler.getLogger().trace( "Skipping metadata file (will be processed by MetadataImportHelper): " + fileName );
-          continue;
-        }
-        // Skip Mondrian catalog files (.mondrian.xml) - they are pre-processed by MondrianImportHelper with domain-id parameter
-        if ( fileName.endsWith( ".mondrian.xml" ) ) {
-          solutionImportHandler.getLogger().trace( "Skipping Mondrian catalog file (will be processed by MondrianImportHelper): " + fileName );
-          continue;
-        }
-        bundleBuilder.input( bundleInputStream );
+bundleBuilder.input( bundleInputStream );
         bundleBuilder.mime( mimeResolver.resolveMimeForFileName( fileName ));
 
         String filePath =
