@@ -92,7 +92,6 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   // Instance logger for post-context operations (requires MDC setup)
   IRepositoryImportLogger logger = new Log4JRepositoryImportLogger();
 
-  ImportState importState;
 
   public SolutionImportHandler( List<IMimeType> mimeTypes ) {
     this.mimeTypes = mimeTypes;
@@ -191,40 +190,35 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
   }
 
-  public ImportState getImportState() {
-    return importState;
-  }
-
   @Override
   public void importFile( IPlatformImportBundle bundle ) throws PlatformImportException, DomainIdNullException,
       DomainAlreadyExistsException, DomainStorageException, IOException {
-    importState = new ImportState();
     IPlatformImporter platformImporter = PentahoSystem.get( IPlatformImporter.class );
-    importState.setPerformingRestore( platformImporter.getRepositoryImportLogger().isPerformingRestore() );
-    if ( importState.isPerformingRestore() ) {
+    files = new ArrayList<>();
+    if ( isPerformingRestore() ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_PROCESS" ) );
     }
 
     // Initialize metrics collector
     metrics = new ImportExportMetrics( ImportExportMetrics.OperationType.RESTORE );
     
-    if ( importState.isPerformingRestore()  ) {
+    if ( isPerformingRestore()  ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_PROCESS" ) );
     }
     RepositoryFileImportBundle importBundle = (RepositoryFileImportBundle) bundle;
 
     // Processing file
-    if ( importState.isPerformingRestore()  ) {
+    if ( isPerformingRestore()  ) {
       getLogger().debug( " Start:  pre processing files and folder from the bundle" );
     }
-    if ( !processZip( bundle.getInputStream(), importState ) ) {
+    if ( !processZip( bundle.getInputStream() ) ) {
       // Something went wrong, do not proceed!
-      if ( importState.isPerformingRestore()  ) {
+      if ( isPerformingRestore()  ) {
         getLogger().error( "Failed to process ZIP file during restore" );
       }
       return;
     }
-    if ( importState.isPerformingRestore()  ) {
+    if ( isPerformingRestore()  ) {
       getLogger().debug( " End:  pre processing files and folder from the bundle" );
     }
     setOverwriteFile( bundle.overwriteInRepository() );
@@ -234,7 +228,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     ExportManifest manifest = getImportSession().getManifest();
     ComponentConfig componentOverrides = getImportSession().getComponentOverrides();
     
-    if ( importState.isPerformingRestore()  && componentOverrides != null ) {
+    if ( isPerformingRestore()  && componentOverrides != null ) {
       getLogger().debug( "Selective restore active with component overrides: Users=" + componentOverrides.isIncludeUsers() + 
         ", Content=" + componentOverrides.isIncludeContent() + ", Datasources=" + componentOverrides.isIncludeDatasources() );
     }
@@ -258,7 +252,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
       try {
         runImportHelpers();
       } catch ( Exception e ) {
-        if ( importState.isPerformingRestore()  ) {
+        if ( isPerformingRestore()  ) {
           getLogger().error( "Failed to run import helpers: " + e.getMessage() );
           getLogger().debug( "Import helpers error", e );
         }
@@ -266,7 +260,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     }
     
     // Output metrics report
-    if ( importState.isPerformingRestore()  && metrics != null ) {
+    if ( isPerformingRestore()  && metrics != null ) {
       getLogger().info( metrics.generateDetailedReport() );
     }
   }
@@ -519,8 +513,8 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     return path;
   }
 
-  private boolean processZip( InputStream inputStream, ImportState importState ) {
-    if ( importState.isPerformingRestore() ) {
+  private boolean processZip( InputStream inputStream ) {
+    if ( isPerformingRestore() ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_REPOSITORY_OBJECT" ) );
     }
     try ( ZipInputStream zipInputStream = new ZipInputStream( inputStream ) ) {
@@ -536,7 +530,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
           if ( !solutionHelper.isInApprovedExtensionList( entryName ) ) {
             zipInputStream.closeEntry();
             entry = zipInputStream.getNextEntry();
-            importState.setPartialImport( true );
+            // TODO Find out what does this line do importState.setPartialImport( true );
             continue;
           }
 
@@ -572,10 +566,10 @@ public class SolutionImportHandler implements IPlatformImportHandler {
         if ( EXPORT_MANIFEST_XML_FILE.equals( file.getName() ) ) {
           initializeAclManifest( repoFileBundle );
         } else {
-          if ( importState.isPerformingRestore() ) {
+          if ( isPerformingRestore() ) {
             getLogger().debug( "Adding file " + repoFile.getName() + " to list for later processing " );
           }
-          importState.getFiles().add( repoFileBundle );
+          files.add( repoFileBundle );
         }
         zipInputStream.closeEntry();
         entry = zipInputStream.getNextEntry();
@@ -585,7 +579,7 @@ public class SolutionImportHandler implements IPlatformImportHandler {
           .getErrorString( "ZIPFILE.ExceptionOccurred", e.getLocalizedMessage() ), e );
       return false;
     }
-    if ( importState.isPerformingRestore() ) {
+    if ( isPerformingRestore() ) {
       getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_REPOSITORY_OBJECT" ) );
     }
     return true;
@@ -612,21 +606,6 @@ public class SolutionImportHandler implements IPlatformImportHandler {
   public IPlatformImportBundle build( RepositoryFileImportBundle.Builder builder ) {
     return builder != null ? builder.build() : null;
   }
-
-  // handlers that extend this class may override this method and perform operations
-  // over the job prior to its creation at scheduler.createJob()
-  // MOVED TO: pentaho-scheduler-plugin/ScheduleImportUtil.java
-  //
-  //  public Response createSchedulerJob( ISchedulerResource scheduler, IJobScheduleRequest jobScheduleRequest )
-  //      throws IOException {
-  //    Response rs = scheduler != null ? (Response) scheduler.createJob( jobScheduleRequest ) : null;
-  //    if ( jobScheduleRequest.getJobState() != JobState.NORMAL ) {
-  //      IJobRequest jobRequest = PentahoSystem.get( IScheduler.class, "IScheduler2", null ).createJobRequest();
-  //      jobRequest.setJobId( rs.getEntity().toString() );
-  //      scheduler.pauseJob( jobRequest );
-  //    }
-  //    return rs;
-  //  }
 
   public boolean isOverwriteFile() {
     return overwriteFile;

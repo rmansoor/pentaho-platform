@@ -23,12 +23,9 @@ import java.util.Map;
 import org.apache.commons.io.IOUtils;
 import org.pentaho.platform.api.importexport.IImportHelper;
 import org.pentaho.platform.api.importexport.ImportException;
-import org.pentaho.platform.engine.services.solution.SolutionHelper;
-import org.pentaho.platform.plugin.services.importer.ImportState;
 import org.pentaho.platform.plugin.services.importer.PlatformImportException;
 import org.pentaho.platform.api.repository2.unified.IPlatformImportBundle;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
-import org.pentaho.platform.api.scheduler2.IScheduler;
 import org.pentaho.platform.api.mimetype.IPlatformMimeResolver;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
@@ -40,7 +37,6 @@ import org.pentaho.platform.plugin.services.importer.RepositoryFileImportBundle;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
 import org.pentaho.platform.plugin.services.importexport.ImportSession.ManifestFile;
 import org.pentaho.platform.plugin.services.importexport.ImportSource.IRepositoryFileBundle;
-import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.repository.RepositoryFilenameUtils;
 import org.pentaho.platform.plugin.services.importer.SolutionImportHandler;
@@ -76,7 +72,6 @@ public class RepositoryFilesImportHelper implements IImportHelper {
   @Override
   public void doImport( Object importArg ) throws ImportException {
     solutionImportHandler = (SolutionImportHandler) importArg;
-    ImportState importState = solutionImportHandler.getImportState();
     if ( !shouldExecute( solutionImportHandler.getImportSession().getComponentOverrides() ) ) {
       return;
     }
@@ -84,41 +79,41 @@ public class RepositoryFilesImportHelper implements IImportHelper {
       ExportManifest manifest = solutionImportHandler.getImportSession().getManifest();
 
       if ( manifest == null ) {
-        if ( importState.isPerformingRestore() ) {
+        if ( solutionImportHandler.isPerformingRestore() ) {
           solutionImportHandler.getLogger().debug( "Manifest is null - skipping repository files import" );
         }
         return;
       }
 
-      if ( importState.isPerformingRestore() ) {
+      if ( solutionImportHandler.isPerformingRestore() ) {
         solutionImportHandler.getLogger().info( "Starting repository files and folders import..." );
       }
 
       try {
-        importRepositoryFilesAndFolders( manifest, bundle, importState, solutionImportHandler );
+        importRepositoryFilesAndFolders( manifest, bundle, solutionImportHandler );
 
-        if ( importState.isPerformingRestore() ) {
+        if ( solutionImportHandler.isPerformingRestore() ) {
           solutionImportHandler.getLogger().info( "Successfully completed repository files import" );
         }
       } catch ( IOException e ) {
-        if ( importState.isPerformingRestore() ) {
+        if ( solutionImportHandler.isPerformingRestore() ) {
           solutionImportHandler.getLogger().error( "Failed to import repository files and folders: " + e.getMessage() );
           solutionImportHandler.getLogger().debug( "Repository files import error", e );
         }
         throw new ImportException( "Failed to import repository files and folders: " + e.getMessage(), e );
       }
     } catch ( Exception e ) {
-      if ( importState.isPerformingRestore() ) {
+      if ( solutionImportHandler.isPerformingRestore() ) {
         solutionImportHandler.getLogger().error( "Repository files import helper error: " + e.getMessage() );
       }
       throw new ImportException( "Repository files import helper failed: " + e.getMessage(), e );
     }
   }
 
-  protected void importRepositoryFilesAndFolders( ExportManifest manifest, IPlatformImportBundle bundle, ImportState importState, SolutionImportHandler solutionImportHandler ) throws IOException {
-    if ( importState.isPerformingRestore() ) {
+  protected void importRepositoryFilesAndFolders( ExportManifest manifest, IPlatformImportBundle bundle, SolutionImportHandler solutionImportHandler ) throws IOException {
+    if ( solutionImportHandler.isPerformingRestore() ) {
       solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_FILEFOLDER" ) );
-      solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_FILEFOLDER", importState.getFiles().size() ) );
+      solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_COUNT_FILEFOLDER", solutionImportHandler.getFiles().size() ) );
     }
     int successfulFilesImportCount = 0;
     String manifestVersion = null;
@@ -131,7 +126,7 @@ public class RepositoryFilesImportHelper implements IImportHelper {
     LocaleFilesProcessor localeFilesProcessor = new LocaleFilesProcessor();
     IPlatformImporter importer = PentahoSystem.get( IPlatformImporter.class );
 
-    for ( IRepositoryFileBundle fileBundle : importState.getFiles() ) {
+    for ( IRepositoryFileBundle fileBundle : solutionImportHandler.getFiles() ) {
       String fileName = fileBundle.getFile().getName();
       String actualFilePath = fileBundle.getPath();
       if ( manifestVersion != null ) {
@@ -141,7 +136,7 @@ public class RepositoryFilesImportHelper implements IImportHelper {
       String repositoryFilePath =
         RepositoryFilenameUtils.concat( PentahoPlatformImporter.computeBundlePath( actualFilePath ), fileName );
 
-      Map<String, RepositoryFileImportBundle.Builder> cachedImports = importState.getCachedImports();
+      Map<String, RepositoryFileImportBundle.Builder> cachedImports = solutionImportHandler.getCachedImports();
       
       // Try to find in cache - check both original and normalized paths
       RepositoryFileImportBundle.Builder cachedBuilder = null;
@@ -165,7 +160,7 @@ public class RepositoryFilesImportHelper implements IImportHelper {
 
         try {
           importer.importFile( solutionImportHandler.build( cachedBuilder ) );
-          if ( importState.isPerformingRestore() ) {
+          if ( solutionImportHandler.isPerformingRestore() ) {
             solutionImportHandler.getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ] from the cache" );
           }
           successfulFilesImportCount++;
@@ -253,11 +248,11 @@ bundleBuilder.input( bundleInputStream );
       try {
         importer.importFile( platformImportBundle );
         successfulFilesImportCount++;
-        if ( importState.isPerformingRestore() ) {
+        if ( solutionImportHandler.isPerformingRestore() ) {
           solutionImportHandler.getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ]" );
         }
       } catch ( PlatformImportException e ) {
-        if ( importState.isPerformingRestore() ) {
+        if ( solutionImportHandler.isPerformingRestore() ) {
           solutionImportHandler.getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_REPOSITORY_OBJECT", repositoryFilePath, e.getLocalizedMessage() ) );
         }
       }
@@ -268,26 +263,26 @@ bundleBuilder.input( bundleInputStream );
     }
 
     // Process locale files.
-    if ( importState.isPerformingRestore() ) {
+    if ( solutionImportHandler.isPerformingRestore() ) {
       solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_START_IMPORT_LOCALEFILE" ) );
     }
     int successfulLocaleFilesProcessed = 0;
     try {
       successfulLocaleFilesProcessed = localeFilesProcessor.processLocaleFiles( importer );
     } catch ( PlatformImportException e ) {
-      if ( importState.isPerformingRestore() ) {
+      if ( solutionImportHandler.isPerformingRestore() ) {
         solutionImportHandler.getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_LOCALE_FILE", e.getLocalizedMessage() ) );
       }
     } finally {
-      if ( importState.isPerformingRestore() ) {
+      if ( solutionImportHandler.isPerformingRestore() ) {
         solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_LOCALEFILE" ) );
       }
     }
 
-    if ( importState.isPerformingRestore() ) {
+    if ( solutionImportHandler.isPerformingRestore() ) {
       solutionImportHandler.getLogger().info( Messages.getInstance().getString(
         "SolutionImportHandler.INFO_SUCCESSFUL_REPOSITORY_IMPORT_COUNT", successfulFilesImportCount
-          + successfulLocaleFilesProcessed, importState.getFiles().size() ) );
+          + successfulLocaleFilesProcessed, solutionImportHandler.getFiles().size() ) );
       solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_FILEFOLDER" ) );
     }
   }
