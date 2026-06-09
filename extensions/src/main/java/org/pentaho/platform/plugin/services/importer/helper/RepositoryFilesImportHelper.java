@@ -147,15 +147,17 @@ public class RepositoryFilesImportHelper implements IImportHelper {
       RepositoryFileImportBundle.Builder cachedBuilder = null;
       
       if ( cachedImports.containsKey( repositoryFilePath ) ) {
+        solutionImportHandler.getLogger().debug( "[RepositoryFilesImportHelper] CACHE HIT (full path): " + repositoryFilePath );
         cachedBuilder = cachedImports.get( repositoryFilePath );
       } else {
-        // Try normalized path (convert backslashes to forward slashes)
-        String normalizedPath = repositoryFilePath.replace( "\\", "/" );
-        if ( !normalizedPath.equals( repositoryFilePath ) && cachedImports.containsKey( normalizedPath ) ) {
-          cachedBuilder = cachedImports.get( normalizedPath );
+        // Try just the filename - metadata/mondrian helpers cache by filename only
+        if ( cachedImports.containsKey( fileName ) ) {
+          solutionImportHandler.getLogger().debug( "[RepositoryFilesImportHelper] CACHE HIT (filename): " + fileName );
+          cachedBuilder = cachedImports.get( fileName );
+        } else if ( fileName.endsWith( ".xmi" ) || fileName.endsWith( ".mondrian.xml" ) ) {
+          solutionImportHandler.getLogger().warn( "[RepositoryFilesImportHelper] CACHE MISS for " + fileName + " - available keys: " + cachedImports.keySet() );
         }
       }
-      
       if ( cachedBuilder != null ) {
         solutionImportHandler.getLogger().debug( "Repository object with path [ " + repositoryFilePath + " ] found in the cache" );
         byte[] bytes = IOUtils.toByteArray( fileBundle.getInputStream() );

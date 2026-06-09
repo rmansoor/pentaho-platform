@@ -141,15 +141,12 @@ public class MondrianImportHelper implements IImportHelper {
           String xmlaEnabled = "" + exportManifestMondrian.isXmlaEnabled();
           bundleBuilder.withParam( "EnableXmla", xmlaEnabled );
 
-          // Cache with manifest file path AND normalized path for lookup
+          // Cache with just the filename as key for lookup
           String manifestFile = exportManifestMondrian.getFile();
-          solutionImportHandler.getCachedImports().put( manifestFile, bundleBuilder );
+          String cacheKey = new java.io.File( manifestFile ).getName(); // Extract filename only
           
-          // Also cache with normalized path for different path computations
-          String normalizedPath = manifestFile.replace( "\\", "/" );
-          if ( !normalizedPath.equals( manifestFile ) ) {
-            solutionImportHandler.getCachedImports().put( normalizedPath, bundleBuilder );
-          }
+          solutionImportHandler.getLogger().debug( "[MondrianImportHelper] Caching Mondrian catalog [" + catName + "] with key: " + cacheKey );
+          solutionImportHandler.getCachedImports().put( cacheKey, bundleBuilder );
 
           String annotationsFile = exportManifestMondrian.getAnnotationsFile();
           if ( annotationsFile != null ) {
@@ -158,12 +155,11 @@ public class MondrianImportHelper implements IImportHelper {
                     + RepositoryFile.SEPARATOR + catName ).name( "annotations.xml" ).charSet( "UTF-8" ).overwriteFile(
                     solutionImportHandler.isOverwriteFile() ).mime( "text/xml" ).hidden( RepositoryFile.HIDDEN_BY_DEFAULT ).schedulable(
                     RepositoryFile.SCHEDULABLE_BY_DEFAULT ).withParam( "domain-id", catName );
-            // Cache with both manifest path and normalized
+            // Cache annotations by filename too
+            String annotationsCacheKey = new java.io.File( annotationsFile ).getName();
+            solutionImportHandler.getLogger().debug( "[MondrianImportHelper] Caching Mondrian annotations [" + annotationsFile + "] with key: " + annotationsCacheKey );
             solutionImportHandler.getCachedImports().put( annotationsFile, annotationsBundle );
-            String normalizedAnnotationsPath = annotationsFile.replace( "\\", "/" );
-            if ( !normalizedAnnotationsPath.equals( annotationsFile ) ) {
-              solutionImportHandler.getCachedImports().put( normalizedAnnotationsPath, annotationsBundle );
-            }
+            solutionImportHandler.getCachedImports().put( annotationsCacheKey, annotationsBundle );
           }
           successfulMondrianSchemaImport++;
           if ( solutionImportHandler.isPerformingRestore() ) {

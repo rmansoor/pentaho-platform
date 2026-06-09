@@ -139,15 +139,14 @@ public class MetadataImportHelper implements IImportHelper {
                   .mime( "text/xmi+xml" )
                   .withParam( "domain-id", domainId );
 
-          // Cache with manifest file path AND normalized path for lookup
+          // Cache with just the filename as key for lookup
+          // The manifest stores relative paths, but we need to match against computed bundle paths
+          // Using filename-only key ensures metadata files are found regardless of path structure
           String manifestFile = exportManifestMetadata.getFile();
-          solutionImportHandler.getCachedImports().put( manifestFile, bundleBuilder );
+          String cacheKey = new java.io.File( manifestFile ).getName(); // Extract filename only
           
-          // Also cache with normalized path for different path computations
-          String normalizedPath = manifestFile.replace( "\\", "/" );
-          if ( !normalizedPath.equals( manifestFile ) ) {
-            solutionImportHandler.getCachedImports().put( normalizedPath, bundleBuilder );
-          }
+          solutionImportHandler.getLogger().debug( "[MetadataImportHelper] Caching metadata domain [" + domainId + "] with key: " + cacheKey );
+          solutionImportHandler.getCachedImports().put( cacheKey, bundleBuilder );
           
           if ( solutionImportHandler.isPerformingRestore() ) {
             solutionImportHandler.getLogger().debug( " Successfully prepared  [ " + exportManifestMetadata.getDomainId() + " ] datasource for import" );
