@@ -19,6 +19,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
+import java.io.Serializable;
+import org.pentaho.platform.api.repository2.unified.RepositoryFileExtraMetaData;
 
 import org.apache.commons.io.IOUtils;
 import org.pentaho.platform.api.importexport.IImportHelper;
@@ -221,6 +223,45 @@ bundleBuilder.input( bundleInputStream );
         .isFolder() ) {
         continue;
       }
+
+      // Check if we should skip this file based on generated content filtering
+      // Priority 1: Check manifest attribute (new feature - most reliable)
+      // Priority 2: Check file metadata for backward compatibility with old manifests
+      ComponentConfig componentOverrides = solutionImportHandler.getImportSession().getComponentOverrides();
+      if ( componentOverrides != null && !componentOverrides.isIncludeGeneratedContent() ) {
+        boolean isFileAGC = false;
+        String gcSource = null;
+        
+        // Priority 1: Check manifest attribute set during export
+        if ( manifest != null && manifest.getExportManifestEntity( sourcePath ) != null ) {
+          if ( manifest.getExportManifestEntity( sourcePath ).getEntityMetaData().isGeneratedContent() ) {
+            isFileAGC = true;
+            gcSource = "manifest attribute";
+          }
+        }
+        
+        // Priority 2: Check actual file metadata if manifest attribute not available (backward compatibility)
+        if ( !isFileAGC ) {
+          RepositoryFileExtraMetaData extraMetaData = solutionImportHandler.getImportSession().processExtraMetaDataForFile( sourcePath );
+          if ( extraMetaData != null ) {
+            Map<String, Serializable> metadata = extraMetaData.getExtraMetaData();
+            if ( metadata != null && metadata.containsKey( "lineage-id" ) ) {
+              isFileAGC = true;
+              gcSource = "file metadata";
+            }
+          }
+        }
+        
+        if ( isFileAGC ) {
+          if ( solutionImportHandler.isPerformingRestore() ) {
+            solutionImportHandler.getLogger().debug( "Skipping generated content file during restore: " + sourcePath
+              + " (identified via " + gcSource + ")" );
+          }
+          continue;
+        }
+      }
+
+       
 
       solutionImportHandler.getImportSession().setCurrentManifestKey( sourcePath );
 

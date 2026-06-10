@@ -22,6 +22,8 @@ import org.pentaho.platform.api.repository2.unified.RepositoryFileAcl;
 import org.pentaho.platform.api.repository2.unified.RepositoryFileExtraMetaData;
 import org.pentaho.platform.api.repository2.unified.RepositoryFilePermission;
 import org.pentaho.platform.api.repository2.unified.RepositoryFileSid;
+import org.pentaho.platform.engine.core.system.PentahoSystem;
+import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.plugin.services.importexport.ExportManifestRepositoryException;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.CustomProperty;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.bindings.EntityAcl;
@@ -181,6 +183,23 @@ public class ExportManifestEntity {
           adjustedParentPath = "/";
         }
         entityMetaData.setParentPath( adjustedParentPath );
+      }
+    }
+    
+    // Check if this file is generated content and mark it in the manifest
+    // This allows the import process to make filtering decisions based on the manifest
+    if ( !repositoryFile.isFolder() ) {
+      try {
+        IUnifiedRepository repo = PentahoSystem.get( IUnifiedRepository.class, PentahoSessionHolder.getSession() );
+        if ( repo != null && repositoryFile.getId() != null ) {
+          java.util.Map<String, Serializable> metadata = repo.getFileMetadata( repositoryFile.getId() );
+          if ( metadata != null && metadata.containsKey( "lineage-id" ) ) {
+            entityMetaData.setIsGeneratedContent( true );
+          }
+        }
+      } catch ( Exception e ) {
+        // Non-fatal error - generated content marking is non-critical for export
+        // Log if needed, but don't fail the export
       }
     }
     
