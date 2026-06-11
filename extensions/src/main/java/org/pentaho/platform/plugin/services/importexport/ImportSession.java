@@ -143,8 +143,8 @@ public class ImportSession {
     // based on the isOverwriteAcl setting and whether we are creating or updating the RepositoryFile.
     RepositoryFileAcl acl = null;
     
-    getLogger().info( "=== processAclForFile DEBUG ===" );
-    getLogger().info( "  filePath (decoded): " + filePath );
+    getLogger().trace( "=== processAclForFile DEBUG ===" );
+    getLogger().trace( "  filePath (decoded): " + filePath );
     
     // CRITICAL FIX: The manifest stores paths with URL encoding ONLY for the filename part
     // e.g., "home/mike/Buyer+Report+%28sparkline+report%292026-06-02.html" 
@@ -158,7 +158,7 @@ public class ImportSession {
       String encodedPath = ExportFileNameEncoder.encodeZipPathName( filePath );
       if ( !pathsToTry.contains( encodedPath ) ) {
         pathsToTry.add( encodedPath );
-        getLogger().info( "  encodeZipPathName result: " + encodedPath );
+        getLogger().trace( "  encodeZipPathName result: " + encodedPath );
       }
     } catch ( Exception e ) {
       getLogger().debug( "Failed with encodeZipPathName: " + e.getMessage() );
@@ -174,56 +174,56 @@ public class ImportSession {
         String result = pathPart + encodedName;
         if ( !pathsToTry.contains( result ) ) {
           pathsToTry.add( result );
-          getLogger().info( "  Selective encoding result: " + result );
+          getLogger().trace( "  Selective encoding result: " + result );
         }
       }
     } catch ( Exception e ) {
       getLogger().debug( "Failed with selective encoding: " + e.getMessage() );
     }
     
-    getLogger().info( "  Paths to try (in order): " + pathsToTry );
-    getLogger().info( "  applyAclSettings: " + applyAclSettings );
-    getLogger().info( "  retainOwnership: " + retainOwnership );
-    getLogger().info( "  Condition (applyAclSettings || !retainOwnership): " + ( applyAclSettings || !retainOwnership ) );
-    getLogger().info( "  manifest is null: " + (manifest == null) );
+    getLogger().trace( "  Paths to try (in order): " + pathsToTry );
+    getLogger().trace( "  applyAclSettings: " + applyAclSettings );
+    getLogger().trace( "  retainOwnership: " + retainOwnership );
+    getLogger().trace( "  Condition (applyAclSettings || !retainOwnership): " + ( applyAclSettings || !retainOwnership ) );
+    getLogger().trace( "  manifest is null: " + (manifest == null) );
     
     if ( applyAclSettings || !retainOwnership ) {
-      getLogger().info( "  -> CONDITION PASSED, attempting to fetch ACL from manifest" );
+      getLogger().trace( "  -> CONDITION PASSED, attempting to fetch ACL from manifest" );
       try {
         if ( manifest != null ) {
           // Try all path formats until one matches
           for ( String pathToTry : pathsToTry ) {
-            getLogger().info( "  -> Trying path: '" + pathToTry + "'" );
+            getLogger().trace( "  -> Trying path: '" + pathToTry + "'" );
             ExportManifestEntity entity = manifest.getExportManifestEntity( pathToTry );
             if ( entity != null ) {
               acl = entity.getRepositoryFileAcl();
-              getLogger().info( "  -> FOUND! Using: " + pathToTry + ". ACL is " + (acl != null ? "NOT null (has permissions)" : "null (no permissions)") );
+              getLogger().trace( "  -> FOUND! Using: " + pathToTry + ". ACL is " + (acl != null ? "NOT null (has permissions)" : "null (no permissions)") );
               if ( acl != null ) {
-                getLogger().info( "       ACL owner: " + acl.getOwner() );
-                getLogger().info( "       ACL aces count: " + (acl.getAces() != null ? acl.getAces().size() : 0) );
+                getLogger().trace( "       ACL owner: " + acl.getOwner() );
+                getLogger().trace( "       ACL aces count: " + (acl.getAces() != null ? acl.getAces().size() : 0) );
               }
               break;  // Found it, stop trying
             }
           }
           
           if ( acl == null ) {
-            getLogger().info( "  -> Manifest entity NOT FOUND for any format: " + pathsToTry );
-            getLogger().info( "  -> Note: File entities may not be indexed in manifest HashMap due to namespace issues" );
-            getLogger().info( "  -> ACL will be null, using default permissions" );
+            getLogger().trace( "  -> Manifest entity NOT FOUND for any format: " + pathsToTry );
+            getLogger().trace( "  -> Note: File entities may not be indexed in manifest HashMap due to namespace issues" );
+            getLogger().trace( "  -> ACL will be null, using default permissions" );
           }
         } else {
-          getLogger().info( "  -> Manifest is null, cannot fetch ACL" );
+          getLogger().trace( "  -> Manifest is null, cannot fetch ACL" );
         }
       } catch ( Exception e ) {
-        getLogger().info( "  -> Exception when fetching ACL: " + e.getMessage() );
+        getLogger().trace( "  -> Exception when fetching ACL: " + e.getMessage() );
         getLogger().trace( e );
       }
     } else {
-      getLogger().info( "  -> CONDITION FAILED (applyAclSettings=false AND retainOwnership=true), returning null WITHOUT checking manifest" );
+      getLogger().trace( "  -> CONDITION FAILED (applyAclSettings=false AND retainOwnership=true), returning null WITHOUT checking manifest" );
     }
     
-    getLogger().info( "  -> RETURNING: " + (acl != null ? "ACL object" : "NULL") );
-    getLogger().info( "=== END processAclForFile DEBUG ===" );
+    getLogger().trace( "  -> RETURNING: " + (acl != null ? "ACL object" : "NULL") );
+    getLogger().trace( "=== END processAclForFile DEBUG ===" );
     
     return acl;
   }

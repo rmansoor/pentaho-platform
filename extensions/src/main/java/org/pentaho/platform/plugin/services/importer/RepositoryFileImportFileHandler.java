@@ -81,14 +81,14 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
     }
     RepositoryFileImportBundle bundle = (RepositoryFileImportBundle) bnd;
     
-    getLogger().info( "=== importFile START ===" );
-    getLogger().info( "  Bundle path: " + bundle.getPath() );
-    getLogger().info( "  Bundle name: " + bundle.getName() );
-    getLogger().info( "  Bundle.getAcl() at entry: " + (bundle.getAcl() == null ? "NULL" : "NOT null") );
-    getLogger().info( "  ImportSession.isApplyAclSettings: " + getImportSession().isApplyAclSettings() );
-    getLogger().info( "  ImportSession.isRetainOwnership: " + getImportSession().isRetainOwnership() );
-    getLogger().info( "  ImportSession.isOverwriteAclSettings: " + getImportSession().isOverwriteAclSettings() );
-    getLogger().info( "=== END importFile START INFO ===" );
+    getLogger().trace( "=== importFile START ===" );
+    getLogger().trace( "  Bundle path: " + bundle.getPath() );
+    getLogger().trace( "  Bundle name: " + bundle.getName() );
+    getLogger().trace( "  Bundle.getAcl() at entry: " + (bundle.getAcl() == null ? "NULL" : "NOT null") );
+    getLogger().trace( "  ImportSession.isApplyAclSettings: " + getImportSession().isApplyAclSettings() );
+    getLogger().trace( "  ImportSession.isRetainOwnership: " + getImportSession().isRetainOwnership() );
+    getLogger().trace( "  ImportSession.isOverwriteAclSettings: " + getImportSession().isOverwriteAclSettings() );
+    getLogger().trace( "=== END importFile START INFO ===" );
     
     if ( bundle.isSchedulable() == null ) {
       bundle.setSchedulable( RepositoryFile.SCHEDULABLE_BY_DEFAULT );
