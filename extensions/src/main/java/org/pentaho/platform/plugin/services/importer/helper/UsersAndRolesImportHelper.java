@@ -87,7 +87,7 @@ public class UsersAndRolesImportHelper implements IImportHelper {
         provider = systemConfig.getProperty( "security.provider",  "jackrabbit");
       }
 
-      if ( provider.equalsIgnoreCase( "jackrabbit" ) ) {
+      if ( !provider.equalsIgnoreCase( "jackrabbit" ) ) {
         solutionImportHandler.getLogger().info( "Nothing to import from users and roles as the authentication is external");
         return;
       }

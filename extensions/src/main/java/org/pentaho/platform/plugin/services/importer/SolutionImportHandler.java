@@ -619,6 +619,10 @@ public class SolutionImportHandler implements IPlatformImportHandler {
     return isPerformingRestore;
   }
 
+  public void setPerformingRestore( boolean value ) {
+    this.isPerformingRestore = value;
+  }
+
   /**
    * Get the UsersAndRolesImportHelper from the list of import helpers.
    * @return UsersAndRolesImportHelper or null if not found

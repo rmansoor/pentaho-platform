@@ -32,6 +32,7 @@ import org.pentaho.platform.api.mimetype.IPlatformMimeResolver;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 import org.pentaho.platform.plugin.services.importexport.ExportFileNameEncoder;
+import org.pentaho.platform.plugin.services.importexport.ImportExportMetrics;
 import org.pentaho.platform.plugin.services.importer.IPlatformImporter;
 import org.pentaho.platform.plugin.services.importer.LocaleFilesProcessor;
 import org.pentaho.platform.plugin.services.importer.PentahoPlatformImporter;
@@ -166,8 +167,10 @@ public class RepositoryFilesImportHelper implements IImportHelper {
             solutionImportHandler.getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ] from the cache" );
           }
           successfulFilesImportCount++;
+          solutionImportHandler.getMetrics().recordSuccess( ImportExportMetrics.Category.FILES );
           continue;
         } catch ( PlatformImportException e ) {
+          solutionImportHandler.getMetrics().recordFailure( ImportExportMetrics.Category.FILES, repositoryFilePath, e );
           if ( solutionImportHandler.isPerformingRestore() ) {
             solutionImportHandler.getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_REPOSITORY_OBJECT", repositoryFilePath, e.getLocalizedMessage() ) );
           }
@@ -289,10 +292,12 @@ bundleBuilder.input( bundleInputStream );
       try {
         importer.importFile( platformImportBundle );
         successfulFilesImportCount++;
+        solutionImportHandler.getMetrics().recordSuccess( ImportExportMetrics.Category.FILES );
         if ( solutionImportHandler.isPerformingRestore() ) {
           solutionImportHandler.getLogger().debug( "Successfully restored repository object with path [ " + repositoryFilePath + " ]" );
         }
       } catch ( PlatformImportException e ) {
+        solutionImportHandler.getMetrics().recordFailure( ImportExportMetrics.Category.FILES, repositoryFilePath, e );
         if ( solutionImportHandler.isPerformingRestore() ) {
           solutionImportHandler.getLogger().error( Messages.getInstance().getString( "SolutionImportHandler.ERROR_IMPORTING_REPOSITORY_OBJECT", repositoryFilePath, e.getLocalizedMessage() ) );
         }
@@ -318,6 +323,12 @@ bundleBuilder.input( bundleInputStream );
       if ( solutionImportHandler.isPerformingRestore() ) {
         solutionImportHandler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_LOCALEFILE" ) );
       }
+    }
+
+    // Feed locale file count into metrics so the RESTORE OPERATION SUMMARY matches
+    // the "Successfully restored X out of Y" line (which includes both counters).
+    for ( int i = 0; i < successfulLocaleFilesProcessed; i++ ) {
+      solutionImportHandler.getMetrics().recordSuccess( ImportExportMetrics.Category.FILES );
     }
 
     if ( solutionImportHandler.isPerformingRestore() ) {
