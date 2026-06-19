@@ -539,6 +539,10 @@
           <artifactId>commons-httpclient</artifactId>
           <groupId>commons-httpclient</groupId>
         </exclusion>
+        <exclusion>
+          <artifactId>commons-lang</artifactId>
+          <groupId>commons-lang</groupId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -562,6 +566,10 @@
         <exclusion>
           <artifactId>*</artifactId>
           <groupId>*</groupId>
+        </exclusion>
+        <exclusion>
+          <groupId>commons-lang</groupId>
+          <artifactId>commons-lang</artifactId>
         </exclusion>
       </exclusions>
     </dependency>

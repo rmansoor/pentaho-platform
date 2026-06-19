@@ -123,6 +123,10 @@
           <artifactId>*</artifactId>
           <groupId>*</groupId>
         </exclusion>
+        <exclusion>
+          <groupId>commons-lang</groupId>
+          <artifactId>commons-lang</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
