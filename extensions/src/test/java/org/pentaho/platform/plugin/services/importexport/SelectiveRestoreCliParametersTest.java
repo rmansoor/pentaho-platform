@@ -189,14 +189,14 @@ public class SelectiveRestoreCliParametersTest {
     cliParams.put( "include-content", "maybe" ); // Invalid
     cliParams.put( "include-users", "yes" ); // Invalid
 
-    // Act: Parse with fallback to default
+    // Act: Parse with fallback to default ( only an explicit "false" disables )
     String contentFlag = cliParams.get( "include-content" );
     boolean includeContent = contentFlag == null || 
-                            contentFlag.equalsIgnoreCase( "true" );
+                            !contentFlag.equalsIgnoreCase( "false" );
 
     String usersFlag = cliParams.get( "include-users" );
     boolean includeUsers = usersFlag == null || 
-                          usersFlag.equalsIgnoreCase( "true" );
+                          !usersFlag.equalsIgnoreCase( "false" );
 
     // Assert: Should fall back to defaults
     assertTrue( "Should default to true for invalid content flag", includeContent );

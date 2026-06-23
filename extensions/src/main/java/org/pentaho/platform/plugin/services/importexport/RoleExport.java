@@ -21,13 +21,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 @XmlAccessorType( XmlAccessType.FIELD )
-@XmlType( name = "RoleExport", propOrder = { "rolename", "permissions" } )
+@XmlType( name = "RoleExport", propOrder = { "rolename", "permissions", "assignedUserNames" } )
 public class RoleExport {
   @XmlElement( name = "rolename" )
   private String rolename;
 
   @XmlElement( name = "permissions" )
   List<String> permissions = new ArrayList<String>();
+
+  @XmlElement( name = "assignedUserNames" )
+  List<String> assignedUserNames = new ArrayList<String>();
 
   public String getRolename() {
     return rolename;
@@ -43,5 +46,17 @@ public class RoleExport {
 
   public void setPermission( List<String> permissions ) {
     this.permissions = permissions;
+  }
+
+  public List<String> getAssignedUserNames() {
+    return assignedUserNames;
+  }
+
+  public void setAssignedUserNames( List<String> assignedUserNames ) {
+    this.assignedUserNames = assignedUserNames;
+  }
+
+  public void addAssignedUserName( String userName ) {
+    this.assignedUserNames.add( userName );
   }
 }

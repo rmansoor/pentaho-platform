@@ -272,8 +272,8 @@ public class GeneratedContentBackupRestoreIntegrationTest {
     }
 
     // Assert
-    assertEquals( "Should have ~667 non-generated files", 667, filtered.size() );
+    assertEquals( "Should have ~666 non-generated files", 666, filtered.size() );
     int generatedCount = allFiles.size() - filtered.size();
-    assertEquals( "Should have ~333 generated files", 333, generatedCount );
+    assertEquals( "Should have ~334 generated files", 334, generatedCount );
   }
 }

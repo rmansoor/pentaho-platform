@@ -163,6 +163,7 @@ public class LocaleImportHandlerTest {
     when( mockLocale.getName() ).thenReturn( "Some File Name" );
     when( mockLocale.getFile() ).thenReturn( mock( RepositoryFile.class ) );
     when( mockLocale.getFile().getName() ).thenReturn( "someFile.properties" );
+    when( mockLocale.getPath() ).thenReturn( "/someFile.properties" );
 
     String propertiesContent =
         "description=Some Description\n"
@@ -194,6 +195,7 @@ public class LocaleImportHandlerTest {
     when( mockLocale.getName() ).thenReturn( "Some File Name" );
     when( mockLocale.getFile() ).thenReturn( mock( RepositoryFile.class ) );
     when( mockLocale.getFile().getName() ).thenReturn( "someFile_fr.properties" );
+    when( mockLocale.getPath() ).thenReturn( "/someFile_fr.properties" );
 
     String propertiesContent =
         "description=Some Description\n"
@@ -225,6 +227,7 @@ public class LocaleImportHandlerTest {
     when( mockLocale.getName() ).thenReturn( "Some File Name" );
     when( mockLocale.getFile() ).thenReturn( mock( RepositoryFile.class ) );
     when( mockLocale.getFile().getName() ).thenReturn( "someFile_en_US.properties" );
+    when( mockLocale.getPath() ).thenReturn( "/someFile_en_US.properties" );
 
     String propertiesContent =
         "description=Some Description\n"
@@ -255,6 +258,7 @@ public class LocaleImportHandlerTest {
     when( mockLocale.getName() ).thenReturn( "Some File Name" );
     when( mockLocale.getFile() ).thenReturn( mock( RepositoryFile.class ) );
     when( mockLocale.getFile().getName() ).thenReturn( "someFile_en_GB.properties" );
+    when( mockLocale.getPath() ).thenReturn( "/someFile_en_GB.properties" );
 
     String propertiesContent =
         "description=Some Description\n"
@@ -283,6 +287,7 @@ public class LocaleImportHandlerTest {
     when( mockLocale.getName() ).thenReturn( "Some File Name" );
     when( mockLocale.getFile() ).thenReturn( mock( RepositoryFile.class ) );
     when( mockLocale.getFile().getName() ).thenReturn( "someFile.xaction.properties" );
+    when( mockLocale.getPath() ).thenReturn( "/someFile.xaction.properties" );
 
     String propertiesContent =
         "description=Some Description\n"
@@ -312,6 +317,7 @@ public class LocaleImportHandlerTest {
     when( mockLocale.getName() ).thenReturn( "Some File Name" );
     when( mockLocale.getFile() ).thenReturn( mock( RepositoryFile.class ) );
     when( mockLocale.getFile().getName() ).thenReturn( "some_File.xaction_fr.locale" );
+    when( mockLocale.getPath() ).thenReturn( "/some_File.xaction_fr.locale" );
 
     String propertiesContent =
         "description=Some Description\n"
@@ -341,6 +347,7 @@ public class LocaleImportHandlerTest {
     when( mockLocale.getName() ).thenReturn( "Some File Name" );
     when( mockLocale.getFile() ).thenReturn( mock( RepositoryFile.class ) );
     when( mockLocale.getFile().getName() ).thenReturn( "someFile.xaction_en_US.locale" );
+    when( mockLocale.getPath() ).thenReturn( "/someFile.xaction_en_US.locale" );
 
     String propertiesContent =
         "description=Some Description\n"
@@ -372,6 +379,7 @@ public class LocaleImportHandlerTest {
     when( mockLocale.getName() ).thenReturn( "Some File Name" );
     when( mockLocale.getFile() ).thenReturn( mock( RepositoryFile.class ) );
     when( mockLocale.getFile().getName() ).thenReturn( "someFile.xaction_en_GB.properties" );
+    when( mockLocale.getPath() ).thenReturn( "/someFile.xaction_en_GB.properties" );
 
     String propertiesContent =
         "description=Some Description\n"

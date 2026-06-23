@@ -17,10 +17,13 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
+import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.plugin.services.exporter.PentahoPlatformExporter;
 
 /**
@@ -34,6 +37,10 @@ public class SelectiveBackupIntegrationTest {
 
   @Before
   public void setUp() {
+    IPentahoSession session = mock( IPentahoSession.class );
+    when( session.getName() ).thenReturn( "test" );
+    PentahoSessionHolder.setSession( session );
+
     mockRepository = mock( IUnifiedRepository.class );
     exporter = new PentahoPlatformExporter( mockRepository );
 
@@ -42,6 +49,11 @@ public class SelectiveBackupIntegrationTest {
     when( rootFile.getPath() ).thenReturn( "/" );
     when( rootFile.isFolder() ).thenReturn( true );
     when( mockRepository.getFile( "/" ) ).thenReturn( rootFile );
+  }
+
+  @After
+  public void tearDown() {
+    PentahoSessionHolder.removeSession();
   }
 
   @Test

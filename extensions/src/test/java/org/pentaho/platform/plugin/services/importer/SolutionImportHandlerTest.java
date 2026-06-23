@@ -20,10 +20,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.pentaho.platform.api.engine.security.userroledao.AlreadyExistsException;
 import org.pentaho.platform.api.engine.security.userroledao.IUserRoleDao;
 import org.pentaho.platform.api.mimetype.IMimeType;
 import org.pentaho.platform.api.mimetype.IPlatformMimeResolver;
@@ -613,6 +615,95 @@ public class SolutionImportHandlerTest {
       .setRoleBindings( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ), ArgumentMatchers.eq(
         permissions ) );
 
+  }
+
+  @Test
+  public void testImportRoles_usesAssignedUserNamesFromRoleExport() throws Exception {
+    // The role assignment (members) is backed up directly on the RoleExport. Verify it is
+    // preferred over the user-derived roleToUserMap when (re)creating the role.
+    String roleName = "Power User";
+    RoleExport role = new RoleExport();
+    role.setRolename( roleName );
+    role.setPermission( new ArrayList<>() );
+    role.addAssignedUserName( "suzy" );
+    role.addAssignedUserName( "pat" );
+
+    List<RoleExport> roles = new ArrayList<>();
+    roles.add( role );
+
+    // Intentionally provide a different (stale) user-derived mapping to prove the assignment
+    // captured on the role itself wins.
+    Map<String, List<String>> roleToUserMap = new HashMap<>();
+    List<String> staleUsers = new ArrayList<>();
+    staleUsers.add( "admin" );
+    roleToUserMap.put( roleName, staleUsers );
+
+    importHandler.importRoles( roles, roleToUserMap );
+
+    ArgumentCaptor<String[]> membersCaptor = ArgumentCaptor.forClass( String[].class );
+    verify( userRoleDao ).createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ),
+      ArgumentMatchers.nullable( String.class ), membersCaptor.capture() );
+    Assert.assertArrayEquals( new String[] { "suzy", "pat" }, membersCaptor.getValue() );
+  }
+
+  @Test
+  public void testImportRoles_restoresMembersForExistingRoleWhenOverwrite() throws Exception {
+    // When a role already exists and overwrite is enabled, the backed up role assignment
+    // (members) must be restored via setRoleMembers.
+    String roleName = "Power User";
+    List<String> permissions = new ArrayList<>();
+
+    RoleExport role = new RoleExport();
+    role.setRolename( roleName );
+    role.setPermission( permissions );
+    role.addAssignedUserName( "suzy" );
+    role.addAssignedUserName( "pat" );
+
+    List<RoleExport> roles = new ArrayList<>();
+    roles.add( role );
+
+    // Role already exists -> createRole throws AlreadyExistsException
+    when( userRoleDao.createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ),
+      ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( String[].class ) ) )
+      .thenThrow( new AlreadyExistsException( roleName ) );
+
+    importHandler.setOverwriteFile( true );
+    importHandler.importRoles( roles, new HashMap<>() );
+
+    // Permissions are restored ...
+    verify( roleAuthorizationPolicyRoleBindingDao )
+      .setRoleBindings( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ),
+        ArgumentMatchers.eq( permissions ) );
+
+    // ... and so is the role assignment (members).
+    ArgumentCaptor<String[]> membersCaptor = ArgumentCaptor.forClass( String[].class );
+    verify( userRoleDao ).setRoleMembers( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ),
+      membersCaptor.capture() );
+    Assert.assertArrayEquals( new String[] { "suzy", "pat" }, membersCaptor.getValue() );
+  }
+
+  @Test
+  public void testImportRoles_existingRoleMembersNotRestoredWhenOverwriteFalse() throws Exception {
+    // When a role already exists and overwrite is disabled, members must NOT be touched.
+    String roleName = "Power User";
+
+    RoleExport role = new RoleExport();
+    role.setRolename( roleName );
+    role.setPermission( new ArrayList<>() );
+    role.addAssignedUserName( "suzy" );
+
+    List<RoleExport> roles = new ArrayList<>();
+    roles.add( role );
+
+    when( userRoleDao.createRole( ArgumentMatchers.any( ITenant.class ), ArgumentMatchers.eq( roleName ),
+      ArgumentMatchers.nullable( String.class ), ArgumentMatchers.any( String[].class ) ) )
+      .thenThrow( new AlreadyExistsException( roleName ) );
+
+    importHandler.setOverwriteFile( false );
+    importHandler.importRoles( roles, new HashMap<>() );
+
+    verify( userRoleDao, never() ).setRoleMembers( ArgumentMatchers.any( ITenant.class ),
+      ArgumentMatchers.eq( roleName ), ArgumentMatchers.any( String[].class ) );
   }
 
   @Test

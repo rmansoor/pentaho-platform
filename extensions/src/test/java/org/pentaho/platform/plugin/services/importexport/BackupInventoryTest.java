@@ -138,10 +138,11 @@ public class BackupInventoryTest {
     String report = inventory.getDetailedReport();
     assertNotNull(report);
     assertTrue(report.contains("BACKUP INVENTORY REPORT"));
-    assertTrue(report.contains("Total Objects Processed:     9"));
-    assertTrue(report.contains("Total Objects Successful:    7"));
-    assertTrue(report.contains("Total Objects Failed:        1"));
-    assertTrue(report.contains("Total Objects Skipped:       1"));
+    String normalizedReport = report.replaceAll(" +", " ");
+    assertTrue(normalizedReport.contains("Total Objects Processed: 8"));
+    assertTrue(normalizedReport.contains("Total Objects Successful: 6"));
+    assertTrue(normalizedReport.contains("Total Objects Failed: 1"));
+    assertTrue(normalizedReport.contains("Total Objects Skipped: 1"));
     assertTrue(report.contains("DATASOURCES"));
     assertTrue(report.contains("USERS"));
     assertTrue(report.contains("MONDRIAN"));

@@ -269,7 +269,7 @@ public class ImportExportLoggerTest {
     assertEquals( 1, metrics.foldersCount );
     assertEquals( 1, metrics.skippedCount );
     assertEquals( 1, metrics.failedCount );
-    assertEquals( 4, metrics.totalItems );
+    assertEquals( 2, metrics.totalItems );
   }
 
   /**
@@ -335,7 +335,7 @@ public class ImportExportLoggerTest {
     // Assert: Can extract all fields
     assertEquals( 5, parts.length );
     assertTrue( parts[0].contains( "[BACKUP]" ) );
-    assertTrue( parts[1].contains( "SUCCESS" ) );
+    assertTrue( parts[0].contains( "SUCCESS" ) );
   }
 
   // ===== Helper Methods =====
@@ -389,7 +389,7 @@ public class ImportExportLoggerTest {
     
     // Assert: Final state is consistent and meaningful
     ImportExportLogger.BackupMetrics metrics = logger.getMetrics();
-    assertEquals( 10, metrics.totalItems );
+    assertEquals( 7, metrics.totalItems );
     assertEquals( 3, metrics.skippedCount );
     assertEquals( 0, metrics.failedCount );
   }

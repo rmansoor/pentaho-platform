@@ -12,13 +12,16 @@
 
 package org.pentaho.platform.plugin.services.exporter;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.scheduler2.IScheduler;
+import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.plugin.services.importexport.ComponentConfig;
 
 import java.io.Serializable;
@@ -46,8 +49,16 @@ public class GeneratedContentExportFilteringTest {
   @Before
   public void setUp() {
     MockitoAnnotations.openMocks( this );
+    IPentahoSession session = mock( IPentahoSession.class );
+    when( session.getName() ).thenReturn( "test" );
+    PentahoSessionHolder.setSession( session );
     exporter = new PentahoPlatformExporter( repository );
     componentConfig = new ComponentConfig();
+  }
+
+  @After
+  public void tearDown() {
+    PentahoSessionHolder.removeSession();
   }
 
   /**

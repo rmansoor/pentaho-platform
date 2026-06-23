@@ -16,6 +16,7 @@
 package org.pentaho.platform.plugin.services.importer.helper;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -88,7 +89,13 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       }
 
       if ( !provider.equalsIgnoreCase( "jackrabbit" ) ) {
-        solutionImportHandler.getLogger().info( "Nothing to import from users and roles as the authentication is external");
+        // With external authentication there are no users or role memberships to restore, but the
+        // runtime-role to logical-role mapping is maintained by the platform and must be restored.
+        solutionImportHandler.getLogger().info( "Authentication is external. Restoring runtime to logical role mappings only (no users or role memberships)." );
+        ExportManifest externalManifest = solutionImportHandler.getImportSession().getManifest();
+        if ( externalManifest != null ) {
+          importRoleBindings( externalManifest.getRoleExports(), solutionImportHandler );
+        }
         return;
       }
 
@@ -430,7 +437,16 @@ public class UsersAndRolesImportHelper implements IImportHelper {
       int successFullRoleImportCount = 0;
       for ( RoleExport role : roles ) {
         handler.getLogger().debug( Messages.getInstance().getString( "ROLE.importing", role.getRolename() ) );
-        
+
+        // Determine the role assignment (members of this role). Prefer the assignments captured
+        // directly on the role during export; fall back to the user-derived mapping for backups
+        // created before role assignments were stored on the role itself.
+        List<String> members = role.getAssignedUserNames();
+        if ( members == null || members.isEmpty() ) {
+          members = roleToUserMap.get( role.getRolename() );
+        }
+        String[] userarray = members == null ? new String[] {} : members.toArray( new String[] {} );
+
         // Check if role already exists before attempting to create
         boolean roleExists = false;
         try {
@@ -453,8 +469,6 @@ public class UsersAndRolesImportHelper implements IImportHelper {
         // Only create role if it doesn't already exist
         if ( !roleExists ) {
           try {
-            List<String> users = roleToUserMap.get( role.getRolename() );
-            String[] userarray = users == null ? new String[] {} : users.toArray( new String[] {} );
             IPentahoRole role1 = roleDao.createRole( tenant, role.getRolename(), null, userarray );
             newRolesCreated++;
             successFullRoleImportCount++;
@@ -490,6 +504,12 @@ public class UsersAndRolesImportHelper implements IImportHelper {
               if ( handler.isPerformingRestore() ) {
                 handler.getLogger().debug( "Permissions updated for role [ " + role.getRolename() + "]" );
               }
+              // Restore the role assignment (members) for the already existing role
+              if ( handler.isPerformingRestore() ) {
+                handler.getLogger().debug( "Restoring role assignment for role [ " + role.getRolename()
+                    + "] with members " + Arrays.toString( userarray ) );
+              }
+              roleDao.setRoleMembers( tenant, role.getRolename(), userarray );
             } else {
               if ( handler.isPerformingRestore() ) {
                 handler.getLogger().debug( "Overwrite is false. Skipping permission update for existing role [ " + role.getRolename() + "]" );
@@ -535,6 +555,34 @@ public class UsersAndRolesImportHelper implements IImportHelper {
     }
     if ( handler.isPerformingRestore() ) {
       handler.getLogger().info( Messages.getInstance().getString( "SolutionImportHandler.INFO_END_IMPORT_ROLE" ) );
+    }
+  }
+
+  /**
+   * Restore only the runtime-role to logical-role mappings (role bindings).
+   * <p>
+   * Used when the security provider is external (non-jackrabbit): users and role memberships live
+   * in the external authentication system and are not restored, but the runtime-to-logical role
+   * mapping is maintained by the platform and is restored here.
+   */
+  public void importRoleBindings( List<RoleExport> roles, SolutionImportHandler handler ) {
+    if ( roles == null ) {
+      return;
+    }
+    IRoleAuthorizationPolicyRoleBindingDao roleBindingDao = PentahoSystem.get(
+        IRoleAuthorizationPolicyRoleBindingDao.class );
+    if ( roleBindingDao == null ) {
+      handler.getLogger().warn( "Role binding DAO not available - cannot restore runtime to logical role mappings" );
+      return;
+    }
+    ITenant tenant = new Tenant( "/pentaho/" + TenantUtils.getDefaultTenant(), true );
+    for ( RoleExport role : roles ) {
+      try {
+        handler.getLogger().debug( "Restoring runtime to logical role mapping for role [ " + role.getRolename() + " ]" );
+        roleBindingDao.setRoleBindings( tenant, role.getRolename(), role.getPermissions() );
+      } catch ( Exception e ) {
+        handler.getLogger().error( "Failed to restore runtime to logical role mapping for role [ " + role.getRolename() + " ]: " + e.getMessage(), e );
+      }
     }
   }
 

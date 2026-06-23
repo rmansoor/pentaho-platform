@@ -15,6 +15,8 @@ package org.pentaho.platform.plugin.services.exporter.helper;
 import org.castor.core.util.Assert;
 import org.pentaho.platform.api.engine.ISystemConfig;
 import org.pentaho.platform.api.engine.IUserRoleListService;
+import org.pentaho.platform.api.engine.security.userroledao.IPentahoUser;
+import org.pentaho.platform.api.engine.security.userroledao.IUserRoleDao;
 import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.api.importexport.IExportHelper;
 import org.pentaho.platform.api.mt.ITenant;
@@ -35,6 +37,7 @@ import org.pentaho.platform.security.policy.rolebased.IRoleAuthorizationPolicyRo
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Export helper for users and roles.
@@ -79,7 +82,11 @@ public class UsersAndRolesExportHelper implements IExportHelper {
       if ( provider.equalsIgnoreCase( "jackrabbit" ) ) {
         exportUsersAndRoles( exporter );
       } else {
-        exporter.getRepositoryExportLogger().info( "Nothing to export from users and roles as the authentication is external");
+        // With external authentication there are no users or role memberships stored in the
+        // repository to back up, but the runtime-role to logical-role mapping is still maintained
+        // by the platform and must be backed up.
+        exporter.getRepositoryExportLogger().info( "Authentication is external. Backing up runtime to logical role mappings only (no users or role memberships)." );
+        exportRoleBindings( exporter );
       }
 
       if ( exporter.getExportMetrics() != null ) {
@@ -218,6 +225,9 @@ public class UsersAndRolesExportHelper implements IExportHelper {
     IRoleAuthorizationPolicyRoleBindingDao roleBindingDao = PentahoSystem.get(
         IRoleAuthorizationPolicyRoleBindingDao.class );
 
+    IUserRoleDao roleDao = PentahoSystem.get( IUserRoleDao.class );
+    ITenant tenant = TenantUtils.getCurrentTenant();
+
     // RoleExport
     List<String> roles = userRoleListService.getAllRoles();
     if ( roles != null ) {
@@ -233,6 +243,18 @@ public class UsersAndRolesExportHelper implements IExportHelper {
         RoleExport roleExport = new RoleExport();
         roleExport.setRolename( role );
         roleExport.setPermission( roleBindingDao.getRoleBindingStruct( null ).bindingMap.get( role ) );
+
+        // Backup the role assignment, i.e. the users that are members of this role
+        if ( roleDao != null ) {
+          List<IPentahoUser> roleMembers = roleDao.getRoleMembers( tenant, role );
+          if ( roleMembers != null ) {
+            for ( IPentahoUser roleMember : roleMembers ) {
+              exporter.getRepositoryExportLogger().trace( "role [ " + role + " ] has an associated user [ " + roleMember.getUsername() + " ]" );
+              roleExport.addAssignedUserName( roleMember.getUsername() );
+            }
+          }
+        }
+
         exporter.getExportManifest().addRoleExport( roleExport );
         successfulExportRoles++;
         if ( exporter.getExportMetrics() != null ) {
@@ -249,6 +271,58 @@ public class UsersAndRolesExportHelper implements IExportHelper {
     }
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_SUCCESSFUL_ROLE_EXPORT_COUNT", successfulExportRoles, rolesSize ) );
 
+    exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_END_EXPORT_ROLE" ) );
+  }
+
+  /**
+   * Export only the runtime-role to logical-role mappings (role bindings).
+   * <p>
+   * Used when the security provider is external (non-jackrabbit). In that case users and role
+   * memberships live in the external authentication system and are not backed up, but the
+   * runtime-to-logical role mapping is maintained by the platform and must be exported so it can
+   * be restored.
+   */
+  protected void exportRoleBindings( PentahoPlatformExporter exporter ) {
+    exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_START_EXPORT_ROLE" ) );
+
+    IRoleAuthorizationPolicyRoleBindingDao roleBindingDao = PentahoSystem.get(
+        IRoleAuthorizationPolicyRoleBindingDao.class );
+    if ( roleBindingDao == null ) {
+      exporter.getRepositoryExportLogger().warn( "Role binding DAO not available - cannot export runtime to logical role mappings" );
+      return;
+    }
+
+    Map<String, List<String>> bindingMap = roleBindingDao.getRoleBindingStruct( null ).bindingMap;
+    int rolesSize = bindingMap == null ? 0 : bindingMap.size();
+    exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_COUNT_ROLE_TO_EXPORT", rolesSize ) );
+    if ( exporter.getMetricsCollector() != null ) {
+      exporter.getMetricsCollector().addRoles( rolesSize );
+    }
+
+    int successfulExportRoles = 0;
+    if ( bindingMap != null ) {
+      for ( Map.Entry<String, List<String>> entry : bindingMap.entrySet() ) {
+        String role = entry.getKey();
+        try {
+          exporter.getRepositoryExportLogger().debug( "Starting backup of runtime to logical role mapping for role [ " + role + " ] " );
+          RoleExport roleExport = new RoleExport();
+          roleExport.setRolename( role );
+          roleExport.setPermission( entry.getValue() );
+          exporter.getExportManifest().addRoleExport( roleExport );
+          successfulExportRoles++;
+          if ( exporter.getExportMetrics() != null ) {
+            exporter.getExportMetrics().recordSuccess( ImportExportMetrics.Category.ROLES );
+          }
+          exporter.getRepositoryExportLogger().debug( "Finished backup of runtime to logical role mapping for role [ " + role + " ] " );
+        } catch ( Exception e ) {
+          exporter.getRepositoryExportLogger().error( "Failed to export runtime to logical role mapping for role [ " + role + " ]: " + e.getMessage(), e );
+          if ( exporter.getExportMetrics() != null ) {
+            exporter.getExportMetrics().recordFailure( ImportExportMetrics.Category.ROLES, role, e );
+          }
+        }
+      }
+    }
+    exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_SUCCESSFUL_ROLE_EXPORT_COUNT", successfulExportRoles, rolesSize ) );
     exporter.getRepositoryExportLogger().info( Messages.getInstance().getString( "PentahoPlatformExporter.INFO_END_EXPORT_ROLE" ) );
   }
 
