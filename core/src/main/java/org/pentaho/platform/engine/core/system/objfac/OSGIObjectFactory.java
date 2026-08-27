@@ -85,7 +85,9 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
         .getServiceReferences( IPentahoObjectReference.class, OSGIUtils.createFilter( props ) );
 
       if ( serviceReferences != null && serviceReferences.size() > 0 ) {
-        IPentahoObjectReference<T> obj = context.getService( serviceReferences.iterator().next() );
+        ServiceReference<IPentahoObjectReference> sr = serviceReferences.iterator().next();
+        IPentahoObjectReference<T> obj = context.getService( sr );
+        Phase0ServiceTrace.record( interfaceClass, sr );
         return obj.getObject();
       }
 
@@ -110,6 +112,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
       if ( obj instanceof IPentahoInitializer ) {
         ( (IPentahoInitializer) obj ).init( session );
       }
+      Phase0ServiceTrace.record( interfaceClass, ref );
       return (T) obj;
     } catch ( InvalidSyntaxException e ) {
       log.error( "Error retrieving from OSGI ObjectFactory", e );
@@ -199,6 +202,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
         if ( obj instanceof IPentahoInitializer ) {
           ( (IPentahoInitializer) obj ).init( session );
         }
+        Phase0ServiceTrace.record( interfaceClass, ref );
         returnList.add( obj );
       }
 
@@ -260,6 +264,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
       } );
       ServiceReference<T> serviceReference = serviceReferences[ 0 ];
 
+      Phase0ServiceTrace.record( interfaceClass, serviceReference );
       return new OsgiPentahoObjectReference( this.context, interfaceClass, serviceReference );
     } catch ( InvalidSyntaxException e ) {
       e.printStackTrace();
@@ -308,6 +313,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
       }
 
       for ( ServiceReference ref : refs ) {
+        Phase0ServiceTrace.record( interfaceClass, ref );
         returnRefs.add( new OsgiPentahoObjectReference<T>( this.context, interfaceClass, ref ) );
       }
       Collections.sort( returnRefs );
