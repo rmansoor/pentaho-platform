@@ -113,9 +113,18 @@ public class PentahoSystemPluginManager implements IPluginManager {
 
   private final Multimap<String, IPentahoObjectRegistration> handleRegistry =
     Multimaps.synchronizedMultimap( ArrayListMultimap.create() );
-  private final ISystemConfig systemConfig = PentahoSystem.get( ISystemConfig.class );
+  // Resolved lazily, not in a field initializer: this bean can be constructed before the ISystemConfig bean has been
+  // published to PentahoSystem. By the time plugins are actually registered (a system-listener callback) it is ready.
+  private ISystemConfig systemConfig;
   private final Logger logger = LoggerFactory.getLogger( getClass() );
   private final Set<IPluginManagerListener> listeners = new HashSet<>();
+
+  private ISystemConfig getSystemConfig() {
+    if ( systemConfig == null ) {
+      systemConfig = PentahoSystem.get( ISystemConfig.class );
+    }
+    return systemConfig;
+  }
 
   private static void createAndRegisterLifecycleListeners( IPlatformPlugin plugin, ClassLoader loader )
     throws PlatformPluginRegistrationException {
@@ -530,7 +539,7 @@ public class PentahoSystemPluginManager implements IPluginManager {
     }
 
     try {
-      systemConfig.registerConfiguration( new PropertiesFileConfiguration( plugin.getId(), properties ) );
+      getSystemConfig().registerConfiguration( new PropertiesFileConfiguration( plugin.getId(), properties ) );
     } catch ( IOException e ) {
       logger.error( "Error registering settings.xml for plugin: {}", plugin.getId(), e );
     }
@@ -982,7 +991,7 @@ public class PentahoSystemPluginManager implements IPluginManager {
 
   @Override
   public Object getPluginSetting( String pluginId, String key, String defaultValue ) {
-    final IConfiguration pluginConfig = systemConfig.getConfiguration( pluginId );
+    final IConfiguration pluginConfig = getSystemConfig().getConfiguration( pluginId );
     if ( pluginConfig != null ) {
       try {
         // key can be the plain setting name or "settings/" + key. The old system was flexible in this regard so we need
