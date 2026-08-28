@@ -71,7 +71,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
   @Override
   public <T> T get( Class<T> interfaceClass, IPentahoSession session, Map<String, String> properties )
     throws ObjectFactoryException {
-    if ( isBundleContextValid() == false ) {
+    if ( isBundleContextValid() == false || Phase0ServiceTrace.isBlocked( interfaceClass ) ) {
       return null;
     }
 
@@ -126,7 +126,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
       throw new IllegalStateException( "Class is null" );
     }
 
-    if ( isBundleContextValid() == false ) {
+    if ( isBundleContextValid() == false || Phase0ServiceTrace.isBlocked( clazz ) ) {
       return false;
     }
 
@@ -168,6 +168,9 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
 
     if ( isBundleContextValid() == false ) {
       return null;
+    }
+    if ( Phase0ServiceTrace.isBlocked( interfaceClass ) ) {
+      return new ArrayList<T>();
     }
 
     List<T> returnList = new ArrayList<T>();
@@ -224,7 +227,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
                                                             Map<String, String> properties )
     throws ObjectFactoryException {
 
-    if ( isBundleContextValid() == false ) {
+    if ( isBundleContextValid() == false || Phase0ServiceTrace.isBlocked( interfaceClass ) ) {
       return null;
     }
 
@@ -284,7 +287,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
                                                                    Map<String, String> properties )
     throws ObjectFactoryException {
 
-    if ( isBundleContextValid() == false ) {
+    if ( isBundleContextValid() == false || Phase0ServiceTrace.isBlocked( interfaceClass ) ) {
       return Collections.emptyList();
     }
 

@@ -22,6 +22,9 @@ package org.pentaho.platform.engine.core.system.objfac;
 
 import static junit.framework.Assert.assertEquals;
 
+import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertTrue;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,6 +35,8 @@ import org.osgi.framework.Version;
 import org.pentaho.platform.api.engine.IPentahoObjectReference;
 
 import java.io.Closeable;
+import java.util.Collections;
+import java.util.HashSet;
 
 /**
  * Unit test for {@link Phase0ServiceTrace} (de-OSGi migration Phase 0 instrumentation).
@@ -39,16 +44,20 @@ import java.io.Closeable;
 public class Phase0ServiceTraceTest {
 
   private boolean originalEnabled;
+  private java.util.Set<String> originalBlocklist;
 
   @Before
   public void setUp() {
     originalEnabled = Phase0ServiceTrace.enabled;
+    originalBlocklist = Phase0ServiceTrace.blocklist;
+    Phase0ServiceTrace.blocklist = Collections.emptySet();
     Phase0ServiceTrace.resetForTest();
   }
 
   @After
   public void tearDown() {
     Phase0ServiceTrace.enabled = originalEnabled;
+    Phase0ServiceTrace.blocklist = originalBlocklist;
     Phase0ServiceTrace.resetForTest();
   }
 
@@ -102,6 +111,50 @@ public class Phase0ServiceTraceTest {
     // No call threw. null class -> ignored; null ref and null bundle both collapse to the single
     // "Closeable|unknown|" key; the throwing ref is swallowed and adds nothing.
     assertEquals( 1, Phase0ServiceTrace.seenCount() );
+  }
+
+  @Test
+  public void parseBlocklist_handlesNullEmptyAndDelimiters() {
+    assertTrue( Phase0ServiceTrace.parseBlocklist( null ).isEmpty() );
+    assertTrue( Phase0ServiceTrace.parseBlocklist( "   " ).isEmpty() );
+    java.util.Set<String> parsed =
+      Phase0ServiceTrace.parseBlocklist( " a.B.C, d.E.F \n g.H.I \t # a comment line\n j.K.L " );
+    assertTrue( parsed.contains( "a.B.C" ) );
+    assertTrue( parsed.contains( "g.H.I" ) );
+    assertTrue( parsed.contains( "j.K.L" ) );
+    assertFalse( parsed.contains( "#" ) );
+  }
+
+  @Test
+  public void parseBlocklist_readsAtFileAndNeverThrows() throws Exception {
+    java.io.File f = java.io.File.createTempFile( "phase0-blocklist", ".txt" );
+    f.deleteOnExit();
+    java.nio.file.Files.write( f.toPath(),
+      "# header\norg.example.Alpha\n  org.example.Beta  \n".getBytes( java.nio.charset.StandardCharsets.UTF_8 ) );
+
+    java.util.Set<String> parsed = Phase0ServiceTrace.parseBlocklist( "@" + f.getAbsolutePath() );
+    assertTrue( parsed.contains( "org.example.Alpha" ) );
+    assertTrue( parsed.contains( "org.example.Beta" ) );
+
+    // a missing file must degrade to an empty set, not propagate
+    assertTrue( Phase0ServiceTrace.parseBlocklist( "@/no/such/phase0/file.txt" ).isEmpty() );
+  }
+
+  @Test
+  public void isBlocked_onlyForListedInterfaces() {
+    Phase0ServiceTrace.blocklist = new HashSet<>( java.util.Arrays.asList( "java.io.Closeable" ) );
+
+    assertTrue( Phase0ServiceTrace.isBlocked( Closeable.class ) );
+    assertTrue( Phase0ServiceTrace.isBlocked( "java.io.Closeable" ) );
+    assertFalse( Phase0ServiceTrace.isBlocked( Runnable.class ) );
+    assertFalse( Phase0ServiceTrace.isBlocked( (Class<?>) null ) );
+    assertFalse( Phase0ServiceTrace.isBlocked( (String) null ) );
+  }
+
+  @Test
+  public void isBlocked_emptyListNeverBlocks() {
+    Phase0ServiceTrace.blocklist = Collections.emptySet();
+    assertFalse( Phase0ServiceTrace.isBlocked( Closeable.class ) );
   }
 
   private ServiceReference<?> mockRef( String symbolicName, String version ) {
