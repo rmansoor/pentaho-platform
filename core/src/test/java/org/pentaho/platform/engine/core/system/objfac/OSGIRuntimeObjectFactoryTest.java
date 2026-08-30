@@ -29,6 +29,8 @@ import org.pentaho.platform.engine.core.system.objfac.references.SingletonPentah
 
 import java.util.Collections;
 import java.util.Dictionary;
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -117,4 +119,69 @@ public class OSGIRuntimeObjectFactoryTest {
 
   }
 
+  /**
+   * De-OSGi (WI-1.4): a reference registered while the container is already up must still be held in
+   * the in-JVM registry, so classic consumers can reach it without round-tripping through the OSGi
+   * forward bridge. Before the fix this returned null once {@code setBundleContext} had been called.
+   */
+  @Test
+  public void testReferenceStaysInLocalRegistryWhenRegisteredWithOsgiUp() throws Exception {
+    objectFactory.setBundleContext( bundleContext );
+    // container exposes nothing for String
+    when( bundleContext.getServiceReference( String.class.getName() ) ).thenReturn( null );
+
+    SingletonPentahoObjectReference<String> ref = new SingletonPentahoObjectReference<>( String.class, "Testing",
+      Collections.singletonMap( "foo", "bar" ), 10 );
+    objectFactory.registerReference( ref, String.class );
+
+    assertTrue( "local registry should answer when OSGi has no such service",
+      objectFactory.objectDefined( String.class ) );
+    assertEquals( "Testing", objectFactory.get( String.class, null ) );
+    List<IPentahoObjectReference<String>> refs = objectFactory.getObjectReferences( String.class, null );
+    assertEquals( 1, refs.size() );
+  }
+
+  /**
+   * De-OSGi (WI-1.4): when the Phase-0 blocklist marks a type as "de-OSGi'd", the runtime factory must
+   * fall through to the in-JVM registry even if a bare OSGi service for that type is still registered.
+   */
+  @Test
+  public void testBlocklistedTypeFallsThroughToLocalRegistry() throws Exception {
+    Set<String> previous = Phase0ServiceTrace.blocklist;
+    Phase0ServiceTrace.blocklist = Collections.singleton( String.class.getName() );
+    try {
+      objectFactory.setBundleContext( bundleContext );
+      // container WOULD answer, but the type is blocklisted
+      when( bundleContext.getServiceReference( String.class.getName() ) ).thenReturn( mock( ServiceReference.class ) );
+
+      SingletonPentahoObjectReference<String> ref = new SingletonPentahoObjectReference<>( String.class, "Testing",
+        Collections.singletonMap( "foo", "bar" ), 10 );
+      objectFactory.registerReference( ref, String.class );
+
+      assertTrue( objectFactory.objectDefined( String.class ) );
+      assertEquals( "Testing", objectFactory.get( String.class, null ) );
+    } finally {
+      Phase0ServiceTrace.blocklist = previous;
+    }
+  }
+
+  /**
+   * Healthy path is unchanged: when the container serves the type, the runtime factory returns nothing
+   * from {@code getReferencesByQuery} so callers are not handed a duplicate of the OSGi-served reference.
+   */
+  @Test
+  public void testHealthyOsgiPathReturnsNoDuplicateReference() throws Exception {
+    objectFactory.setBundleContext( bundleContext );
+    when( bundleContext.getServiceReference( String.class.getName() ) ).thenReturn( mock( ServiceReference.class ) );
+
+    SingletonPentahoObjectReference<String> ref = new SingletonPentahoObjectReference<>( String.class, "Testing",
+      Collections.singletonMap( "foo", "bar" ), 10 );
+    objectFactory.registerReference( ref, String.class );
+
+    assertTrue( objectFactory.objectDefined( String.class ) );
+    List<IPentahoObjectReference<String>> refs = objectFactory.getObjectReferences( String.class, null );
+    assertTrue( "runtime factory must defer to the forward bridge while OSGi serves the type", refs.isEmpty() );
+  }
+
 }
+

@@ -84,6 +84,17 @@ public class OSGIRuntimeObjectFactory extends RuntimeObjectFactory {
       }
       return osgiPentahoObjectRegistration;
     }
+    // Keep the in-JVM registry authoritative even while the OSGi container is up. Historically a
+    // reference registered after the container started was published into OSGi only, so classic
+    // (non-OSGi) consumers could reach it exclusively by round-tripping through the forward bridge
+    // (OSGIObjectFactory). That makes de-OSGi validation -- and eventual container removal --
+    // impossible: block or remove the bridge and these platform-owned beans vanish. Registering
+    // locally as well costs nothing and the read paths below de-duplicate against OSGi.
+    ObjectRegistration localRegistration = null;
+    if ( existingRegistration == null || existingRegistration.iPentahoObjectRegistration == null ) {
+      localRegistration = (ObjectRegistration) super.registerReference( reference, classes );
+    }
+
     Hashtable<String, Object> hashtable = new Hashtable<String, Object>();
     hashtable.putAll( reference.getAttributes() );
 
@@ -130,7 +141,9 @@ public class OSGIRuntimeObjectFactory extends RuntimeObjectFactory {
       existingRegistration.setRegistrations( registrations );
       return existingRegistration;
     } else {
-      return new OSGIPentahoObjectRegistration( registrations );
+      OSGIPentahoObjectRegistration registration = new OSGIPentahoObjectRegistration( registrations );
+      registration.iPentahoObjectRegistration = localRegistration;
+      return registration;
     }
 
   }
@@ -144,22 +157,13 @@ public class OSGIRuntimeObjectFactory extends RuntimeObjectFactory {
     if ( this.bundleContext == null || !osgiInitialized.get() ) {
       return super.objectDefined( clazz );
     }
-    // Look for IPentahoObjectReference first
-    try {
-      Collection<ServiceReference<IPentahoObjectReference>> serviceReferences = this.bundleContext
-          .getServiceReferences( IPentahoObjectReference.class,
-              ( "(" + REFERENCE_CLASS + "=" + clazz.getName() + ")" ) );
-      if ( serviceReferences != null && serviceReferences.size() > 0 ) {
-        return true;
-      }
-    } catch ( IllegalStateException ise ) {
-      // caused by the bundleContext being invalid
-      return false;
-    } catch ( InvalidSyntaxException e ) {
-      throw new IllegalStateException( "Error finding reference in OSGI" );
+    if ( !Phase0ServiceTrace.isBlocked( clazz ) && osgiHasService( clazz ) ) {
+      return true;
     }
-    // try by the classname
-    return this.bundleContext.getServiceReference( clazz ) != null;
+    // The OSGi bridge cannot answer for this type -- it has been blocked for de-OSGi validation,
+    // or the service is simply absent from the container. Fall through to the in-JVM registry so
+    // locally-registered references (classic <pen:publish> beans) stay resolvable without OSGi.
+    return super.objectDefined( clazz );
   }
 
   @Override
@@ -167,7 +171,36 @@ public class OSGIRuntimeObjectFactory extends RuntimeObjectFactory {
     if ( this.bundleContext == null || !osgiInitialized.get() ) {
       return super.getReferencesByQuery( type, query );
     }
+    // While the container is up the forward bridge (OSGIObjectFactory) serves references that were
+    // published into OSGi, so returning nothing here avoids handing callers a duplicate. But when
+    // the bridge cannot serve this type -- blocked for de-OSGi validation, or not present in the
+    // container -- fall through to the locally-held registry.
+    if ( Phase0ServiceTrace.isBlocked( type ) || !osgiHasService( type ) ) {
+      return super.getReferencesByQuery( type, query );
+    }
     return Collections.emptyList();
+  }
+
+  /**
+   * @return true if the OSGi container currently exposes a service (or a wrapped
+   * {@link IPentahoObjectReference}) for the given type. Any container/filter error is treated as
+   * "not available" so callers fall through to the in-JVM registry.
+   */
+  private boolean osgiHasService( Class<?> type ) {
+    try {
+      Collection<ServiceReference<IPentahoObjectReference>> serviceReferences = this.bundleContext
+          .getServiceReferences( IPentahoObjectReference.class,
+              ( "(" + REFERENCE_CLASS + "=" + type.getName() + ")" ) );
+      if ( serviceReferences != null && !serviceReferences.isEmpty() ) {
+        return true;
+      }
+      return this.bundleContext.getServiceReference( type.getName() ) != null;
+    } catch ( IllegalStateException ise ) {
+      // caused by the bundleContext being invalid
+      return false;
+    } catch ( InvalidSyntaxException e ) {
+      throw new IllegalStateException( "Error finding reference in OSGI" );
+    }
   }
 
   private class OSGIPentahoObjectRegistration implements IPentahoObjectRegistration {
