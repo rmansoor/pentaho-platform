@@ -50,13 +50,15 @@ public class ClassicResolutionListTest {
   @Test
   public void bundledResourceSeedsTheTier1Set() {
     Set<String> loaded = ClassicResolutionList.load();
-    // a representative sample of the WI-1.8 Tier 1 list shipped in de-osgi-classic-interfaces.txt
-    assertFalse( "Tier 2 is deliberately not on the list yet",
-      loaded.contains( "org.pentaho.platform.api.engine.ISystemConfig" ) );
-    assertTrue( loaded.contains( "org.pentaho.platform.api.engine.IContentInfo" ) );
-    assertTrue( loaded.contains( "com.google.gwt.user.server.rpc.SerializationPolicy" ) );
-    assertTrue( loaded.contains( "org.pentaho.platform.plugin.action.olap.IOlapService" ) );
-    assertEquals( "no comment / blank lines leak in", 13, loaded.size() );
+    // a representative sample of the list shipped in de-osgi-classic-interfaces.txt
+    assertTrue( loaded.contains( "org.pentaho.platform.api.engine.IContentInfo" ) );           // Tier 1
+    assertTrue( loaded.contains( "com.google.gwt.user.server.rpc.SerializationPolicy" ) );     // Tier 1
+    assertTrue( loaded.contains( "org.pentaho.platform.plugin.action.olap.IOlapService" ) );   // Tier 1
+    assertTrue( loaded.contains( "org.pentaho.platform.api.engine.ISystemConfig" ) );          // Tier 2
+    assertTrue( loaded.contains( "org.springframework.security.core.userdetails.UserDetailsService" ) ); // Tier 3
+    assertFalse( "Tier 4 (bundle-native) stays on OSGi",
+      loaded.contains( "org.osgi.service.cm.ConfigurationAdmin" ) );
+    assertEquals( "no comment / blank lines leak in", 22, loaded.size() );
   }
 
   @Test
