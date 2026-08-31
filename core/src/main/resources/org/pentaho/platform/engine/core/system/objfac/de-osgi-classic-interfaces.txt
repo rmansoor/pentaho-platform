@@ -1,0 +1,33 @@
+# De-OSGi migration -- interfaces the platform resolves from the classic object
+# factory only. OSGIObjectFactory (the forward bridge) declines these, so
+# PentahoSystem.get()/getAll() falls straight through to the in-JVM
+# RuntimeObjectFactory registry (the classic <pen:publish> beans). The reverse
+# bridge still publishes them into OSGi for any genuine container-side consumer.
+#
+# This is the permanent counterpart of the -Dpentaho.osgi.phase0.blocklist
+# diagnostic. As each Karaf Exit Plan phase de-OSGi's a capability its interfaces
+# are added here; the whole file is deleted with the bridge in the final phase.
+#
+# Format: one fully-qualified interface name per line. '#' starts a comment.
+# Add more at runtime (no rebuild) with -Dpentaho.osgi.classic.additions=<list|@file>
+# or a classic-interfaces.txt next to this server's barrierbean.properties.
+#
+# ---------------------------------------------------------------------------
+# WI-1.8 (2026-08-30) -- Tier 1: forward-bridge trace + live blocklist regression
+# (all 13 blocked simultaneously) confirmed the classic Spring bean fully covers
+# each, zero migration work. See karaf-removal/phase1/data/baseline/WI-1.4-FINDINGS.md
+# ---------------------------------------------------------------------------
+
+org.pentaho.platform.api.repository2.unified.IRepositoryVersionManager
+com.google.gwt.user.server.rpc.SerializationPolicy
+com.hitachivantara.security.web.model.csrf.CsrfRequestSetConfiguration
+com.hitachivantara.security.web.model.cors.CorsRequestSetConfiguration
+org.pentaho.platform.plugin.action.olap.IOlapService
+org.pentaho.platform.repository2.unified.jcr.ILockHelper
+org.pentaho.platform.dataaccess.datasource.wizard.service.impl.IDataAccessPermissionHandler
+org.pentaho.platform.dataaccess.datasource.wizard.service.impl.IDataAccessViewPermissionHandler
+org.pentaho.platform.api.mt.ITenantManager
+org.pentaho.ui.xul.XulOverlay
+org.pentaho.platform.dataaccess.datasource.IStagingDatabase
+org.pentaho.platform.api.util.IWadlDocumentResource
+org.pentaho.platform.api.engine.IContentInfo

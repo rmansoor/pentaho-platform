@@ -71,7 +71,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
   @Override
   public <T> T get( Class<T> interfaceClass, IPentahoSession session, Map<String, String> properties )
     throws ObjectFactoryException {
-    if ( isBundleContextValid() == false || Phase0ServiceTrace.isBlocked( interfaceClass ) ) {
+    if ( isBundleContextValid() == false || servedClassically( interfaceClass ) ) {
       return null;
     }
 
@@ -126,7 +126,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
       throw new IllegalStateException( "Class is null" );
     }
 
-    if ( isBundleContextValid() == false || Phase0ServiceTrace.isBlocked( clazz ) ) {
+    if ( isBundleContextValid() == false || servedClassically( clazz ) ) {
       return false;
     }
 
@@ -169,7 +169,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
     if ( isBundleContextValid() == false ) {
       return null;
     }
-    if ( Phase0ServiceTrace.isBlocked( interfaceClass ) ) {
+    if ( servedClassically( interfaceClass ) ) {
       return new ArrayList<T>();
     }
 
@@ -227,7 +227,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
                                                             Map<String, String> properties )
     throws ObjectFactoryException {
 
-    if ( isBundleContextValid() == false || Phase0ServiceTrace.isBlocked( interfaceClass ) ) {
+    if ( isBundleContextValid() == false || servedClassically( interfaceClass ) ) {
       return null;
     }
 
@@ -287,7 +287,7 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
                                                                    Map<String, String> properties )
     throws ObjectFactoryException {
 
-    if ( isBundleContextValid() == false || Phase0ServiceTrace.isBlocked( interfaceClass ) ) {
+    if ( isBundleContextValid() == false || servedClassically( interfaceClass ) ) {
       return Collections.emptyList();
     }
 
@@ -331,6 +331,19 @@ public class OSGIObjectFactory implements IPentahoObjectFactory {
   @Override
   public String getName() {
     return getClass().getSimpleName();
+  }
+
+  /**
+   * De-OSGi migration: true when the forward bridge must decline this type so the classic {@code AggregateObjectFactory}
+   * path resolves it. Covers both the permanent {@link ClassicResolutionList} and the {@link Phase0ServiceTrace}
+   * diagnostic blocklist.
+   */
+  private boolean servedClassically( Class<?> interfaceClass ) {
+    return Phase0ServiceTrace.isBlocked( interfaceClass ) || ClassicResolutionList.resolvesClassically( interfaceClass );
+  }
+
+  private boolean servedClassically( String interfaceName ) {
+    return Phase0ServiceTrace.isBlocked( interfaceName ) || ClassicResolutionList.resolvesClassically( interfaceName );
   }
 
   /**

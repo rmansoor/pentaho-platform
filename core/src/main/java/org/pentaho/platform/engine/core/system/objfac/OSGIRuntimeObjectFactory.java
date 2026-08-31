@@ -157,12 +157,13 @@ public class OSGIRuntimeObjectFactory extends RuntimeObjectFactory {
     if ( this.bundleContext == null || !osgiInitialized.get() ) {
       return super.objectDefined( clazz );
     }
-    if ( !Phase0ServiceTrace.isBlocked( clazz ) && osgiHasService( clazz ) ) {
+    if ( !forcedClassic( clazz ) && osgiHasService( clazz ) ) {
       return true;
     }
-    // The OSGi bridge cannot answer for this type -- it has been blocked for de-OSGi validation,
-    // or the service is simply absent from the container. Fall through to the in-JVM registry so
-    // locally-registered references (classic <pen:publish> beans) stay resolvable without OSGi.
+    // The OSGi bridge will not answer for this type -- it is on the permanent de-OSGi classic list,
+    // has been blocked for validation, or the service is simply absent from the container. Fall
+    // through to the in-JVM registry so locally-registered references (classic <pen:publish> beans)
+    // stay resolvable without OSGi.
     return super.objectDefined( clazz );
   }
 
@@ -175,10 +176,19 @@ public class OSGIRuntimeObjectFactory extends RuntimeObjectFactory {
     // published into OSGi, so returning nothing here avoids handing callers a duplicate. But when
     // the bridge cannot serve this type -- blocked for de-OSGi validation, or not present in the
     // container -- fall through to the locally-held registry.
-    if ( Phase0ServiceTrace.isBlocked( type ) || !osgiHasService( type ) ) {
+    if ( forcedClassic( type ) || !osgiHasService( type ) ) {
       return super.getReferencesByQuery( type, query );
     }
     return Collections.emptyList();
+  }
+
+  /**
+   * @return true when the forward OSGi bridge is required to decline this type -- either permanently
+   * ({@link ClassicResolutionList}) or for a validation run ({@link Phase0ServiceTrace} blocklist) --
+   * so this factory must serve it from the in-JVM registry instead.
+   */
+  private boolean forcedClassic( Class<?> type ) {
+    return Phase0ServiceTrace.isBlocked( type ) || ClassicResolutionList.resolvesClassically( type );
   }
 
   /**
