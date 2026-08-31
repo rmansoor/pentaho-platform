@@ -1,25 +1,20 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2023 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.api.util;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public interface IPdiContentProvider {
@@ -48,7 +43,7 @@ public interface IPdiContentProvider {
    *          ktr/kjb filePath
    * @return list of user input parameters' name
    */
-  Map<String, String> getUserParameters(String kettleFilePath );
+  Map<String, String> getUserParameters( String kettleFilePath );
 
   /**
    * lists variables for a given a ktr/kjb filePath
@@ -58,4 +53,26 @@ public interface IPdiContentProvider {
    * @return list of variables' name
    */
   Map<String, String> getVariables( String kettleFilePath );
+
+  /**
+   * lists user input parameters for a given FileObject
+   * 
+   * @param fileObject
+   *                   ktr/kjb FileObject
+   * @return list of user input parameters' name
+   */
+  default Map<String, String> getUserParameters( Object fileObject ) {
+    return new HashMap<>();
+  }
+
+  /**
+   * lists variables for a given ktr/kjb FileObject
+   *
+   * @param fileObject
+   *                   ktr/kjb FileObject
+   * @return list of variables' name
+   */
+  default Map<String, String> getVariables( Object fileObject ) {
+    return new HashMap<>();
+  }
 }

@@ -1,19 +1,16 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2017 Hitachi Vantara..  All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 define([
   "common-ui/util/BootstrappedTabLoader",
@@ -44,7 +41,7 @@ define([
     BootstrappedTabLoader.init({
       parentSelector: "#launch-widget",
       tabContentPattern: "launch_tab{{contentNumber}}_content.html",
-      defaultTabSelector: urlVars.selectedTab,
+      defaultTabSelector: urlVars.selectedTab === "tab2" ? "tab2" : "tab1",
       before: function () {
         ContextProvider.get(function (context) {
           $("#launch-widget-title").text(context.i18n.getting_started_heading);
@@ -54,12 +51,6 @@ define([
               context.config.getting_started_sample_message_template,
               context.config.getting_started_sample_link_template,
               "sample-card");
-
-          GettingStartedWidget.injectMessagesArray(
-              "getting_started_tutorials",
-              context.config.getting_started_video_message_template,
-              context.config.getting_started_bc_video_link_template,
-              "tutorial-card");
         });
       }, postLoad: function (jHtml, tabSelector) {
         var tabId = $(tabSelector).attr("id");
@@ -120,38 +111,6 @@ define([
             });
           });
 
-        } else if (tabId == "tab3") {
-
-          // Fixes a scrolling issue when it is not necessary to scroll
-          jHtml.parent().css("overflow", "hidden");
-
-          function bindInteractions(internet) {
-            // Bind click interactions
-            bindCardInteractions(jHtml, ".tutorial-card", (urlVars.selectedTab == "tab3" ? urlVars.selectedContentIndex : 0), function (card) {
-              ContextProvider.get(function (context) {
-                // Update video
-                var cardIndex = jHtml.find(".tutorial-card").index(card);
-
-                if (internet) {
-                  insertVideo($("#tutorial-video"),
-                      context.config["bc_tutorial_link" + (cardIndex + 1) + "_id"],
-                      context.config.bc_tutorial_resolution);
-                }
-
-
-              })
-            });
-          }
-
-          GettingStartedWidget.checkInternet(jHtml, function () {
-            bindInteractions(true);
-
-          }, function () {
-            $("#tutorial-video").hide();
-            bindInteractions(false);
-          });
-
-
         }
 
       }, postClick: function (tabSelector) {
@@ -164,26 +123,9 @@ define([
           });
         }
 
-        // Re-populate tutorial video src link
-        if (tabId == "tab3") {
-          ContextProvider.get(function (context) {
-            var selectedCard = $(".tutorial-card.selected");
-            var cardIndex = $(".tutorial-card").index(selectedCard);
-
-            insertVideo($("#tutorial-video"),
-                context.config["bc_tutorial_link" + (cardIndex + 1) + "_id"],
-                context.config.bc_tutorial_resolution);
-          });
-        }
-
         // Clear source of welcome video to comply with tab switching
         if (prevTab == "tab1" && tabId != "tab1") {
           $("#welcome-video").empty();
-        }
-
-        // Clear source of tutorial video to comply with tab switching
-        if (prevTab == "tab3" && tabId != "tab3") {
-          $("#tutorial-video").empty();
         }
 
         prevTab = tabId;

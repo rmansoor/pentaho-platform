@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.jcr;
 
@@ -51,7 +45,6 @@ import javax.jcr.security.Privilege;
 import java.io.IOException;
 import java.io.Serializable;
 import java.security.Principal;
-import java.security.acl.Group;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -124,7 +117,7 @@ public class JcrRepositoryFileAclDao implements IRepositoryFileAclDao {
         AccessControlPolicy[] acPolicies = session.getAccessControlManager().getEffectivePolicies( absPath );
         // logic assumes policies are ordered from leaf to root
         for ( AccessControlPolicy policy : acPolicies ) {
-          Assert.isTrue( policy instanceof AccessControlList );
+          Assert.isTrue( policy instanceof AccessControlList, "Policy must be an instance of AccessControlList" );
           AccessControlList acList = ( (AccessControlList) policy );
           if ( !isEntriesInheriting( session, absPath, acList ) ) {
             List<RepositoryFileAce> aces = new ArrayList<RepositoryFileAce>();
@@ -243,7 +236,7 @@ public class JcrRepositoryFileAclDao implements IRepositoryFileAclDao {
     String name = principal.getName();
     DefaultPermissionConversionHelper permissionConversionHelper = new DefaultPermissionConversionHelper( session );
 
-    if ( principal instanceof Group ) {
+    if ( principal instanceof SpringSecurityRolePrincipal ) {
       sid =
           new RepositoryFileSid( JcrTenantUtils.getRoleNameUtils().getPrincipleName( name ),
               RepositoryFileSid.Type.ROLE );
@@ -275,11 +268,11 @@ public class JcrRepositoryFileAclDao implements IRepositoryFileAclDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( id );
-    Assert.notNull( recipient );
-    Assert.notNull( permission );
+    Assert.notNull( id, "ID must not be null" );
+    Assert.notNull( recipient, "Recipient must not be null" );
+    Assert.notNull( permission, "Permission must not be null" );
     RepositoryFileAcl acl = getAcl( id );
-    Assert.notNull( acl );
+    Assert.notNull( acl, "ACL must not be null" );
     // TODO mlowery find an ACE with the recipient and update that rather than adding a new ACE
     RepositoryFileSid newRecipient = recipient;
     if ( recipient.getType().equals( Type.USER ) ) {

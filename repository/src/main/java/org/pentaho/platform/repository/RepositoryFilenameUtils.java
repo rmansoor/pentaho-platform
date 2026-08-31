@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository;
 
@@ -27,10 +21,10 @@ import java.util.List;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOCase;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
-import org.springframework.util.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 /**
- * General filename and filepath manipulation utilities for the Hitachi Vantara Repository. NOTE: these methods will work
+ * General filename and filepath manipulation utilities for the Pentaho Repository. NOTE: these methods will work
  * independently of the underlying operating system. Most methods will translate a backslash (\) to a forward slash (/)
  * but should be be depended upon to make that translation.
  * <p/>
@@ -47,7 +41,7 @@ import org.springframework.util.StringUtils;
  * impossible to determine if the filename corresponds to a file or a directory. As a result, we have chosen to say it
  * corresponds to a file.
  * <p/>
- * This class only supports Hitachi Vantara Repository (Unix) style names. Prefixes are matched as follows:
+ * This class only supports Pentaho Repository (Unix) style names. Prefixes are matched as follows:
  * 
  * <pre>
  * a/b/c.txt           --> ""          --> relative
@@ -238,13 +232,11 @@ public class RepositoryFilenameUtils {
     if ( fullFilenameToAdd == null ) {
       return null;
     }
-    if ( org.apache.commons.lang.StringUtils.isBlank( fullFilenameToAdd ) ) {
+    if ( StringUtils.isBlank( fullFilenameToAdd ) ) {
       return normalizeNoEndSeparator( basePath );
     }
-    int prefix = 0;
-    if ( StringUtils.hasLength( fullFilenameToAdd ) ) {
-      prefix = getPrefixLength( fullFilenameToAdd.replace( ":", "_" ) );
-    }
+    int prefix = getPrefixLength(fullFilenameToAdd.replace(":", "_"));
+
     if ( prefix < 0 ) {
       return null;
     }

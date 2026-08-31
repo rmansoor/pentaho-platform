@@ -1,44 +1,18 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.io.ByteArrayInputStream;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Locale;
-
-import javax.jcr.security.Privilege;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -68,8 +42,28 @@ import org.pentaho.platform.security.policy.rolebased.actions.PublishAction;
 import org.pentaho.platform.security.policy.rolebased.actions.RepositoryCreateAction;
 import org.pentaho.platform.security.policy.rolebased.actions.RepositoryReadAction;
 import org.pentaho.platform.security.policy.rolebased.actions.SchedulerAction;
+import org.pentaho.platform.security.policy.rolebased.actions.SchedulerExecuteAction;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import javax.jcr.security.Privilege;
+import java.io.ByteArrayInputStream;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Locale;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Integration test. Tests {@link DefaultUnifiedRepository} and {@link org.pentaho.platform.api.engine.IAuthorizationPolicy IAuthorizationPolicy} fully configured
@@ -90,6 +84,11 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 @RunWith( SpringJUnit4ClassRunner.class )
 @SuppressWarnings( "nls" )
 public class DefaultUnifiedRepositoryAuthorizationIT extends DefaultUnifiedRepositoryBase {
+
+  private static final String DISPLAY_HOME_IN_MODERN_USER_CONSOLE =
+      "com.pentaho.userconsole.plugins.pas-home.display";
+  private static final String DISPLAY_BROWSE_FILES_IN_MODERN_USER_CONSOLE =
+      "com.pentaho.userconsole.plugins.pas-browse-files.display";
 
   @Before
   public void setup() {
@@ -949,10 +948,12 @@ public class DefaultUnifiedRepositoryAuthorizationIT extends DefaultUnifiedRepos
 
     // List could come back in any order so check elements individually
     List<String> list = roleBindingDao.getBoundLogicalRoleNames( Arrays.asList( AUTHENTICATED_ROLE_NAME, "ceo" ) );
-    assertEquals( 3, list.size() );
+    assertEquals( 5, list.size() );
     findInList( RepositoryReadAction.NAME, list );
     findInList( SchedulerAction.NAME, list );
     findInList( RepositoryCreateAction.NAME, list );
+    findInList( DISPLAY_HOME_IN_MODERN_USER_CONSOLE, list );
+    findInList( DISPLAY_BROWSE_FILES_IN_MODERN_USER_CONSOLE, list );
   }
 
   private void findInList( String name, List<String> list ) {
@@ -961,7 +962,7 @@ public class DefaultUnifiedRepositoryAuthorizationIT extends DefaultUnifiedRepos
         return;
       }
     }
-    fail( "One of the 3 roles in the role list did not match" );
+    fail( "Expected role was not found in the role list" );
   }
 
   @Test
@@ -985,10 +986,12 @@ public class DefaultUnifiedRepositoryAuthorizationIT extends DefaultUnifiedRepos
     // test with null namespace
     List<String> allowedActions = authorizationPolicy.getAllowedActions( null );
 
-    assertEquals( 3, allowedActions.size() );
+    assertEquals( 5, allowedActions.size() );
     assertTrue( allowedActions.contains( RepositoryReadAction.NAME ) );
     assertTrue( allowedActions.contains( RepositoryCreateAction.NAME ) );
     assertTrue( allowedActions.contains( SchedulerAction.NAME ) );
+    assertTrue( allowedActions.contains( DISPLAY_HOME_IN_MODERN_USER_CONSOLE ) );
+    assertTrue( allowedActions.contains( DISPLAY_BROWSE_FILES_IN_MODERN_USER_CONSOLE ) );
 
     // test with explicit namespace
     allowedActions = authorizationPolicy.getAllowedActions( NAMESPACE_REPOSITORY );
@@ -1008,10 +1011,12 @@ public class DefaultUnifiedRepositoryAuthorizationIT extends DefaultUnifiedRepos
     // login with pat (in tenant duff); pat is granted "Authenticated" so he is allowed
     login( USERNAME_PAT, tenantDuff, new String[] { tenantAuthenticatedRoleName } );
     allowedActions = authorizationPolicy.getAllowedActions( null );
-    assertEquals( 3, allowedActions.size() );
+    assertEquals( 5, allowedActions.size() );
     assertTrue( allowedActions.contains( RepositoryReadAction.NAME ) );
     assertTrue( allowedActions.contains( RepositoryCreateAction.NAME ) );
     assertTrue( allowedActions.contains( SchedulerAction.NAME ) );
+    assertTrue( allowedActions.contains( DISPLAY_HOME_IN_MODERN_USER_CONSOLE ) );
+    assertTrue( allowedActions.contains( DISPLAY_BROWSE_FILES_IN_MODERN_USER_CONSOLE ) );
 
     login( USERNAME_ADMIN, tenantAcme, new String[] { tenantAdminRoleName, tenantAuthenticatedRoleName } );
     allowedActions = authorizationPolicy.getAllowedActions( NAMESPACE_REPOSITORY );
@@ -1020,14 +1025,17 @@ public class DefaultUnifiedRepositoryAuthorizationIT extends DefaultUnifiedRepos
     assertTrue( allowedActions.contains( RepositoryCreateAction.NAME ) );
     // test with scheduler
     allowedActions = authorizationPolicy.getAllowedActions( NAMESPACE_SCHEDULER );
-    assertEquals( 1, allowedActions.size() );
+    assertEquals( 2, allowedActions.size() );
     assertTrue( allowedActions.contains( SchedulerAction.NAME ) );
+    assertTrue( allowedActions.contains( SchedulerExecuteAction.NAME ) );
+
+
     allowedActions = authorizationPolicy.getAllowedActions( NAMESPACE_SECURITY );
     assertEquals( 2, allowedActions.size() );
     assertTrue( allowedActions.contains( AdministerSecurityAction.NAME ) );
 
     allowedActions = authorizationPolicy.getAllowedActions( NAMESPACE_PENTAHO );
-    assertEquals( 5, allowedActions.size() );
+    assertEquals( 6, allowedActions.size() );
   }
 
   @Test
@@ -1050,21 +1058,21 @@ public class DefaultUnifiedRepositoryAuthorizationIT extends DefaultUnifiedRepos
       login( USERNAME_ADMIN, tenantAcme, new String[] { tenantAdminRoleName, tenantAuthenticatedRoleName } );
       userRoleDao.createUser( tenantAcme, USERNAME_SUZY, PASSWORD, "", null );
       userRoleDao.createUser( tenantDuff, USERNAME_PAT, PASSWORD, "", null );
-      assertEquals( 5, authorizationPolicy.getAllowedActions( null ).size() );
+      assertEquals( 8, authorizationPolicy.getAllowedActions( null ).size() );
 
       login( USERNAME_SUZY, tenantAcme, new String[] { tenantAuthenticatedRoleName } );
-      assertEquals( 3, authorizationPolicy.getAllowedActions( null ).size() );
+      assertEquals( 5, authorizationPolicy.getAllowedActions( null ).size() );
 
       // login with admin (in tenant acme)
       login( USERNAME_ADMIN, tenantAcme, new String[] { tenantAdminRoleName, tenantAuthenticatedRoleName } );
       roleBindingDao
           .setRoleBindings( tenantAuthenticatedRoleName, Arrays.asList( RepositoryReadAction.NAME,
               RepositoryCreateAction.NAME, SchedulerAction.NAME, AdministerSecurityAction.NAME ) );
-      assertEquals( 5, authorizationPolicy.getAllowedActions( null ).size() );
+      assertEquals( 6, authorizationPolicy.getAllowedActions( null ).size() );
 
       // login with pat (in tenant duff)
       login( USERNAME_PAT, tenantDuff, new String[] { tenantAuthenticatedRoleName } );
-      assertEquals( 3, authorizationPolicy.getAllowedActions( null ).size() );
+      assertEquals( 5, authorizationPolicy.getAllowedActions( null ).size() );
 
       // login with suzy again (in tenant acme); expect additional action for suzy
       login( USERNAME_SUZY, tenantAcme, new String[] { tenantAuthenticatedRoleName } );
@@ -1161,14 +1169,17 @@ public class DefaultUnifiedRepositoryAuthorizationIT extends DefaultUnifiedRepos
     assertNotNull( struct );
     assertNotNull( struct.bindingMap );
     assertEquals( 3, struct.bindingMap.size() );
-    assertEquals( Arrays.asList( new String[] { RepositoryReadAction.NAME, RepositoryCreateAction.NAME,
-      SchedulerAction.NAME, AdministerSecurityAction.NAME, PublishAction.NAME } ), struct.bindingMap
-        .get( superAdminRoleName ) );
-    assertEquals( Arrays.asList( new String[] { RepositoryReadAction.NAME, RepositoryCreateAction.NAME,
-      SchedulerAction.NAME, AdministerSecurityAction.NAME, PublishAction.NAME } ), struct.bindingMap
-        .get( tenantAdminRoleName ) );
-    assertEquals( Arrays.asList( new String[] { RepositoryReadAction.NAME, RepositoryCreateAction.NAME,
-      SchedulerAction.NAME } ), struct.bindingMap.get( tenantAuthenticatedRoleName ) );
+    List<String> expectedAdminActions = Arrays.asList( RepositoryReadAction.NAME, RepositoryCreateAction.NAME,
+      SchedulerExecuteAction.NAME, SchedulerAction.NAME, AdministerSecurityAction.NAME, PublishAction.NAME );
+    assertEquals( 6, struct.bindingMap.get( superAdminRoleName ).size() );
+    assertTrue( struct.bindingMap.get( superAdminRoleName ).containsAll( expectedAdminActions ) );
+    assertEquals( 6, struct.bindingMap.get( tenantAdminRoleName ).size() );
+    assertTrue( struct.bindingMap.get( tenantAdminRoleName ).containsAll( expectedAdminActions ) );
+    List<String> expectedAuthenticatedActions = Arrays.asList( RepositoryReadAction.NAME,
+      RepositoryCreateAction.NAME, SchedulerAction.NAME, DISPLAY_HOME_IN_MODERN_USER_CONSOLE,
+      DISPLAY_BROWSE_FILES_IN_MODERN_USER_CONSOLE );
+    assertEquals( 5, struct.bindingMap.get( tenantAuthenticatedRoleName ).size() );
+    assertTrue( struct.bindingMap.get( tenantAuthenticatedRoleName ).containsAll( expectedAuthenticatedActions ) );
     roleBindingDao.setRoleBindings( "whatever", Arrays.asList( "org.pentaho.p1.reader" ) );
 
     struct = roleBindingDao.getRoleBindingStruct( Locale.getDefault().toString() );
@@ -1176,7 +1187,7 @@ public class DefaultUnifiedRepositoryAuthorizationIT extends DefaultUnifiedRepos
     assertEquals( Arrays.asList( new String[] { "org.pentaho.p1.reader" } ), struct.bindingMap.get( "whatever" ) );
 
     assertNotNull( struct.logicalRoleNameMap );
-    assertEquals( 5, struct.logicalRoleNameMap.size() );
+    assertEquals( 6, struct.logicalRoleNameMap.size() );
     assertEquals( "Create Content", struct.logicalRoleNameMap.get( RepositoryCreateAction.NAME ) );
 
     assertNotNull( struct.immutableRoles );

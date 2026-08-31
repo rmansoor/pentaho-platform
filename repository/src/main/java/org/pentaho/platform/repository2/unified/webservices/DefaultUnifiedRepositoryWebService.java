@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2020 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.webservices;
 
@@ -28,9 +22,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 
-import javax.jws.WebService;
+import jakarta.jws.WebService;
 
 import org.pentaho.platform.api.engine.IAuthorizationPolicy;
+import org.pentaho.platform.api.mimetype.IPlatformMimeResolver;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.repository2.unified.RepositoryFileAce;
@@ -65,6 +60,8 @@ public class DefaultUnifiedRepositoryWebService implements IUnifiedRepositoryWeb
 
   protected IUnifiedRepository repo;
 
+  protected IPlatformMimeResolver platformMimeResolver;
+
   protected RepositoryFileAdapter repositoryFileAdapter = new RepositoryFileAdapter();
 
   protected NodeRepositoryFileDataAdapter nodeRepositoryFileDataAdapter = new NodeRepositoryFileDataAdapter();
@@ -87,14 +84,21 @@ public class DefaultUnifiedRepositoryWebService implements IUnifiedRepositoryWeb
     super();
     // repo = new MockUnifiedRepository();
     repo = PentahoSystem.get( IUnifiedRepository.class );
+    platformMimeResolver = PentahoSystem.get( IPlatformMimeResolver.class );
     if ( repo == null ) {
       throw new IllegalStateException();
     }
   }
 
   public DefaultUnifiedRepositoryWebService( final IUnifiedRepository repo ) {
+    this( repo, PentahoSystem.get( IPlatformMimeResolver.class ) );
+  }
+
+  public DefaultUnifiedRepositoryWebService( final IUnifiedRepository repo,
+      final IPlatformMimeResolver platformMimeResolver ) {
     super();
     this.repo = repo;
+    this.platformMimeResolver = platformMimeResolver;
   }
 
   public static Logger getLogger() {
@@ -258,10 +262,18 @@ public class DefaultUnifiedRepositoryWebService implements IUnifiedRepositoryWeb
   }
 
   public void moveFile( String fileId, String destAbsPath, String versionMessage ) {
+    // Validate MIME only for files (not folders) being moved, and only if not to /etc child or existing folder
+    if ( isFile( fileId ) && !isEtcChildPath( destAbsPath ) && !isExistingFolderPath( destAbsPath ) ) {
+      validateMimeTypeForWriteOperation( destAbsPath );
+    }
     repo.moveFile( fileId, destAbsPath, versionMessage );
   }
 
   public void copyFile( String fileId, String destAbsPath, String versionMessage ) {
+    // Validate MIME only for files (not folders) being copied, and only if not to /etc child or existing folder
+    if ( isFile( fileId ) && !isEtcChildPath( destAbsPath ) && !isExistingFolderPath( destAbsPath ) ) {
+      validateMimeTypeForWriteOperation( destAbsPath );
+    }
     repo.copyFile( fileId, destAbsPath, versionMessage );
   }
 
@@ -276,6 +288,9 @@ public class DefaultUnifiedRepositoryWebService implements IUnifiedRepositoryWeb
   public RepositoryFileDto createFile( String parentFolderId, RepositoryFileDto file, NodeRepositoryFileDataDto data,
       String versionMessage ) {
     validateEtcWriteAccess( parentFolderId );
+    if ( !file.isFolder() && !isEtcChildFolderId( parentFolderId ) ) {
+      validateMimeTypeForWriteOperation( file.getName() );
+    }
     return repositoryFileAdapter.marshal( repo.createFile( parentFolderId, repositoryFileAdapter.unmarshal( file ),
         nodeRepositoryFileDataAdapter.unmarshal( data ), versionMessage ) );
   }
@@ -283,6 +298,9 @@ public class DefaultUnifiedRepositoryWebService implements IUnifiedRepositoryWeb
   public RepositoryFileDto createFileWithAcl( String parentFolderId, RepositoryFileDto file,
       NodeRepositoryFileDataDto data, RepositoryFileAclDto acl, String versionMessage ) {
     validateEtcWriteAccess( parentFolderId );
+    if ( !file.isFolder() && !isEtcChildFolderId( parentFolderId ) ) {
+      validateMimeTypeForWriteOperation( file.getName() );
+    }
     return repositoryFileAdapter.marshal( repo.createFile( parentFolderId, repositoryFileAdapter.unmarshal( file ),
         nodeRepositoryFileDataAdapter.unmarshal( data ), repositoryFileAclAdapter.unmarshal( acl ), versionMessage ) );
   }
@@ -398,6 +416,43 @@ public class DefaultUnifiedRepositoryWebService implements IUnifiedRepositoryWeb
         throw new RuntimeException( "This service is not allowed to access the ETC folder in JCR." );
       }
     }
+  }
+
+  protected void validateMimeTypeForWriteOperation( String fileName ) {
+    if ( platformMimeResolver == null ) {
+      throw new IllegalStateException( "No platformMimeResolver available to validate mime types." );
+    }
+    if ( platformMimeResolver.resolveMimeForFileName( fileName ) == null ) {
+      throw new RuntimeException( "This service is not allowed to write unsupported file types." );
+    }
+  }
+
+  protected boolean isEtcChildPath( String path ) {
+    return path != null && path.startsWith( "/etc/" );
+  }
+
+  protected boolean isExistingFolderPath( String path ) {
+    if ( repo == null || path == null ) {
+      return false;
+    }
+    RepositoryFile destination = repo.getFile( path );
+    return destination != null && destination.isFolder();
+  }
+
+  protected boolean isEtcChildFolderId( String parentFolderId ) {
+    if ( repo == null || parentFolderId == null ) {
+      return false;
+    }
+    RepositoryFile parentFolder = repo.getFileById( parentFolderId );
+    return parentFolder != null && isEtcChildPath( parentFolder.getPath() );
+  }
+
+  protected boolean isFile( String fileId ) {
+    if ( repo == null || fileId == null ) {
+      return false;
+    }
+    RepositoryFile file = repo.getFileById( fileId );
+    return file != null && !file.isFolder();
   }
 
   protected void validateEtcReadAccess( String path ) {

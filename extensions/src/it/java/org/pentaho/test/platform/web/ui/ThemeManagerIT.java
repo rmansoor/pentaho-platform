@@ -1,26 +1,20 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.test.platform.web.ui;
 
-import com.mockrunner.mock.web.MockServletContext;
+import org.springframework.mock.web.MockServletContext;
 import org.junit.Before;
 import org.junit.Test;
 import org.pentaho.platform.api.engine.IPluginManager;
@@ -33,8 +27,10 @@ import org.pentaho.test.platform.engine.core.BaseTest;
 import org.pentaho.test.platform.utils.TestResourceLocation;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileInputStream;
-import java.util.Arrays;
+import java.io.InputStream;
+import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -56,12 +52,25 @@ public class ThemeManagerIT extends BaseTest {
   @Test
   public void testThemes() throws Exception {
     // setup mock context
-    MockServletContext context = new MockServletContext();
-    context.addResourcePaths( "/", Arrays.asList( "test-module/" ) );
-    context.addResourcePaths( "/test-module/", Arrays.asList( "themes.xml" ) );
-    File themesDotXML = new File( getSolutionPath() + "/system/themeplugin/themes.xml" );
-    context.setResource( "/test-module/themes.xml", themesDotXML.toURI().toURL() );
-    context.setResourceAsStream( "/test-module/themes.xml", new FileInputStream( themesDotXML ) );
+    final File themesDotXML = new File( getSolutionPath() + "/system/themeplugin/themes.xml" );
+    MockServletContext context = new MockServletContext() {
+      @Override
+      public Set<String> getResourcePaths( String path ) {
+        return "/".equals( path ) ? Collections.singleton( "/test-module/" ) : Collections.emptySet();
+      }
+
+      @Override
+      public InputStream getResourceAsStream( String path ) {
+        if ( "/test-module/themes.xml".equals( path ) ) {
+          try {
+            return new FileInputStream( themesDotXML );
+          } catch ( FileNotFoundException e ) {
+            return null;
+          }
+        }
+        return null;
+      }
+    };
     PentahoSystem.getApplicationContext().setContext( context );
 
     StandaloneSession session = new StandaloneSession();

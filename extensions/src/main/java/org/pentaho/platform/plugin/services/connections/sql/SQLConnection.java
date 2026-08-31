@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.connections.sql;
 
@@ -230,10 +224,50 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
     }
   }
 
+  void initOther( Properties props ) {
+    String connectionName = props.getProperty( IPentahoConnection.CONNECTION_NAME );
+    if ( connectionName != null && !connectionName.isEmpty() ) {
+      boolean isTestConnection = isTestConnection( connectionName );
+      if ( isTestConnection ) {
+        handleTestConnection( props, connectionName );
+      }
+      IDatabaseConnection databaseConnection = (IDatabaseConnection) props.get( IPentahoConnection.CONNECTION );
+      // If the connection is a test connection, we don't want to cache it
+      initDataSource( databaseConnection, !isTestConnection );
+    } else {
+      String driver = props.getProperty( IPentahoConnection.DRIVER_KEY );
+      String provider = props.getProperty( IPentahoConnection.LOCATION_KEY );
+      String userName = props.getProperty( IPentahoConnection.USERNAME_KEY );
+      String password = props.getProperty( IPentahoConnection.PASSWORD_KEY );
+      init( driver, provider, userName, password );
+      String query = props.getProperty( IPentahoConnection.QUERY_KEY );
+      if ( query != null && !query.isEmpty() ) {
+        try {
+          executeQuery( query );
+        } catch ( Exception e ) {
+          logger.error( "Can't execute query", e );
+        }
+      }
+    }
+  }
+
+  private static boolean isTestConnection( String connectionName ) {
+    return connectionName.length() > 16
+       && connectionName.startsWith( "__TEST__" )
+       && connectionName.endsWith( "__TEST__" );
+  }
+
+  private static void handleTestConnection( Properties props, String connectionName ) {
+    connectionName = connectionName.substring( 8, connectionName.length() - 8 );
+    props.setProperty( IPentahoConnection.CONNECTION_NAME, connectionName );
+  }
+
+
+
   /**
    * Allows the native SQL Connection to be enhanced in a subclass. Best used when a connection needs to be enhanced
    * with an "effective user"
-   * 
+   *
    * @param connection
    */
   protected void enhanceConnection( Connection connection ) throws SQLException {
@@ -242,7 +276,7 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
   /**
    * Allows enhancements to the native SQL Connection to be removed in a subclass. Best used when a connection needs to
    * be enhanced with an "effective user"
-   * 
+   *
    * @param connection
    */
   protected void unEnhanceConnection( Connection connection ) throws SQLException {
@@ -251,7 +285,7 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
   /**
    * Allow wrapping/proxying of the native SQL connection by a subclass. Best used when a connection needs to be be
    * enhanced or proxied for Single Signon or possibly tenanting.
-   * 
+   *
    * @param connection
    * @return
    */
@@ -262,7 +296,7 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
   /**
    * Allows the native SQL Statement to be enhanced by a subclass. Examples may be to allow additional information like
    * a user to be bound to the statement.
-   * 
+   *
    * @param statement
    */
   protected void enhanceStatement( Statement statement ) throws SQLException {
@@ -333,7 +367,7 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see org.pentaho.connection.IPentahoConnection#getLastQuery()
    */
   public String getLastQuery() {
@@ -342,7 +376,7 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
 
   /**
    * Executes the specified query.
-   * 
+   *
    * @param query
    *          the query to execute
    * @return the resultset from the query
@@ -359,7 +393,7 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
 
   /**
    * Executes the specified query with the defined parameters
-   * 
+   *
    * @param query
    *          the query to be executed
    * @param scrollType
@@ -427,7 +461,7 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
    * The purpose of this method is to set limitations such as fetchSize and maxrows on the provided statement. If the
    * JDBC driver does not support the setting and throws an Exception, we will re-throw iff the limit was explicitly
    * set.
-   * 
+   *
    * @param stmt
    *          Either a Statement or PreparedStatement
    * @throws SQLException
@@ -542,7 +576,7 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see org.pentaho.connection.IPentahoConnection#isClosed()
    */
   public boolean isClosed() {
@@ -557,10 +591,10 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see org.pentaho.connection.IPentahoConnection#isReadOnly()
-   * 
-   * Right now this archetecture only support selects (read only)
+   *
+   * Right now this architecture only support selects (read only)
    */
   public boolean isReadOnly() {
     return true;
@@ -578,10 +612,9 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
     return sqlResultSet;
   }
 
-  void initDataSource( IDatabaseConnection databaseConnection ) {
-    DataSource dataSource = null;
+  void initDataSource( IDatabaseConnection databaseConnection, boolean useCache ) {
     try {
-      dataSource = PooledDatasourceHelper.setupPooledDataSource( databaseConnection );
+      DataSource dataSource = PooledDatasourceHelper.setupPooledDataSource( databaseConnection, useCache );
       nativeConnection = captureConnection( dataSource.getConnection() );
     } catch ( Exception e ) {
       logger.error( "Can't get connection from Pool", e );
@@ -591,30 +624,12 @@ public class SQLConnection implements IPentahoLoggingConnection, ILimitableConne
   public boolean connect( final Properties props ) {
     close();
     String jndiName = props.getProperty( IPentahoConnection.JNDI_NAME_KEY );
-    if ( ( jndiName != null ) && ( jndiName.length() > 0 ) ) {
+    if ( jndiName != null && !jndiName.isEmpty() ) {
       initWithJNDI( jndiName );
     } else {
-      String connectionName = props.getProperty( IPentahoConnection.CONNECTION_NAME );
-      if ( ( connectionName != null ) && ( connectionName.length() > 0 ) ) {
-        IDatabaseConnection databaseConnection = (IDatabaseConnection) props.get( IPentahoConnection.CONNECTION );
-        initDataSource( databaseConnection );
-      } else {
-        String driver = props.getProperty( IPentahoConnection.DRIVER_KEY );
-        String provider = props.getProperty( IPentahoConnection.LOCATION_KEY );
-        String userName = props.getProperty( IPentahoConnection.USERNAME_KEY );
-        String password = props.getProperty( IPentahoConnection.PASSWORD_KEY );
-        init( driver, provider, userName, password );
-        String query = props.getProperty( IPentahoConnection.QUERY_KEY );
-        if ( ( query != null ) && ( query.length() > 0 ) ) {
-          try {
-            executeQuery( query );
-          } catch ( Exception e ) {
-            logger.error( "Can't execute query", e );
-          }
-        }
-      }
+      initOther( props );
     }
-    return ( ( nativeConnection != null ) && !isClosed() );
+    return ( nativeConnection != null && !isClosed() );
   }
 
   public int execute( final String query ) throws SQLException {

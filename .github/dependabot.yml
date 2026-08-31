@@ -1,0 +1,32 @@
+# ******************************************************************************
+#
+# Pentaho
+#
+# Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+#
+# Use of this software is governed by the Business Source License included
+# in the LICENSE.TXT file.
+#
+# Change Date: 2030-06-15
+# ******************************************************************************
+version: 2
+registries:
+  one-artifactory:
+    type: maven-repository
+    url: https://repo.pentaho.com/artifactory/pnt-mvn
+    username: ${{secrets.DEPENDABOT_ONE_USER}}
+    password: ${{secrets.DEPENDABOT_ONE_KEY}}
+    replaces-base: true
+updates:
+  - package-ecosystem: "maven"
+    directory: "/"
+    registries:
+      - one-artifactory
+    schedule:
+      interval: daily
+    ignore:
+      - dependency-name: org.apache.maven:*
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"

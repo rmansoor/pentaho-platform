@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -6,11 +17,11 @@
     <parent>
         <artifactId>pentaho-platform-ce-parent</artifactId>
         <groupId>pentaho</groupId>
-        <version>10.1.0.0-SNAPSHOT</version>
+        <version>11.1.0.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>pentaho-tomcat-logs</artifactId>
-    <version>10.1.0.0-SNAPSHOT</version>
+    <version>11.1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <dependencies>

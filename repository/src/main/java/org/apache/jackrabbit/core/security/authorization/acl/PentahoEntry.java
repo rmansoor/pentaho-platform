@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.apache.jackrabbit.core.security.authorization.acl;
 
@@ -31,6 +25,7 @@ import org.apache.jackrabbit.core.security.authorization.PrivilegeBits;
 import org.apache.jackrabbit.core.security.authorization.PrivilegeManagerImpl;
 import org.apache.jackrabbit.core.value.InternalValue;
 import org.apache.jackrabbit.spi.Name;
+import org.pentaho.platform.repository2.unified.jcr.jackrabbit.security.SpringSecurityRolePrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +33,6 @@ import javax.jcr.NodeIterator;
 import javax.jcr.RepositoryException;
 import javax.jcr.Value;
 import java.security.Principal;
-import java.security.acl.Group;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -158,7 +152,7 @@ public class PentahoEntry implements AccessControlConstants {
         boolean isGroupEntry = false;
         Principal princ = principalMgr.getPrincipal(principalName);
         if (princ != null) {
-          isGroupEntry = (princ instanceof Group );
+          isGroupEntry = ( princ instanceof SpringSecurityRolePrincipal );
         }
 
         InternalValue[] privValues = aceNode.getProperty(P_PRIVILEGES).internalGetValues();

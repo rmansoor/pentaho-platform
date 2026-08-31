@@ -1,35 +1,30 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importer.mimeType;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBElement;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.JAXBElement;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.Unmarshaller;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.transform.Source;
@@ -126,4 +121,32 @@ public class MimeTypeListFactory {
     }
     return mimeTypeList;
   }
+
+  public ImportHandlerMimeTypeDefinitionsDto getImportHandlerMimeTypeDefinitions() {
+    return importHandlerMimeTypeDefinitions;
+  }
+
+  /**
+   * Register a mime type definition file with the ImportHandlerMimeTypeDefinitions from plugins
+   * @param pathToMimeTypeDefinitionFile
+   * @param importHandlerClass
+   * @return list of mime types that were registered
+   */
+  public List<IMimeType> registerMimeTypeDefinition( String pathToMimeTypeDefinitionFile, String importHandlerClass ) {
+    try ( FileInputStream inputStream = new FileInputStream(
+        PentahoSystem.getApplicationContext().getSolutionPath( "" ) + pathToMimeTypeDefinitionFile ) ) {
+      ImportHandlerMimeTypeDefinitionsDto pluginMimeTypeDefinitionDto = fromXml( inputStream );
+      getImportHandlerMimeTypeDefinitions().registerImportHandler( pluginMimeTypeDefinitionDto.getImportHandler() );
+      log.info( "Successfully registered mime type definition " + pathToMimeTypeDefinitionFile );
+      return createMimeTypeList( importHandlerClass );
+    } catch ( FileNotFoundException e ) {
+      log.error( "ImportHandlerMimeTypeDefinition File \"" + pathToMimeTypeDefinitionFile + "\" not found", e );
+    } catch ( JAXBException e ) {
+      log.error( "Could not marshal the ImportHandlerMimeTypeDefinition file \"" + pathToMimeTypeDefinitionFile + "\"", e );
+    } catch ( IOException e ) {
+      log.error( "Could not close the FileInputStream for the ImportHandlerMimeTypeDefinition file \"" + pathToMimeTypeDefinitionFile + "\"", e );
+    }
+    return Collections.emptyList();
+  }
+
 }

@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importexport;
 
@@ -24,23 +18,32 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicReference;
 
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.WebResource;
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.UnrecognizedOptionException;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.reflect.FieldUtils;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.FixMethodOrder;
-import org.junit.Test;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.junit.runners.MethodSorters;
+import org.junit.BeforeClass;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.Assert;
+import org.junit.FixMethodOrder;
+
 import org.mockito.MockedStatic;
 import org.pentaho.platform.engine.core.output.MultiOutputStream;
 import org.pentaho.platform.plugin.services.importexport.CommandLineProcessor.RequestType;
@@ -166,12 +169,12 @@ public class CommandLineProcessorTest extends Assert {
   public void get003WriteFiletest() throws Exception {
     String exception = "Throw exception on purpose to test the writeFile() method.";
 
-    try ( MockedStatic<Client> clientMock = mockStatic( Client.class ) ) {
+    try ( MockedStatic<ClientBuilder> clientMock = mockStatic( ClientBuilder.class ) ) {
       Client mockClient = mock( Client.class );
-      WebResource mockWebResource = mock( WebResource.class );
-      when( mockWebResource.type( nullable( String.class ) ) ).thenThrow( new RuntimeException( exception ) );
-      when( mockClient.resource( nullable( String.class ) ) ).thenReturn( mockWebResource );
-      clientMock.when( () -> Client.create( any() ) ).thenReturn( mockClient );
+      WebTarget mockWebTarget = mock( WebTarget.class );
+      when( mockWebTarget.request( any( MediaType.class ) ) ).thenThrow( new RuntimeException( exception ) );
+      when( mockClient.target( nullable( String.class ) ) ).thenReturn( mockWebTarget );
+      clientMock.when( () -> ClientBuilder.newClient( any() ) ).thenReturn( mockClient );
 
       File file = File.createTempFile( "CommandLineProcessorTest", ".log" );
 
@@ -187,11 +190,51 @@ public class CommandLineProcessorTest extends Assert {
       //When an unknown host URL is used with an import, the private method writeFile() is called.
       CommandLineProcessor.main( unknownHostUrl );
       try {
-        assertEquals( exception, FileUtils.readFileToString( file ) );
+        assertEquals( exception, FileUtils.readFileToString( file, StandardCharsets.UTF_8 ) );
       } finally {
         file.delete();
       }
       assertTrue( CONSOLE_BUFFER.toString().contains( exception ) );
+    }
+  }
+
+  @Test
+  public void importSendsConfiguredLogLevel() throws Exception {
+    try ( MockedStatic<ClientBuilder> clientMock = mockStatic( ClientBuilder.class ) ) {
+      Client mockClient = mock( Client.class );
+      WebTarget mockWebTarget = mock( WebTarget.class );
+      Invocation.Builder mockRequest = mock( Invocation.Builder.class );
+      Response mockResponse = mock( Response.class );
+      AtomicReference<String> requestLogLevel = new AtomicReference<>();
+      when( mockClient.target( nullable( String.class ) ) ).thenReturn( mockWebTarget );
+      when( mockWebTarget.request( any( MediaType.class ) ) ).thenReturn( mockRequest );
+      when( mockRequest.accept( MediaType.TEXT_HTML_TYPE ) ).thenReturn( mockRequest );
+      when( mockRequest.post( any( Entity.class ) ) ).thenAnswer( invocation -> {
+        Entity entity = invocation.getArgument( 0 );
+        FormDataMultiPart multipart = (FormDataMultiPart) entity.getEntity();
+        requestLogLevel.set( multipart.getField( "logLevel" ).getValue() );
+        return mockResponse;
+      } );
+      when( mockResponse.getStatus() ).thenReturn( Response.Status.OK.getStatusCode() );
+      when( mockResponse.hasEntity() ).thenReturn( false );
+      clientMock.when( () -> ClientBuilder.newClient( any() ) ).thenReturn( mockClient );
+
+      File file = File.createTempFile( "CommandLineProcessorTest", ".zip" );
+      try {
+        CommandLineProcessor.main( new String[] {
+          "--import",
+          "--url=http://test/pentaho",
+          "--username=admin",
+          "--password=password",
+          "--path=/test",
+          "--file-path=" + file.getAbsolutePath(),
+          "--logLevel=DEBUG"
+        } );
+
+        assertEquals( "DEBUG", requestLogLevel.get() );
+      } finally {
+        file.delete();
+      }
     }
   }
 

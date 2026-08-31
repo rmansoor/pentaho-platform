@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importer;
 
@@ -25,7 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.di.core.exception.KettleMissingPluginsException;
@@ -61,6 +55,8 @@ public class PentahoPlatformImporter implements IPlatformImporter {
   private IPlatformMimeResolver mimeResolver;
   private IRepositoryImportLogger repositoryImportLogger;
   private IRepositoryContentConverterHandler repositoryContentConverterHandler;
+  private static final String IMPORT = "import";
+  private static final String RESTORE = "restore";
 
   public PentahoPlatformImporter( List<IPlatformImportHandler> handlerList,
                                   IRepositoryContentConverterHandler repositoryContentConverterHandler ) {
@@ -139,7 +135,7 @@ public class PentahoPlatformImporter implements IPlatformImporter {
         );
       } catch ( IOException e1 ) {
         throw new PlatformImportException( messages
-            .getString( "PentahoPlatformImporter.ERROR_0005_PUBLISH_GENERAL_ERRORR", e1.getLocalizedMessage() ),
+            .getString( "PentahoPlatformImporter.ERROR_0005_PUBLISH_GENERAL_ERROR", e1.getLocalizedMessage() ),
             PlatformImportException.PUBLISH_GENERAL_ERROR, e1
         );
       } catch ( PlatformImportException pe ) {
@@ -148,13 +144,13 @@ public class PentahoPlatformImporter implements IPlatformImporter {
         Throwable cause = ce.getCause();
         if ( cause instanceof KettleMissingPluginsException ) {
           throw new PlatformImportException( messages
-            .getString( "PentahoPlatformImporter.ERROR_0008_PUBLISH_JOB_OR_TRANS_WITH_MISSING_PLUGINS", cause.getLocalizedMessage() ),
-            PlatformImportException.PUBLISH_JOB_OR_TRANS_WITH_MISSING_PLUGINS, cause
+              .getString( "PentahoPlatformImporter.ERROR_0008_PUBLISH_JOB_OR_TRANS_WITH_MISSING_PLUGINS", cause.getLocalizedMessage() ),
+              PlatformImportException.PUBLISH_JOB_OR_TRANS_WITH_MISSING_PLUGINS, cause
           );
         }
       } catch ( Exception e1 ) {
         throw new PlatformImportException( messages
-            .getString( "PentahoPlatformImporter.ERROR_0005_PUBLISH_GENERAL_ERRORR", e1.getLocalizedMessage() ),
+            .getString( "PentahoPlatformImporter.ERROR_0005_PUBLISH_GENERAL_ERROR", e1.getLocalizedMessage() ),
             PlatformImportException.PUBLISH_GENERAL_ERROR, e1
         );
       }
@@ -177,6 +173,11 @@ public class PentahoPlatformImporter implements IPlatformImporter {
       if ( e.getCause() instanceof UnifiedRepositoryAccessDeniedException ) {
         throw new UnifiedRepositoryAccessDeniedException();
       }
+      if ( ( e instanceof PlatformImportException )
+          && ((PlatformImportException) e).getErrorStatus() == PlatformImportException.PUBLISH_PARTIAL_UPLOAD ) {
+        // needs to be propagated even if it was logged.
+        throw e;
+      }
     }
   }
 
@@ -186,7 +187,7 @@ public class PentahoPlatformImporter implements IPlatformImporter {
     // If doing a mondrian publish then there will be no active logger
     if ( repositoryImportLogger.hasLogger() && repositoryFilePath != null && repositoryFilePath.length() > 0 ) {
       repositoryImportLogger.setCurrentFilePath( repositoryFilePath );
-      repositoryImportLogger.warn( file.getName() );
+      repositoryImportLogger.debug( "Starting " + ( repositoryImportLogger.isPerformingRestore() ? RESTORE : IMPORT ) + " of file " + file.getName() );
     }
   }
 

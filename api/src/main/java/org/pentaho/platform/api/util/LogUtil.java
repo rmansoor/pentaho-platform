@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2022 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.api.util;
 
@@ -35,6 +29,7 @@ import org.apache.logging.log4j.core.layout.PatternLayout;
 
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -42,6 +37,8 @@ import java.util.Map;
  *
  */
 public class LogUtil {
+
+  private static final Map<LoggerConfigKey, ManagedLoggerConfig> MANAGED_LOGGER_CONFIGS = new HashMap<>();
 
   /**
    * Adds an appender to a logger creating a LoggerConfig if necessary so that the appender only listens to the
@@ -86,8 +83,204 @@ public class LogUtil {
     Configuration config = ctx.getConfiguration();
     LoggerConfig loggerConfig = config.getLoggerConfig( logger.getName() );
     loggerConfig.removeAppender( appender.getName() );
+    if ( !isAppenderAttached( config, appender.getName() ) ) {
+      config.getAppenders().remove( appender.getName() );
+      appender.stop();
+    }
     ctx.updateLoggers();
-    appender.stop();
+  }
+
+  private static boolean isAppenderAttached( Configuration config, String appenderName ) {
+    for ( LoggerConfig loggerConfig : config.getLoggers().values() ) {
+      if ( loggerConfig.getAppenders().containsKey( appenderName ) ) {
+        return true;
+      }
+    }
+    return config.getRootLogger().getAppenders().containsKey( appenderName );
+  }
+
+  /**
+   * Adds an appender to a logger and temporarily enables the supplied log level. Closing the returned registration
+   * removes the appender and restores the logger's previous configuration.
+   *
+   * @param appender
+   * @param logger
+   * @param level
+   * @param filter
+   * @return a registration that must be closed when the appender is no longer needed
+   */
+  public static AppenderRegistration addAppenderWithLevel( Appender appender, Logger logger, Level level,
+                                                            Filter filter ) {
+    LoggerContext ctx = (LoggerContext) LogManager.getContext( false );
+    Configuration config = ctx.getConfiguration();
+    LoggerConfigKey key = new LoggerConfigKey( ctx, logger.getName() );
+
+    synchronized ( MANAGED_LOGGER_CONFIGS ) {
+      ManagedLoggerConfig managedLoggerConfig = MANAGED_LOGGER_CONFIGS.get( key );
+      boolean newManagedLoggerConfig = managedLoggerConfig == null;
+      if ( managedLoggerConfig == null ) {
+        LoggerConfig loggerConfig = config.getLoggers().get( logger.getName() );
+        boolean created = loggerConfig == null;
+        Level previousLevel = null;
+        boolean previousAdditivity = false;
+        if ( created ) {
+          LoggerConfig parentConfig = config.getLoggerConfig( logger.getName() );
+          loggerConfig = new LoggerConfig( logger.getName(), level, false );
+          loggerConfig.setParent( parentConfig );
+          config.addLogger( logger.getName(), loggerConfig );
+        } else {
+          previousLevel = loggerConfig.getLevel();
+          previousAdditivity = loggerConfig.isAdditive();
+        }
+        managedLoggerConfig = new ManagedLoggerConfig( config, loggerConfig, created, previousLevel,
+          previousAdditivity );
+      }
+
+      try {
+        managedLoggerConfig.addAppender( appender, level, filter );
+        ctx.updateLoggers();
+        if ( newManagedLoggerConfig ) {
+          MANAGED_LOGGER_CONFIGS.put( key, managedLoggerConfig );
+        }
+      } catch ( RuntimeException e ) {
+        managedLoggerConfig.removeAppender( appender );
+        if ( newManagedLoggerConfig ) {
+          managedLoggerConfig.restore( key.loggerName );
+        }
+        ctx.updateLoggers();
+        throw e;
+      }
+    }
+    return new AppenderRegistration( key, appender );
+  }
+
+  public static final class AppenderRegistration implements AutoCloseable {
+    private final LoggerConfigKey key;
+    private final Appender appender;
+    private boolean closed;
+
+    private AppenderRegistration( LoggerConfigKey key, Appender appender ) {
+      this.key = key;
+      this.appender = appender;
+    }
+
+    @Override
+    public void close() {
+      synchronized ( MANAGED_LOGGER_CONFIGS ) {
+        if ( closed ) {
+          return;
+        }
+        closed = true;
+
+        ManagedLoggerConfig managedLoggerConfig = MANAGED_LOGGER_CONFIGS.get( key );
+        if ( managedLoggerConfig != null ) {
+          managedLoggerConfig.removeAppender( appender );
+          if ( managedLoggerConfig.isEmpty() ) {
+            managedLoggerConfig.restore( key.loggerName );
+            MANAGED_LOGGER_CONFIGS.remove( key );
+          }
+          key.context.updateLoggers();
+        }
+      }
+    }
+  }
+
+  private static final class ManagedLoggerConfig {
+    private final Configuration configuration;
+    private final LoggerConfig loggerConfig;
+    private final boolean created;
+    private final Level previousLevel;
+    private final boolean previousAdditivity;
+    private final Map<String, Appender> appenders = new HashMap<>();
+    private final Map<String, Level> appenderLevels = new HashMap<>();
+
+    private ManagedLoggerConfig( Configuration configuration, LoggerConfig loggerConfig, boolean created,
+                                 Level previousLevel, boolean previousAdditivity ) {
+      this.configuration = configuration;
+      this.loggerConfig = loggerConfig;
+      this.created = created;
+      this.previousLevel = previousLevel;
+      this.previousAdditivity = previousAdditivity;
+    }
+
+    private void addAppender( Appender appender, Level level, Filter filter ) {
+      appender.start();
+      configuration.addAppender( appender );
+      loggerConfig.setAdditive( false );
+      loggerConfig.addAppender( appender, level, filter );
+      appenders.put( appender.getName(), appender );
+      appenderLevels.put( appender.getName(), level );
+      loggerConfig.setLevel( getEffectiveLevel() );
+    }
+
+    private void removeAppender( Appender appender ) {
+      loggerConfig.removeAppender( appender.getName() );
+      configuration.getAppenders().remove( appender.getName() );
+      appenders.remove( appender.getName() );
+      appenderLevels.remove( appender.getName() );
+      if ( !appenders.isEmpty() ) {
+        loggerConfig.setLevel( getEffectiveLevel() );
+      }
+      appender.stop();
+    }
+
+    private Level getEffectiveLevel() {
+      Level effectiveLevel = created ? null : previousLevel;
+      for ( Level appenderLevel : appenderLevels.values() ) {
+        effectiveLevel = getMostVerboseLevel( effectiveLevel, appenderLevel );
+      }
+      return effectiveLevel;
+    }
+
+    private Level getMostVerboseLevel( Level first, Level second ) {
+      if ( first == null ) {
+        return second;
+      }
+      if ( second == null ) {
+        return first;
+      }
+      return first.intLevel() >= second.intLevel() ? first : second;
+    }
+
+    private boolean isEmpty() {
+      return appenders.isEmpty();
+    }
+
+    private void restore( String loggerName ) {
+      if ( created ) {
+        configuration.removeLogger( loggerName );
+      } else {
+        loggerConfig.setLevel( previousLevel );
+        loggerConfig.setAdditive( previousAdditivity );
+      }
+    }
+  }
+
+  private static final class LoggerConfigKey {
+    private final LoggerContext context;
+    private final String loggerName;
+
+    private LoggerConfigKey( LoggerContext context, String loggerName ) {
+      this.context = context;
+      this.loggerName = loggerName;
+    }
+
+    @Override
+    public boolean equals( Object object ) {
+      if ( this == object ) {
+        return true;
+      }
+      if ( !( object instanceof LoggerConfigKey ) ) {
+        return false;
+      }
+      LoggerConfigKey other = (LoggerConfigKey) object;
+      return context == other.context && loggerName.equals( other.loggerName );
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * System.identityHashCode( context ) + loggerName.hashCode();
+    }
   }
 
   public static Appender makeAppender( String name, StringWriter sw, String layout ) {

@@ -1,28 +1,21 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.apache.jackrabbit.core.security.authorization.acl;
 
 import java.io.InputStream;
 import java.security.Principal;
-import java.security.acl.Group;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,7 +29,7 @@ import javax.jcr.security.AccessControlEntry;
 import javax.jcr.security.Privilege;
 import javax.jcr.version.VersionHistory;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.jackrabbit.api.JackrabbitWorkspace;
 import org.apache.jackrabbit.api.security.JackrabbitAccessControlManager;
 import org.apache.jackrabbit.core.NodeImpl;
@@ -55,6 +48,7 @@ import org.pentaho.platform.engine.security.SecurityHelper;
 import org.pentaho.platform.repository2.unified.jcr.IAclMetadataStrategy.AclMetadata;
 import org.pentaho.platform.repository2.unified.jcr.JcrRepositoryFileAclUtils;
 import org.pentaho.platform.repository2.unified.jcr.JcrTenantUtils;
+import org.pentaho.platform.repository2.unified.jcr.jackrabbit.security.SpringSecurityRolePrincipal;
 import org.pentaho.platform.security.policy.rolebased.IRoleAuthorizationPolicyRoleBindingDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -399,7 +393,7 @@ public class PentahoEntryCollector extends EntryCollector {
     Principal ownerPrincipal = systemSession.getPrincipalManager().getPrincipal( owner );
     if ( ownerPrincipal != null ) {
       Principal magicPrincipal = null;
-      if ( ownerPrincipal instanceof Group ) {
+      if ( ownerPrincipal instanceof SpringSecurityRolePrincipal ) {
         magicPrincipal = new MagicGroup( JcrTenantUtils.getTenantedUser( ownerPrincipal.getName() ) );
       } else {
         magicPrincipal = new MagicPrincipal( JcrTenantUtils.getTenantedUser( ownerPrincipal.getName() ) );
@@ -473,7 +467,7 @@ public class PentahoEntryCollector extends EntryCollector {
   protected List<String> getRuntimeRoleNames() {
     IPentahoSession pentahoSession = PentahoSessionHolder.getSession();
     List<String> runtimeRoles = new ArrayList<String>();
-    Assert.state( pentahoSession != null );
+    Assert.state( pentahoSession != null, "Pentaho session must not be null" );
     Authentication authentication = SecurityHelper.getInstance().getAuthentication();
     if ( authentication != null ) {
       Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
@@ -514,7 +508,7 @@ public class PentahoEntryCollector extends EntryCollector {
     if ( ace != null ) {
 
       Principal principal = ace.getPrincipal();
-      boolean isGroupEntry = principal instanceof Group;
+      boolean isGroupEntry = principal instanceof SpringSecurityRolePrincipal;
       PrivilegeBits bits = ( (ACLTemplate.Entry) ace ).getPrivilegeBits();
       boolean isAllow = ( (ACLTemplate.Entry) ace ).isAllow();
 

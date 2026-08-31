@@ -1,30 +1,25 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.test.platform.web.http.api;
 
-import com.sun.jersey.api.client.ClientResponse;
+import jakarta.ws.rs.core.Response;
 import junit.framework.AssertionFailedError;
 
-import javax.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.MediaType;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.zip.ZipInputStream;
 
 import static junit.framework.Assert.assertEquals;
@@ -33,21 +28,21 @@ import static junit.framework.Assert.assertNotNull;
 @SuppressWarnings( "nls" )
 public class JerseyTestUtil {
 
-  protected static void assertResponse( ClientResponse response, ClientResponse.Status expectedStatus ) {
+  protected static void assertResponse( Response response, Response.Status expectedStatus ) {
     assertResponse( response, expectedStatus, null );
   }
 
-  public static void assertResponse( ClientResponse response, ClientResponse.Status expectedStatus,
+  public static void assertResponse( Response response, Response.Status expectedStatus,
       String expectedContentType ) {
     try {
-      assertEquals( expectedStatus, response.getClientResponseStatus() );
+      assertEquals( expectedStatus.getStatusCode(), response.getStatus() );
     } catch ( AssertionFailedError e ) {
       throw new AssertionFailedError( "Response status incorrect: " + e.getMessage() );
     }
 
     if ( expectedContentType != null ) {
       try {
-        assertContentType( response.getType(), expectedContentType );
+        assertContentType( response.getMediaType(), expectedContentType );
       } catch ( AssertionFailedError e ) {
         throw new AssertionFailedError( "Response media type incorrect: " + e.getMessage() );
       }
@@ -78,8 +73,8 @@ public class JerseyTestUtil {
     }
   }
 
-  public static void assertResponseIsZip( ClientResponse response ) {
-    ZipInputStream zis = new ZipInputStream( response.getEntityInputStream() );
+  public static void assertResponseIsZip( Response response ) {
+    ZipInputStream zis = new ZipInputStream( response.readEntity( InputStream.class ) );
     byte[] singleByte = new byte[1];
     try {
       zis.read( singleByte );

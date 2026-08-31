@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2024 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.mantle.client;
 
@@ -94,6 +88,10 @@ public class MantleUtils {
   public static native String getSchedulerPluginContextURL()/*-{
     if (typeof $wnd.pho.getSchedulerPluginContextURL !== "undefined" ) {
       return $wnd.pho.getSchedulerPluginContextURL();
+    } else {
+      // fallback to the default location when the getter is unavailable
+      // e.g. race condition loading GWT JavaScript code, PUC JS executes before the Scheduler Plugin JS is loaded
+      return $wnd.location.protocol + "//" + $wnd.location.host + $wnd.CONTEXT_PATH + "plugin/scheduler-plugin/";
     }
   }-*/;
 

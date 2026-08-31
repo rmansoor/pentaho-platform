@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2020 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.jcr.sejcr;
 
@@ -100,10 +94,11 @@ class GuavaCachePoolPentahoJcrSessionFactory extends NoCachePentahoJcrSessionFac
       .maximumSize( cacheSize )
       .removalListener( (RemovalListener<CacheKey, Session>) objectObjectRemovalNotification -> {
         Session session = objectObjectRemovalNotification.getValue();
-        if ( sessionIsUnused( session ) ) {
+        boolean sessionIsLive = session.isLive();
+        if ( sessionIsLive && sessionIsUnused( session ) ) {
           logger.debug( "Logging out cached session after eviction " + session );
           session.logout();
-        } else {
+        } else if ( sessionIsLive ) {
           logger.warn( "Session has expired from cache, but still marked as in use.  May be orphaned.  " + session );
         }
       } ).recordStats()
@@ -159,6 +154,20 @@ class GuavaCachePoolPentahoJcrSessionFactory extends NoCachePentahoJcrSessionFac
         }
 
         session.refresh( false );
+        
+        // Increment usage count to track factory retrieval
+        // This must be decremented by PentahoJcrTemplate.decrementFactoryProtection()
+        // to maintain balanced reference counting and prevent premature cache eviction
+        Object usageCount = session.getAttribute( USAGE_COUNT );
+        if ( usageCount instanceof AtomicInteger ) {
+          int newCount = ( (AtomicInteger) usageCount ).incrementAndGet();
+          if ( logger.isDebugEnabled() ) {
+            logger.debug( "[JCR-FACTORY-RETRIEVE] Thread=" + Thread.currentThread().getName()
+              + " SessionId=" + System.identityHashCode( session )
+              + " RefCount=" + newCount
+              + " User=" + ( (SimpleCredentials) creds ).getUserID() );
+          }
+        }
 
       } catch ( Exception e ) {
         logger.error( "Error obtaining session from cache. Creating one directly instead: " + creds, e );

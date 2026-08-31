@@ -1,33 +1,28 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.test.platform.web.http.api;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.test.framework.AppDescriptor;
-import com.sun.jersey.test.framework.JerseyTest;
-import com.sun.jersey.test.framework.WebAppDescriptor;
-import com.sun.jersey.test.framework.spi.container.TestContainerFactory;
-import com.sun.jersey.test.framework.spi.container.grizzly.GrizzlyTestContainerFactory;
-import com.sun.jersey.test.framework.spi.container.grizzly.web.GrizzlyWebTestContainerFactory;
+import org.glassfish.jersey.server.ResourceConfig;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
+import org.glassfish.jersey.servlet.ServletContainer;
+import org.glassfish.jersey.test.DeploymentContext;
+import org.glassfish.jersey.test.ServletDeploymentContext;
+import org.glassfish.jersey.test.grizzly.GrizzlyWebTestContainerFactory;
+import org.glassfish.jersey.test.spi.TestContainerFactory;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.logging.log4j.Level;
@@ -65,7 +60,8 @@ import org.pentaho.test.platform.engine.core.MicroPlatform;
 import org.pentaho.test.platform.utils.TestResourceLocation;
 import org.tuckey.web.filters.urlrewrite.RequestProxy;
 
-import javax.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.MediaType;
+import org.glassfish.jersey.test.JerseyTest;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
@@ -77,13 +73,14 @@ public class FilePerspectiveResourceIT extends JerseyTest {
 
   private static MicroPlatform mp = new MicroPlatform( TestResourceLocation.TEST_RESOURCES + "/FileOutputResourceTest/" );
 
-  private static WebAppDescriptor webAppDescriptor = new WebAppDescriptor.Builder(
-      "org.pentaho.platform.web.http.api.resources" ).contextPath( "api" ).addFilter(
-      PentahoRequestContextFilter.class, "pentahoRequestContextFilter" ).build();
+  private static ResourceConfig config = new ResourceConfig().packages( "org.pentaho.platform.web.http.api.resources" );
+  private static ServletDeploymentContext servletDeploymentContext = ServletDeploymentContext.forServlet( new ServletContainer( config ) )
+     .addFilter( PentahoRequestContextFilter.class, "pentahoRequestContextFilter" )
+     .contextPath( "api" )
+     .build();
 
   public FilePerspectiveResourceIT() throws Exception {
-    this.setTestContainerFactory( new GrizzlyTestContainerFactory() );
-    mp.setFullyQualifiedServerUrl( getBaseURI() + webAppDescriptor.getContextPath() + "/" );
+    mp.setFullyQualifiedServerUrl( getBaseUri() + servletDeploymentContext.getContextPath() + "/" );
     mp.define( IPluginManager.class, DefaultPluginManager.class, Scope.GLOBAL );
     mp.define( IPluginResourceLoader.class, PluginResourceLoader.class, Scope.GLOBAL );
     mp.define( IRoleAuthorizationPolicyRoleBindingDao.class, RoleAuthorizationPolicy.class, Scope.GLOBAL );
@@ -93,8 +90,8 @@ public class FilePerspectiveResourceIT extends JerseyTest {
   }
 
   @Override
-  protected AppDescriptor configure() {
-    return webAppDescriptor;
+  protected DeploymentContext configureDeployment() {
+    return servletDeploymentContext;
   }
 
   @Override
@@ -122,10 +119,10 @@ public class FilePerspectiveResourceIT extends JerseyTest {
   }
 
   protected void createTestFile( String path, String text ) {
-    WebResource webResource = resource();
-    ClientResponse postResponse =
-        webResource.path( path ).type( MediaType.TEXT_PLAIN ).put( ClientResponse.class, text );
-    assertEquals( ClientResponse.Status.OK, postResponse.getClientResponseStatus() );
+    WebTarget webTarget = target();
+    Response postResponse =
+        webTarget.path( path ).request( MediaType.TEXT_PLAIN ).put( Entity.entity( text, MediaType.TEXT_PLAIN ) );
+    assertEquals( Response.Status.OK, postResponse.getStatus() );
   }
 
   @Test

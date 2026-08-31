@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.servlet;
 
@@ -28,11 +22,12 @@ import org.pentaho.platform.web.http.context.WebApplicationContext;
 import org.pentaho.platform.web.websocket.WebsocketEndpointConfig;
 import org.springframework.beans.factory.ListableBeanFactory;
 
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletContext;
-import javax.websocket.DeploymentException;
-import javax.websocket.server.ServerContainer;
-import javax.websocket.server.ServerEndpointConfig;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.websocket.DeploymentException;
+import jakarta.websocket.server.ServerContainer;
+import jakarta.websocket.server.ServerEndpointConfig;
 import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.List;
@@ -61,6 +56,39 @@ public class PluginDispatchServletTest {
   public void testGetServerUrl() {
     String serverUrl = pluginDispatchServlet.getServerUrl( "/pentaho" );
     assertEquals( "http://localhost:8080/", serverUrl );
+  }
+
+  public void testGetDispatchKey( String pathInfo, String expected ) {
+    final HttpServletRequest request = mock( HttpServletRequest.class );
+
+    when( request.getPathInfo() ).thenReturn( pathInfo );
+
+    assertEquals( expected, pluginDispatchServlet.getDispatchKey( request ) );
+  }
+
+  @Test
+  public void testGetDispatchKey() {
+    testGetDispatchKey( "/myPlugin/myServlet", "myPlugin/myServlet" );
+  }
+
+  @Test
+  public void testGetDispatchKeySuffixForwardSlash() {
+    testGetDispatchKey( "/myPlugin/myServlet/", "myPlugin/myServlet" );
+  }
+
+  @Test
+  public void testGetDispatchKeyMatch() {
+    testGetDispatchKey( "myPlugin/myServlet", "myPlugin/myServlet" );
+  }
+
+  @Test
+  public void testGetDispatchEmpty() {
+    testGetDispatchKey( "", null );
+  }
+
+  @Test
+  public void testGetDispatchNull() {
+    testGetDispatchKey( null, null );
   }
 
   @Test

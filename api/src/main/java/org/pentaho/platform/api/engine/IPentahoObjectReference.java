@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.api.engine;
 
@@ -32,14 +26,15 @@ import java.util.Map;
  * method is called
  */
 public interface IPentahoObjectReference<T> extends Comparable<IPentahoObjectReference<T>> {
-  Map<String, Object> getAttributes();
   Integer DEFAULT_RANKING = 0;
+
+  Map<String, Object> getAttributes();
 
   T getObject();
 
   /**
    * Get the declared type of the Object described/supplied by this reference. Implementations should not require the
-   * construction of the Object to determine it's type. The actual Object must inherit from the type returned from this
+   * construction of the Object to determine its type. The actual Object must inherit from the type returned from this
    * method.
    *
    * @return declared type of this reference
@@ -50,8 +45,8 @@ public interface IPentahoObjectReference<T> extends Comparable<IPentahoObjectRef
    * Returns the ranking of the reference. This ranking is used when determining which of several references should be
    * returned from a query. It also controls the ordering of reference lists.
    * <p/>
-   * Zero is the default. The higher the number the higher the ranking. Collections of references are ordered highest
-   * ranking first.
+   * Zero is the default, {@link #DEFAULT_RANKING}. The higher the number the higher the ranking. Collections of
+   * references are ordered highest ranking first.
    *
    * @return Integer ranking
    */

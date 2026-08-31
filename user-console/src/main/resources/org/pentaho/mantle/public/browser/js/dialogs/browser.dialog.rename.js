@@ -1,19 +1,16 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2020 Hitachi Vantara..  All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 define([
   "../browser.dialogs",
@@ -22,11 +19,12 @@ define([
   "../browser.utils",
   "common-ui/util/URLEncoder",
   "dojox/html/entities",
+  "backbone",
   "common-ui/bootstrap",
   "common-ui/jquery-pentaho-i18n",
   "common-ui/jquery",
   "pentaho/utils"
-], function (Dialog, DialogTemplates, RenameTemplates, Utils, Encoder, Entities) {
+], function (Dialog, DialogTemplates, RenameTemplates, Utils, Encoder, Entities, Backbone) {
 
   var BrowserUtils = new Utils();
 
@@ -39,6 +37,7 @@ define([
 
     defaults: {
       name: null,
+      title: null,
       path: null,
       showOverrideDialog: true
     },
@@ -329,6 +328,11 @@ define([
               var val = renameField.val().replace(/^\s+|\s+$/gm,''); // get val and trim it;
               okButton.prop("disabled", val == me.model.get("name") || val.length == 0);
             });
+
+        var titleValue = me.model.get("title");
+        var titleNoExt = titleValue.replace(/\.[^.]+$/, ""); // needed because of upload bug
+        var name = me.model.get("name") || "";
+        this.$dialog.find("#title-field").val((titleValue && titleValue.trim().length > 0 && titleNoExt !== name && titleValue !== name) ? titleValue : "-");
       };
 
       this.RenameDialog = new Dialog(cfg, onShow);
@@ -378,7 +382,7 @@ define([
 
     view: null,
 
-    init: function (path, overrideType) {
+    init: function (path, title, overrideType) {
 
       var repoPath = Encoder.encodeRepositoryPath( path );
 
@@ -393,21 +397,8 @@ define([
       this.model.set("path", repoPath);
       this.model.set("name", name);
       this.view.overrideType = overrideType;
-
-      var me = this;
-      BrowserUtils._makeAjaxCall("GET", "json", BrowserUtils.getUrlBase() + "api/repo/files/" + FileBrowser.encodePathComponents(repoPath) + "/localeProperties", true,
-          function (success) {
-            if (success) {
-              var arr = success.stringKeyStringValueDto;
-              for (i in arr) {
-                var obj = arr[i];
-                if (obj.key === "file.title") {
-                  me.model.set("name", obj.value);
-                }
-              }
-            }
-            me.view.render();
-          });
+      this.model.set("title", title);
+      this.view.render();
     }
   }
 

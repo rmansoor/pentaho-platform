@@ -12,7 +12,7 @@
 * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 * See the GNU Lesser General Public License for more details.
 *
-* Copyright (c) 2002-2021 Hitachi Vantara..  All rights reserved.
+* Copyright (c) 2002-2025 Pentaho. All rights reserved.
 --%>
 
 <!DOCTYPE html>
@@ -53,13 +53,21 @@
   }
 </script>
 
-<!-- libs -->
-<script type="text/javascript" src="lib/jquery/jquery-${jquery.version}.js"></script>
-<script type="text/javascript" src="lib/underscore/underscore-min.js"></script>
-<script type="text/javascript" src="lib/backbone/backbone.js"></script>
-
 <!-- Require File Browser -->
 <script type="text/javascript">
+
+  require.config({
+    paths: {
+      "backbone": "lib/backbone/backbone"
+    },
+    shim: {
+      "backbone": {
+        deps: ["common-ui/underscore", "common-ui/jquery"],
+        exports: "Backbone"
+      }
+    }
+  });
+
   function openRepositoryFile(path, mode) {
     if (!path) {
       return;
@@ -68,14 +76,15 @@
       mode = "edit";
     }
 
-    // show the opened perspective
+    // show the opened perspective if this is a supported file type (except for pdf)
     var extension = path.split(".").pop();
     var hasPlugin = window.parent.PluginOptionHelper_hasPlugin(path);
+    var filename = path.split('\\').pop().split('/').pop();
     if (window.parent.mantle_isSupportedExtension(extension) && !hasPlugin) {
-        var filename = path.split('\\').pop().split('/').pop();
         window.parent.mantle_showPluginError(filename);
         return;
     }
+
     // force to open pdf files in another window due to issues with pdf readers in IE browsers
     // via class added on themeResources for IE browsers
     if (!($("body").hasClass("pdfReaderEmbeded") && extension == "pdf")) {
@@ -97,7 +106,7 @@
       FileBrowser.setCanPublish(canPublish);
       FileBrowser.setCanRead(canRead);
       FileBrowser.setCanCreate(canCreate);
-      
+
       var open_dir = window.parent.HOME_FOLDER;
       var initialFolderResourceUrl = CONTEXT_PATH + "api/mantle/session-variable?key=scheduler_folder";
 
@@ -109,7 +118,7 @@
 				success: function (response) {
 					if(response != null && response.length > 0) {
 
-						open_dir = decodeURIComponent(response);
+						open_dir = response;
 
 						var headers = {};
                         var csrfToken = csrfService.getToken(initialFolderResourceUrl);
@@ -131,7 +140,7 @@
 					FileBrowser.update(open_dir);
 				}
 			});
-      
+
       if (window.parent.mantle_addHandler == undefined) return;
 
       window.parent.mantle_addHandler("ShowHiddenFilesEvent", function (event) {
@@ -269,7 +278,7 @@
         else if (paramJson.eventSubType == "RefreshBrowsePerspectiveEvent") {
           //Clear the Browse Perspective cache
           window.parent.mantle_isBrowseRepoDirty = true;
-          FileBrowser.update(window.parent.HOME_FOLDER, paramJson.booleanParam); // refresh folder list
+          FileBrowser.update(null, paramJson.booleanParam); // refresh folder list
         }
         else if (paramJson.eventSubType == "RefreshFolderEvent") {
           FileBrowser.updateFolder(paramJson.stringParam); // refresh specified folder

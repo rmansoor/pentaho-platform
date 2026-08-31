@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.webservices.jaxws;
 
@@ -458,8 +452,8 @@ public class UnifiedRepositoryToWebServiceAdapter implements IUnifiedRepository 
 
   @Override
   public void setFileMetadata( final Serializable fileId, Map<String, Serializable> metadataMap ) {
-    Assert.notNull( fileId );
-    Assert.notNull( metadataMap );
+    Assert.notNull( fileId, "The file ID must not be null. Ensure a valid file ID is provided." );
+    Assert.notNull( metadataMap, "The metadata map must not be null. Ensure a valid metadata map is provided." );
     List<StringKeyStringValueDto> fileMetadataMap = new ArrayList<StringKeyStringValueDto>( metadataMap.size() );
     for ( final String key : metadataMap.keySet() ) {
       fileMetadataMap.add( new StringKeyStringValueDto( key, metadataMap.get( key ).toString() ) );
@@ -470,7 +464,7 @@ public class UnifiedRepositoryToWebServiceAdapter implements IUnifiedRepository 
   @Override
   public Map<String, Serializable> getFileMetadata( final Serializable fileId ) {
     final List<StringKeyStringValueDto> fileMetadata = repoWebService.getFileMetadata( fileId.toString() );
-    Assert.notNull( fileMetadata );
+    Assert.notNull( fileMetadata, "The file metadata must not be null. Ensure the metadata exists for the given file ID." );
     final Map<String, Serializable> repoFileMetadata = new HashMap<String, Serializable>( fileMetadata.size() );
     for ( StringKeyStringValueDto entry : fileMetadata ) {
       repoFileMetadata.put( entry.getKey(), entry.getValue() );
@@ -541,6 +535,11 @@ public class UnifiedRepositoryToWebServiceAdapter implements IUnifiedRepository 
   public RepositoryFile updateFolder( RepositoryFile folder, String versionMessage ) {
     return repositoryFileAdapter.unmarshal( repoWebService.updateFolder( repositoryFileAdapter.marshal( folder ),
         versionMessage ) );
+  }
+
+  @Override
+  public void logout() {
+    repoWebService.logout();
   }
 
 }

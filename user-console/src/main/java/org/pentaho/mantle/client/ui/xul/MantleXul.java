@@ -1,19 +1,16 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2023 Hitachi Vantara. All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.mantle.client.ui.xul;
 
@@ -364,42 +361,13 @@ public class MantleXul implements IXulLoaderCallback, SolutionBrowserOpenEventHa
             }
 
             public void onResponseReceived( Request request, Response response ) {
-
               JsArray<JsXulOverlay> jsoverlays =
                   JsXulOverlay.parseJson( JsonUtils.escapeJsonForEval( response.getText() ) );
 
-              ArrayList<XulOverlay> overlays = new ArrayList<XulOverlay>();
-              for ( int i = 0; i < jsoverlays.length(); i++ ) {
-                JsXulOverlay o = jsoverlays.get( i );
-                MantleXulOverlay overlay;
-                overlay =
-                    new MantleXulOverlay( o.getId(), o.getOverlayUri(), o.getSource(), o.getResourceBundleUri(),
-                        Integer.parseInt( o.getPriority() ) );
-                overlays.add( overlay );
-              }
-
-              MantleXul.this.addOverlays( overlays );
-
-              final String url = GWT.getHostPageBaseURL() + "plugin/data-access/api/permissions/hasDataAccess"; //$NON-NLS-1$
-              RequestBuilder builder = new RequestBuilder( RequestBuilder.GET, url );
-              builder.setHeader( "If-Modified-Since", "01 Jan 1970 00:00:00 GMT" );
-              builder.setHeader( "accept", "application/json" );
-
-              try {
-                builder.sendRequest( null, new RequestCallback() {
-
-                  public void onError( Request request, Throwable exception ) {
-                    Window.alert( exception.getMessage() );
-                  }
-
-                  public void onResponseReceived( Request request, Response response ) {
-                    if ( response.getText().equals( "true" ) ) {
-                      controller.loadOverlay( "dataaccess" );
-                    }
-                  }
-                } );
-              } catch ( RequestException e ) {
-                // showError(e);
+              if ( containsSchedulerEEOverlay( jsoverlays ) ) {
+                fetchWithEEOverlay( jsoverlays );
+              } else {
+                fetchWihoutEEOverlay( jsoverlays );
               }
             }
           } );
@@ -409,6 +377,96 @@ public class MantleXul implements IXulLoaderCallback, SolutionBrowserOpenEventHa
       }
     };
     cmd.execute();
+  }
+
+  private void fetchWithEEOverlay( JsArray<JsXulOverlay> jsoverlays ) {
+
+    final String url = GWT.getHostPageBaseURL() + "api/dsc/biserver-ee/valid"; //$NON-NLS-1$
+    RequestBuilder builder = new RequestBuilder( RequestBuilder.GET, url );
+    builder.setHeader( "If-Modified-Since", "01 Jan 1970 00:00:00 GMT" );
+    builder.setHeader( "accept", "text/plain" );
+
+    try {
+      builder.sendRequest( null, new RequestCallback() {
+
+        public void onError( Request request, Throwable exception ) {
+          Window.alert( exception.getMessage() );
+        }
+
+        public void onResponseReceived( Request request, Response response ) {
+          boolean containsEELicense = response.getText().equals( "true" );
+
+          ArrayList<XulOverlay> overlays = new ArrayList<XulOverlay>();
+          for ( int i = 0; i < jsoverlays.length(); i++ ) {
+            JsXulOverlay o = jsoverlays.get( i );
+            if ( o.getId().equals( "admin.perspective.overlay.scheduler-ee" ) ) {
+              if ( !containsEELicense ) {
+                continue;
+              }
+            }
+            MantleXulOverlay overlay;
+            overlay =
+              new MantleXulOverlay( o.getId(), o.getOverlayUri(), o.getSource(), o.getResourceBundleUri(),
+                Integer.parseInt( o.getPriority() ) );
+            overlays.add( overlay );
+          }
+
+          MantleXul.this.addOverlays( overlays );
+          fetchDataAccessOverlay();
+        }
+      } );
+    } catch ( RequestException e ) {
+      // showError(e);
+    }
+  }
+
+  private void fetchWihoutEEOverlay( JsArray<JsXulOverlay> jsoverlays ) {
+    ArrayList<XulOverlay> overlays = new ArrayList<XulOverlay>();
+    for ( int i = 0; i < jsoverlays.length(); i++ ) {
+      JsXulOverlay o = jsoverlays.get( i );
+      MantleXulOverlay overlay;
+      overlay =
+        new MantleXulOverlay( o.getId(), o.getOverlayUri(), o.getSource(), o.getResourceBundleUri(),
+          Integer.parseInt( o.getPriority() ) );
+      overlays.add( overlay );
+    }
+    MantleXul.this.addOverlays( overlays );
+    fetchDataAccessOverlay();
+  }
+
+  private boolean containsSchedulerEEOverlay(  JsArray<JsXulOverlay> jsoverlays ) {
+    ArrayList<XulOverlay> overlays = new ArrayList<XulOverlay>();
+    for ( int i = 0; i < jsoverlays.length(); i++ ) {
+      JsXulOverlay o = jsoverlays.get( i );
+      if ( o.getId().equals( "admin.perspective.overlay.scheduler-ee" ) ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void fetchDataAccessOverlay() {
+    final String url = GWT.getHostPageBaseURL() + "plugin/data-access/api/permissions/hasDataAccess"; //$NON-NLS-1$
+    RequestBuilder builder = new RequestBuilder( RequestBuilder.GET, url );
+    builder.setHeader( "If-Modified-Since", "01 Jan 1970 00:00:00 GMT" );
+    builder.setHeader( "accept", "application/json" );
+
+    try {
+      builder.sendRequest( null, new RequestCallback() {
+
+        public void onError( Request request, Throwable exception ) {
+          Window.alert( exception.getMessage() );
+        }
+
+        public void onResponseReceived( Request request, Response response ) {
+          if ( response.getText().equals( "true" ) ) {
+            controller.loadOverlay( "dataaccess" );
+          }
+        }
+      } );
+    } catch ( RequestException e ) {
+      // showError(e);
+    }
   }
 
   public void overlayLoaded() {

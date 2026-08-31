@@ -1,19 +1,16 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2022 Hitachi Vantara. All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importer;
 
@@ -55,6 +52,7 @@ import org.pentaho.platform.api.repository2.unified.IRepositoryContentConverterH
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.repository2.unified.data.simple.SimpleRepositoryFileData;
+import org.pentaho.platform.api.scheduler2.IScheduler;
 import org.pentaho.platform.core.mimetype.MimeType;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.core.system.boot.PlatformInitializationException;
@@ -156,6 +154,7 @@ public class SolutionImportHandlerNamingIT extends Assert {
     microPlatform.defineInstance( IPlatformMimeResolver.class, mimeResolver );
     microPlatform.defineInstance( ISolutionEngine.class, Mockito.mock( SolutionEngine.class ) );
     microPlatform.defineInstance( IDatasourceMgmtService.class, Mockito.mock( IDatasourceMgmtService.class ) );
+    microPlatform.defineInstance( "IScheduler2", Mockito.mock( IScheduler.class ) );
 
     IRepositoryContentConverterHandler converterHandler =
         new DefaultRepositoryContentConverterHandler( new HashMap<String, Converter>() );

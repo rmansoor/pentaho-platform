@@ -1,19 +1,16 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2017 Hitachi Vantara..  All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 define([
   "common-ui/jquery-pentaho-i18n",
@@ -153,6 +150,25 @@ define([
       }
     },
 
+    enableButtons: function (enableButtons) {
+      this.buttons.forEach((buttonDef) => {
+        let target;
+        if (buttonDef.id == "separator") {
+          target = $(".separator");
+        } else {
+          target = $("#" + buttonDef.id);
+        }
+
+        target.prop("disabled", !enableButtons);
+
+        if (!enableButtons) {
+          target.hide();
+        } else {
+          target.show();
+        }
+      });
+    },
+
     eventLogger: function (event) {
       console.log(event.action + " : " + event.message);
     },
@@ -187,8 +203,8 @@ define([
     postPropertiesHandler: function () {
       $(window.parent.document).find(".pentaho-dialog:not(.modal)").attr("id", "browse-properties-dialog");
     },
-    renameHandler: function (path) {
-      this.renameDialog.init(path, "folder");
+    renameHandler: function (path, title) {
+      this.renameDialog.init(path, title, "folder");
     }
 
   };

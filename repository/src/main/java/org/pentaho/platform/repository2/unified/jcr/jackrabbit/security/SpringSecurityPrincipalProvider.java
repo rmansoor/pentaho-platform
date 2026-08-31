@@ -1,27 +1,20 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.jcr.jackrabbit.security;
 
 import java.security.Principal;
-import java.security.acl.Group;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -218,7 +211,7 @@ public class SpringSecurityPrincipalProvider implements PrincipalProvider {
     }
 
     checkInitialized();
-    Assert.notNull( principalName );
+    Assert.notNull( principalName, "The principal name must not be null. Ensure a valid principal name is provided." );
     // first handle AclMetadataPrincipal, admin, anonymous, and everyone
     // specially
     if ( AclMetadataPrincipal.isAclMetadataPrincipal( principalName ) ) {
@@ -318,7 +311,7 @@ public class SpringSecurityPrincipalProvider implements PrincipalProvider {
    */
   public PrincipalIterator getGroupMembership( final Principal principal ) {
     checkInitialized();
-    Assert.notNull( principal );
+    Assert.notNull( principal, "The principal name must not be null. Ensure a valid principal name is provided." );
     // first handle anonymous and everyone specially
     Set<Principal> groups = new HashSet<Principal>();
     if ( principal instanceof AnonymousPrincipal ) {
@@ -330,7 +323,7 @@ public class SpringSecurityPrincipalProvider implements PrincipalProvider {
     // make sure it's a user; also, repo admins are never in back-end--no
     // need to attempt to look them up; also acl
     // metadata principals never have group membership
-    if ( !( principal instanceof Group ) && !( principal instanceof AdminPrincipal )
+    if ( !( principal instanceof SpringSecurityRolePrincipal ) && !( principal instanceof AdminPrincipal )
       && !( principal instanceof AclMetadataPrincipal ) ) {
       UserDetails user = internalGetUserDetails( principal.getName() );
       if ( user == null ) {

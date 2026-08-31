@@ -1,24 +1,22 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2023 Hitachi Vantara..  All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 define([
+  "common-ui/util/xss",
   "common-ui/handlebars",
   "pentaho/shim/css.escape"
-], function () {
+], function (xssUtil) {
   var templates = {};
 
   Handlebars.registerHelper('stringifyFunc', function (fn) {
@@ -87,20 +85,20 @@ define([
 
   //folder template with recursive behavior
   templates.folderText =
-      "{{#ifCond file.folder 'true'}}" +
+      "{{#ifCond file.folder true}}" +
           "{{#ifCond file.path '.trash'}}" +
-          "<div id='{{file.id}}' class='trash folder' path='{{file.path}}' ext='{{file.name}}' desc='{{file.name}}'>" +
+          "<div id='{{file.objectId}}' class='trash folder' path='{{file.path}}' ext='{{file.nameDecoded}}' desc='{{file.nameDecoded}}'>" +
           "{{else}}" +
-          "<div id='{{file.id}}' class='folder' path='{{file.path}}' desc='{{file.description}}' ext='{{file.name}}'>" +
+              "{{#if file.isProviderRootPath}}" +
+                  "<div id='{{file.objectId}}' class='folder providerRootFolder' path='{{file.path}}' desc='{{file.description}}' ext='{{file.nameDecoded}}' title='{{file.title}}'>" +
+              "{{else}}" +
+                  "<div id='{{file.objectId}}' class='folder' path='{{file.path}}' desc='{{file.description}}' ext='{{file.nameDecoded}}' title='{{file.title}}'>" +
+              "{{/if}}" +
           "{{/ifCond}}" +
           "<div class='element' role='treeitem' aria-selected='false' aria-expanded='false' tabindex='-1'>" +
           "<div class='expandCollapse'> </div>" +
           "<div class='icon'> </div>" +
-          "{{#if file.title}}" +
           "<div class='title'>{{file.title}}</div>" +
-          "{{else}}" +
-          "<div class='title'>{{file.name}}</div>" +
-          "{{/if}}" +
           "</div>" +
           "<div class='folders' role='group'>" +
           "{{#each children}} {{> folder}} {{/each}}" +
@@ -113,19 +111,19 @@ define([
 
   //file template
   templates.file = Handlebars.compile(
-      "{{#ifCond folder 'false' }}" +
+      "{{#ifCond folder false}}" +
           "{{#if trash}}" +
-          "<div id='{{id}}' class='file' origPath='{{origPath}}' path='{{path}}' type='file' ext='{{trashPath}}' title='{{trashPath}}' role='option'>" +
+          "<div id='{{objectId}}' class='file' origPath='{{origPath}}' path='{{path}}' type='file' ext='{{trashPath}}' title='{{trashPath}}' role='option'>" +
           "{{else}}" +
-          "<div id='{{id}}' class='file' path='{{path}}' type='file' desc='{{description}}' ext='{{fileWithExtension}}' role='option'>" +
+          "<div id='{{objectId}}' class='file' path='{{path}}' type='file' desc='{{description}}' ext='{{fileWithExtension}}' role='option'>" +
           "{{/if}}" +
           "<div class='icon {{classes}}'> </div>" +
           "<div class='title'>{{title}}</div>" +
           "</div>" +
           "{{/ifCond}}" +
-          "{{#ifCond trash 'true'}}" +
-          "{{#ifCond folder 'true'}}" +
-          "<div id='{{id}}' class='file' origPath='{{trashPath}}' path='{{path}}' type='folder' ext='{{trashPath}}' title='{{trashPath}}' role='option'>" +
+          "{{#ifCond trash true}}" +
+          "{{#ifCond folder true}}" +
+          "<div id='{{objectId}}' class='file' origPath='{{trashPath}}' path='{{path}}' type='folder' ext='{{trashPath}}' title='{{trashPath}}' role='option'>" +
           "<div class='icon trashFolder'> </div>" +
           "<div class='title'>{{title}}</div>" +
           "</div>" +
@@ -152,6 +150,10 @@ define([
     }));
   });
 
+  Handlebars.registerHelper('html', function(html) {
+      return new Handlebars.SafeString(xssUtil.sanitizeHtml(html));
+    });
+
   Handlebars.registerHelper('i18n',
       function (str) {
         return (this.i18n != undefined ? this.i18n.prop(str) : str);
@@ -161,7 +163,7 @@ define([
   //helper registration for file template
   Handlebars.registerHelper('file', function () {
     //handle file name
-    var name = this.file.name,
+    var name = this.file.nameDecoded,
         title = this.file.title,
         path = this.file.path;
 
@@ -178,11 +180,11 @@ define([
       trashPath: (this.file.name.charAt(0) == "/") ? this.file.pathText + this.file.originalParentFolderPath + this.file.name : this.file.pathText + this.file.originalParentFolderPath + "/" + this.file.name,
       name: nameNoExtension,
       title: title,
-      id: this.file.id,
+      objectId: this.file.objectId,
       classes: extension,
       description: this.file.description,
       folder: this.file.folder,
-      fileWithExtension: this.file.name
+      fileWithExtension: this.file.nameDecoded
     }));
   });
 

@@ -1,34 +1,18 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.http.api.resources.services;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -36,6 +20,17 @@ import org.junit.Test;
 import org.pentaho.platform.api.engine.IUserRoleListService;
 import org.pentaho.platform.web.http.api.resources.RoleListWrapper;
 import org.pentaho.platform.web.http.api.resources.UserListWrapper;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 public class UserRoleListServiceTest {
 
@@ -128,6 +123,30 @@ public class UserRoleListServiceTest {
   }
 
   @Test
+  public void testDoGetRolesWithoutExtraRoles() {
+    List<String> roles = new ArrayList<String>();
+    roles.add( "ROLE1" );
+    roles.add( "ROLE2" );
+    roles.add( "EXTRA_ROLE1" );
+
+    ArrayList<String> extraRoles = new ArrayList<>();
+    extraRoles.add( "EXTRA_ROLE1" );
+    extraRoles.add( "EXTRA_ROLE2" );
+    userRoleListService.setExtraRoles( extraRoles );
+
+    IUserRoleListService userRoleListService1 = mock( IUserRoleListService.class );
+    doReturn( userRoleListService1 ).when( userRoleListService ).getUserRoleListService();
+    doReturn( roles ).when( userRoleListService1 ).getAllRoles();
+
+    RoleListWrapper roleListWrapper = userRoleListService.getRoles( false );
+
+    verify( userRoleListService ).getUserRoleListService();
+    verify( userRoleListService1 ).getAllRoles();
+
+    assertEquals( List.of( "ROLE1", "ROLE2" ), roleListWrapper.getRoles() );
+  }
+
+  @Test
   public void testGetPermissionRoles() {
 
     List<String> roles = new ArrayList<String>();
@@ -143,35 +162,59 @@ public class UserRoleListServiceTest {
     extraRoles.add( "EXTRA_ROLE1" );
     extraRoles.add( "EXTRA_ROLE2" );
     userRoleListService.setExtraRoles( extraRoles );
+    userRoleListService.setAdminRole( "ADMIN_ROLE" );
 
-    RoleListWrapper roleWrapper = userRoleListService.getPermissionRoles( "ADMIN_ROLE" );
+    RoleListWrapper roleWrapper = userRoleListService.getPermissionRoles();
     assertTrue( !roleWrapper.getRoles().contains( "ADMIN_ROLE" ) );
     assertTrue( roleWrapper.getRoles().size() == 4 );
   }
 
   @Test
-  public void testDoGetAllRoles() {
-    List<String> roles = new ArrayList<String>();
+  public void testDoGetAllRolesWithExtraAndSystemRolesSet() {
+    List<String> roles = new ArrayList<>();
     roles.add( "ROLE1" );
     roles.add( "ROLE2" );
 
-    List<String> extraRoles = new ArrayList<String>();
+    List<String> extraRoles = new ArrayList<>();
     extraRoles.add( "ROLE3" );
     extraRoles.add( "ROLE4" );
+    userRoleListService.setExtraRoles( extraRoles );
+
+    List<String> systemRoles = new ArrayList<>( extraRoles );
+    extraRoles.add( "ROLE5" );
+
+    userRoleListService.setSystemRoles( systemRoles );
 
     IUserRoleListService userRoleListService1 = mock( IUserRoleListService.class );
 
     doReturn( userRoleListService1 ).when( userRoleListService ).getUserRoleListService();
     doReturn( roles ).when( userRoleListService1 ).getAllRoles();
-    doReturn( extraRoles ).when( userRoleListService ).getExtraRoles();
 
     RoleListWrapper roleListWrapper = userRoleListService.getAllRoles();
 
     verify( userRoleListService ).getUserRoleListService();
     verify( userRoleListService1 ).getAllRoles();
-    verify( userRoleListService ).getExtraRoles();
 
-    assertEquals( 4, roleListWrapper.getRoles().size() );
+    assertEquals( 5, roleListWrapper.getRoles().size() );
+  }
+
+  @Test
+  public void testDoGetAllRolesWithoutExtraAndSystemRolesSet() {
+    List<String> roles = new ArrayList<>();
+    roles.add( "ROLE1" );
+    roles.add( "ROLE2" );
+
+    IUserRoleListService userRoleListService1 = mock( IUserRoleListService.class );
+
+    doReturn( userRoleListService1 ).when( userRoleListService ).getUserRoleListService();
+    doReturn( roles ).when( userRoleListService1 ).getAllRoles();
+
+    RoleListWrapper roleListWrapper = userRoleListService.getAllRoles();
+
+    verify( userRoleListService ).getUserRoleListService();
+    verify( userRoleListService1 ).getAllRoles();
+
+    assertEquals( 2, roleListWrapper.getRoles().size() );
   }
 
   @Test
@@ -182,7 +225,7 @@ public class UserRoleListServiceTest {
     extraRoles.add( "ROLE3" );
     extraRoles.add( "ROLE4" );
 
-    doReturn( extraRoles ).when( userRoleListService ).getExtraRoles();
+    userRoleListService.setExtraRoles( extraRoles );
 
     RoleListWrapper roleListWrapper = userRoleListService.getExtraRolesList();
 
@@ -190,5 +233,43 @@ public class UserRoleListServiceTest {
 
     assertEquals( 4, roleListWrapper.getRoles().size() );
     assertEquals( extraRoles, roleListWrapper.getRoles() );
+  }
+
+  @Test
+  public void testGetSystemRoles() {
+    List<String> systemRoles = new ArrayList<String>();
+    systemRoles.add( "ROLE1" );
+    systemRoles.add( "ROLE2" );
+    systemRoles.add( "ROLE3" );
+
+    userRoleListService.setSystemRoles( systemRoles );
+
+    RoleListWrapper roleListWrapper = userRoleListService.getSystemRoles();
+
+    assertEquals( 3, roleListWrapper.getRoles().size() );
+    assertEquals( systemRoles, roleListWrapper.getRoles() );
+  }
+
+  @Test
+  public void testAllRolesExcludingAnonymous() {
+    final String ANONYMOUS = "Anonymous";
+    List<String> roles = new ArrayList<String>();
+    roles.add( "ROLE1" );
+    roles.add( "ROLE2" );
+    roles.add( "ROLE3" );
+    roles.add( "ROLE4" );
+    roles.add( ANONYMOUS );
+
+    IUserRoleListService userRoleListService1 = mock( IUserRoleListService.class );
+    doReturn( userRoleListService1 ).when( userRoleListService ).getUserRoleListService();
+    doReturn( roles ).when( userRoleListService1 ).getAllRoles();
+    doReturn( ANONYMOUS ).when( userRoleListService ).getAnonymousRole();
+
+    RoleListWrapper roleListWrapper = userRoleListService.getAllRoles( true );
+
+    verify( userRoleListService ).getAllRoles( true );
+
+    assertEquals( 4, roleListWrapper.getRoles().size() );
+    assertFalse( roleListWrapper.getRoles().contains( ANONYMOUS ) );
   }
 }

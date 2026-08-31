@@ -1,25 +1,23 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.http.session;
 
+import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSessionEvent;
+import jakarta.servlet.http.HttpSessionListener;
+import org.pentaho.platform.api.engine.ILogger;
 import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.engine.core.audit.AuditHelper;
 import org.pentaho.platform.engine.core.audit.MessageTypes;
@@ -28,9 +26,6 @@ import org.pentaho.platform.util.logging.Logger;
 import org.pentaho.platform.util.messages.LocaleHelper;
 import org.pentaho.platform.web.http.messages.Messages;
 
-import javax.servlet.http.HttpSession;
-import javax.servlet.http.HttpSessionEvent;
-import javax.servlet.http.HttpSessionListener;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
@@ -51,7 +46,8 @@ public class PentahoHttpSessionListener implements HttpSessionListener {
 
     String sessionId = event.getSession().getId();
     if ( PentahoHttpSessionListener.debug ) {
-      Logger.debug( this, Messages.getInstance().getString( "HttpSessionListener.DEBUG_SESSION_CREATED", sessionId ) ); //$NON-NLS-1$
+      Logger.debug( this,
+        Messages.getInstance().getString( "HttpSessionListener.DEBUG_SESSION_CREATED", sessionId ) ); //$NON-NLS-1$
     }
 
     // AuditHelper.audit( instanceId, String userId, String actionName,
@@ -67,37 +63,48 @@ public class PentahoHttpSessionListener implements HttpSessionListener {
         Object obj = session.getAttribute( PentahoSystem.PENTAHO_SESSION_KEY ); //$NON-NLS-1$
         if ( obj != null ) {
           IPentahoSession userSession = (IPentahoSession) obj;
+
+          if ( Logger.getLogLevel() <= ILogger.TRACE ) {
+            Logger.trace(
+              this,
+              String.format(
+                "HttpSessionListener.sessionDestroyed for %s %s. Invoke logout listeners",
+                sessionId,
+                userSession.getName() ) );
+          }
+
           PentahoSystem.invokeLogoutListeners( userSession );
           userSession.destroy();
         } else {
           String[] info = PentahoHttpSessionListener.getSessionInfo( sessionId );
           if ( info != null ) {
-            String instanceId = info[5];
-            String userId = info[3];
-            String activityId = info[1];
-            String objectType = info[2];
-            String processId = info[0];
+            String instanceId = info[ 5 ];
+            String userId = info[ 3 ];
+            String activityId = info[ 1 ];
+            String objectType = info[ 2 ];
+            String processId = info[ 0 ];
             String messageType = MessageTypes.SESSION_END;
             String message = "http "; //$NON-NLS-1$
             String value = ""; //$NON-NLS-1$
-            long startTime = Long.parseLong( info[4] );
+            long startTime = Long.parseLong( info[ 4 ] );
             long endTime = new Date().getTime();
             if ( !"anonymousUser".equals( userId ) ) {
               AuditHelper.audit( instanceId, userId, activityId, objectType, processId, messageType, message, value,
-                  ( ( endTime - startTime ) / 1000 ), null );
+                ( ( endTime - startTime ) / 1000 ), null );
             }
           }
         }
       }
     } catch ( Throwable e ) {
       Logger.error( this, Messages.getInstance().getErrorString(
-          "HttpSessionListener.ERROR_0001_ERROR_DESTROYING_SESSION" ), e ); //$NON-NLS-1$
+        "HttpSessionListener.ERROR_0001_ERROR_DESTROYING_SESSION" ), e ); //$NON-NLS-1$
     }
 
   }
 
   public static void registerHttpSession( final String sessionId, final String processId, final String activityId,
-      final String objectName, final String userName, final String id, final long start ) {
+                                          final String objectName, final String userName, final String id,
+                                          final long start ) {
     PentahoHttpSessionListener.sessionMap.put( id, new String[] { processId, activityId, objectName, userName,
       new Long( start ).toString(), sessionId } );
   }

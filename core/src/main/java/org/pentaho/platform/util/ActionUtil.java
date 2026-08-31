@@ -1,26 +1,33 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2020 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.util;
 
-import org.apache.commons.lang.StringUtils;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.action.ActionInvocationException;
@@ -35,14 +42,12 @@ import org.pentaho.platform.api.scheduler2.IEmailGroupResolver;
 import org.pentaho.platform.api.util.QuartzActionUtil;
 import org.pentaho.platform.api.workitem.IWorkItemLifecycleEventPublisher;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
+import org.pentaho.platform.engine.services.solution.StandardSettings;
 import org.pentaho.platform.util.messages.Messages;
 import org.pentaho.platform.util.web.MimeHelper;
 
-import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Optional;
+import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.InternetAddress;
 
 public class ActionUtil {
 
@@ -78,6 +83,26 @@ public class ActionUtil {
   public static final String INVOKER_ASYNC_EXEC = "async"; //$NON-NLS-1$
   public static final String INVOKER_DEFAULT_ASYNC_EXEC_VALUE = "true"; //$NON-NLS-1$
   public static final String INVOKER_SYNC_VALUE = "false";
+
+  public static final String SCH_EMAIL_TO = "_SCH_EMAIL_TO";
+  public static final String SCH_EMAIL_CC = "_SCH_EMAIL_CC";
+  public static final String SCH_EMAIL_BCC = "_SCH_EMAIL_BCC";
+  public static final String SCH_EMAIL_SUBJECT = "_SCH_EMAIL_SUBJECT";
+  public static final String SCH_EMAIL_MESSAGE = "_SCH_EMAIL_MESSAGE";
+
+  private static final String SCHEDULER_FAILURE_EMAIL_ENABLED_PROPERTY = "scheduler.failure.email.enabled";
+  private static final boolean SCHEDULER_FAILURE_EMAIL_ENABLED_DEFAULT = false;
+  private static final String ADMIN_TO = "ADMIN_TO";
+  private static final String ADMIN_CC = "ADMIN_CC";
+  private static final String ADMIN_BCC = "ADMIN_BCC";
+
+  static final String SCHEDULER_FAILURE_EMAIL_PROPERTIES = "system/scheduler_failure_email.properties";
+
+  /**
+   * Admin failure email properties loaded lazily on first access from
+   * {@value #SCHEDULER_FAILURE_EMAIL_PROPERTIES}. Changes to the file require a server restart to take effect.
+   */
+  private static Properties adminFailureEmailProperties;
 
   public static final String WORK_ITEM_UID = "workItemUid"; //$NON-NLS-1$
   public static final String WORK_ITEM_NAME = "workItemName"; //$NON-NLS-1$
@@ -179,7 +204,7 @@ public class ActionUtil {
    * @return work item name from the {@link Map} or a new one, or {@code null} in the absence of
    * the {@link IWorkItemLifecycleEventPublisher} bean
    */
-  public static String extractName( final Map<String, Serializable> params ) {
+  public static String extractName( final Map<String, Object> params ) {
     final IWorkItemLifecycleEventPublisher publisher = PentahoSystem.get( IWorkItemLifecycleEventPublisher.class );
     // if the published bean is null, we do not want to generate the work item name, as this is a worker nodes
     // concept, and we do not want any worker nodes related information in the logs. Given that
@@ -207,7 +232,7 @@ public class ActionUtil {
    * @return a name for the work item
    * @see {@link #generateWorkItemName(String, String)}
    */
-  public static String generateWorkItemName( final Map<String, Serializable> params ) {
+  public static String generateWorkItemName( final Map<String, Object> params ) {
     if ( params == null ) {
       return generateWorkItemName( null, null );
     }
@@ -227,11 +252,11 @@ public class ActionUtil {
     return generateWorkItemName( inputFilePath, userName );
   }
 
-  public static boolean isInlinePassingOfInputOnStreamProvider( final Map<String, Serializable> params ) {
+  public static boolean isInlinePassingOfInputOnStreamProvider( final Map<String, Object> params ) {
     return params != null && getStreamProviderContent( params ).contains( QUARTZ_STREAMPROVIDER_INLINE_INPUT_FILE );
   }
 
-  public static String getInlineInputFileOnStreamProvider( final Map<String, Serializable> params ) {
+  public static String getInlineInputFileOnStreamProvider( final Map<String, Object> params ) {
 
     try {
 
@@ -251,7 +276,7 @@ public class ActionUtil {
     return null;
   }
 
-  public static String getStreamProviderContent( final Map<String, Serializable> params ) {
+  public static String getStreamProviderContent( final Map<String, Object> params ) {
     return ( params.containsKey( QUARTZ_STREAMPROVIDER )
             ? params.get( QUARTZ_STREAMPROVIDER ) : params.containsKey( INVOKER_STREAMPROVIDER )
             ? params.get( INVOKER_STREAMPROVIDER ) : StringUtils.EMPTY ).toString().trim();
@@ -428,7 +453,7 @@ public class ActionUtil {
    * @param params       a {@link Map} of parameter used to invoke the action
    * @param filePath     the path of the repository file that was generated when the action was invoked
    */
-  public static void sendEmail( Map<String, Object> actionParams, Map<String, Serializable> params, String filePath ) {
+  public static void sendEmail( Map<String, Object> actionParams, Map<String, Object> params, String filePath ) {
     try {
       // if email is setup and we have tos, then do it
       Emailer emailer = new Emailer();
@@ -441,9 +466,9 @@ public class ActionUtil {
         addAttachment( actionParams, params, filePath, emailer );
       }
 
-      String to = (String) actionParams.get( "_SCH_EMAIL_TO" );
-      String cc = (String) actionParams.get( "_SCH_EMAIL_CC" );
-      String bcc = (String) actionParams.get( "_SCH_EMAIL_BCC" );
+      String to = (String) actionParams.get( SCH_EMAIL_TO );
+      String cc = (String) actionParams.get( SCH_EMAIL_CC );
+      String bcc = (String) actionParams.get( SCH_EMAIL_BCC );
       if ( ( to == null || "".equals( to ) ) && ( cc == null || "".equals( cc ) )
           && ( bcc == null || "".equals( bcc ) ) ) {
         // no destination
@@ -454,27 +479,25 @@ public class ActionUtil {
       if ( emailGroupResolver == null ) {
         emailGroupResolver = new DefaultEmailGroupResolver();
       }
-      String resolveToList = emailGroupResolver.resolve(to);
-      if (resolveToList != null && resolveToList.length() > 0) {
+      String resolveToList = emailGroupResolver.resolve( to );
+      if ( resolveToList != null && resolveToList.length() > 0 ) {
         emailer.setTo( resolveToList );
-        String resolveCCList = emailGroupResolver.resolve(cc);
-        if (resolveCCList != null && resolveCCList.length() > 0) {
+        String resolveCCList = emailGroupResolver.resolve( cc );
+        if ( resolveCCList != null && resolveCCList.length() > 0 ) {
           emailer.setCc( resolveCCList );
         }
         String resolveBCCList = emailGroupResolver.resolve( bcc );
-        if (resolveBCCList != null && resolveBCCList.length() > 0) {
+        if ( resolveBCCList != null && resolveBCCList.length() > 0 ) {
           emailer.setBcc( resolveBCCList );
         }
-        String subject = ( String ) actionParams.get( "_SCH_EMAIL_SUBJECT" );
-        if (subject != null && !"".equals( subject ) ) {
+        String subject = (String) actionParams.get( SCH_EMAIL_SUBJECT );
+        if ( subject != null && !"".equals( subject ) ) {
           emailer.setSubject( subject );
         } else {
           emailer.setSubject( "Pentaho Scheduler" + ( emailer.getAttachmentName() != null ? " : " + emailer.getAttachmentName() : "" ) );
         }
-        String message = (String) actionParams.get( "_SCH_EMAIL_MESSAGE" );
-        if ( subject != null && !"".equals( subject ) ) {
-          emailer.setBody( message );
-        }
+        String message = (String) actionParams.get( SCH_EMAIL_MESSAGE );
+        emailer.setBody( message != null ? message : "" );
         emailer.send();
       } else {
         logger.error( Messages.getInstance().getErrorString( "ActionUtil.ERROR_0001_INVALID_EMAIL_LIST" ) );
@@ -484,7 +507,177 @@ public class ActionUtil {
     }
   }
 
-  private static void addAttachment( Map<String, Object> actionParams, Map<String, Serializable> params,
+  /**
+   * Sends a scheduler failure email (without attachment) to the same destination fields used by scheduler success
+   * emails. This method is intentionally best-effort and never throws.
+   *
+   * @param actionParams the scheduler action params
+   * @param failureCause the failure that occurred, may be null
+   */
+  public static void sendFailureEmail( Map<String, Object> actionParams, Throwable failureCause ) {
+    if ( actionParams == null || !isSchedulerFailureEmailEnabled() ) {
+      return;
+    }
+
+    try {
+      final Emailer emailer = new Emailer();
+      if ( !emailer.setup() ) {
+        logger.debug( "Failure email skipped: email is not configured." );
+        return;
+      }
+
+      IEmailGroupResolver emailGroupResolver = PentahoSystem.get( IEmailGroupResolver.class );
+      if ( emailGroupResolver == null ) {
+        emailGroupResolver = new DefaultEmailGroupResolver();
+      }
+
+      // Schedule recipients (from the job's own email settings)
+      final String to = (String) actionParams.get( SCH_EMAIL_TO );
+      final String cc = (String) actionParams.get( SCH_EMAIL_CC );
+      final String bcc = (String) actionParams.get( SCH_EMAIL_BCC );
+
+      // Admin recipients loaded once at startup from system/scheduler_failure_email.properties
+      final Properties emailProperties = getAdminFailureEmailProperties();
+      final String adminTo = emailProperties.getProperty( ADMIN_TO, "" );
+      final String adminCc = emailProperties.getProperty( ADMIN_CC, "" );
+      final String adminBcc = emailProperties.getProperty( ADMIN_BCC, "" );
+
+      final String resolvedTo = mergeAddresses( emailGroupResolver.resolve( to ), adminTo );
+      final String resolvedCc = mergeAddresses( emailGroupResolver.resolve( cc ), adminCc );
+      final String resolvedBcc = mergeAddresses( emailGroupResolver.resolve( bcc ), adminBcc );
+
+      if ( StringUtils.isBlank( resolvedTo ) && StringUtils.isBlank( resolvedCc ) && StringUtils.isBlank( resolvedBcc ) ) {
+        logger.debug( "Failure email skipped: no destination provided (schedule or admin)." );
+        return;
+      }
+
+      emailer.setTo( resolvedTo );
+      emailer.setCc( resolvedCc );
+      emailer.setBcc( resolvedBcc );
+
+      String subject = buildFailureSubject( actionParams );
+      emailer.setSubject( subject );
+
+      final String configuredMessage = (String) actionParams.get( SCH_EMAIL_MESSAGE );
+      final StringBuilder messageBuilder = new StringBuilder();
+      if ( StringUtils.isBlank( configuredMessage ) ) {
+        messageBuilder.append( "The scheduled job failed." );
+      } else {
+        messageBuilder.append( configuredMessage ).append( "\n\n" ).append( "The scheduled job failed." );
+      }
+
+      final String failureText = extractFailureMessage( failureCause );
+      if ( !StringUtils.isBlank( failureText ) ) {
+        messageBuilder.append( "\nCause: " ).append( failureText );
+      }
+
+      emailer.setBody( messageBuilder.toString() );
+      emailer.send();
+    } catch ( Exception e ) {
+      logger.warn( "Could not send scheduler failure email.", e );
+    }
+  }
+
+  private static synchronized Properties getAdminFailureEmailProperties() {
+    if ( adminFailureEmailProperties == null ) {
+      loadAdminFailureEmailProperties();
+    }
+    return adminFailureEmailProperties;
+  }
+
+  private static void loadAdminFailureEmailProperties() {
+    final Properties properties = new Properties();
+    try {
+      final String solutionPath = PentahoSystem.getApplicationContext().getSolutionPath( SCHEDULER_FAILURE_EMAIL_PROPERTIES );
+      if ( !StringUtils.isBlank( solutionPath ) ) {
+        final File file = new File( solutionPath );
+        if ( file.isFile() ) {
+          try ( InputStream in = new FileInputStream( file ) ) {
+            properties.load( in );
+            for ( String key : new String[] { ADMIN_TO, ADMIN_CC, ADMIN_BCC } ) {
+              properties.setProperty( key, filterValidAddresses( properties.getProperty( key, "" ) ) );
+            }
+          }
+        }
+      }
+    } catch ( IOException | RuntimeException e ) {
+      logger.warn( "Could not load scheduler failure email admin properties.", e );
+    }
+    adminFailureEmailProperties = properties;
+  }
+
+  private static String filterValidAddresses( final String addresses ) {
+    if ( StringUtils.isBlank( addresses ) ) {
+      return "";
+    }
+    final List<String> valid = new ArrayList<>();
+    for ( final String addr : addresses.split( "," ) ) {
+      final String trimmed = addr.trim();
+      if ( StringUtils.isBlank( trimmed ) ) {
+        continue;
+      }
+      try {
+        InternetAddress.parse( trimmed, true );
+        valid.add( trimmed );
+      } catch ( AddressException e ) {
+        logger.warn( "Ignoring invalid admin failure email address: '" + trimmed + "'" );
+      }
+    }
+    return String.join( ",", valid );
+  }
+
+  private static String mergeAddresses( final String a, final String b ) {
+    if ( StringUtils.isBlank( a ) ) {
+      return StringUtils.isBlank( b ) ? "" : b.trim();
+    }
+    if ( StringUtils.isBlank( b ) ) {
+      return a.trim();
+    }
+    return a.trim() + "," + b.trim();
+  }
+
+  private static boolean isSchedulerFailureEmailEnabled() {
+    final String value = PentahoSystem.getSystemSetting( SCHEDULER_FAILURE_EMAIL_ENABLED_PROPERTY,
+      String.valueOf( SCHEDULER_FAILURE_EMAIL_ENABLED_DEFAULT ) );
+    return Boolean.parseBoolean( value );
+  }
+
+  private static String buildFailureSubject( final Map<String, Object> actionParams ) {
+    final String scheduleName = extractScheduleName( actionParams );
+    if ( StringUtils.isBlank( scheduleName ) ) {
+      return "Schedule failed";
+    }
+
+    return "Schedule '" + scheduleName + "' failed";
+  }
+
+  private static String extractScheduleName( final Map<String, Object> actionParams ) {
+    if ( actionParams == null ) {
+      return null;
+    }
+    final Object value = actionParams.get( StandardSettings.SCHEDULE_NAME );
+    return value != null ? value.toString().trim() : null;
+  }
+
+  private static String extractFailureMessage( Throwable failureCause ) {
+    if ( failureCause == null ) {
+      return null;
+    }
+
+    final String message = failureCause.getMessage();
+    if ( !StringUtils.isBlank( message ) ) {
+      return message;
+    }
+
+    final Throwable nestedCause = failureCause.getCause();
+    if ( nestedCause != null && !StringUtils.isBlank( nestedCause.getMessage() ) ) {
+      return nestedCause.getMessage();
+    }
+
+    return null;
+  }
+
+  private static void addAttachment( Map<String, Object> actionParams, Map<String, Object> params,
                                      String filePath, Emailer emailer ) {
     IUnifiedRepository repo = PentahoSystem.get( IUnifiedRepository.class );
     RepositoryFile sourceFile = repo.getFile( filePath );
@@ -496,21 +689,27 @@ public class ActionUtil {
     // send email
     SimpleRepositoryFileData data = repo.getDataForRead( sourceFile.getId(), SimpleRepositoryFileData.class );
     emailer.setAttachment( data.getInputStream() );
-    emailer.setAttachmentName( "attachment" );
-    String attachmentName = (String) actionParams.get( "_SCH_EMAIL_ATTACHMENT_NAME" );
-    if ( !StringUtils.isEmpty( attachmentName ) ) {
-      String extension = MimeHelper.getExtension( data.getMimeType(), ".bin" );
-      emailer.setAttachmentName( attachmentName.endsWith( extension ) ?  attachmentName : attachmentName + extension );
-    } else if ( data != null ) {
+    
+    String useGeneratedName = (String) actionParams.get( "_SCH_EMAIL_USE_GENERATED_NAME" );
+    String customAttachmentName = (String) actionParams.get( "_SCH_EMAIL_ATTACHMENT_NAME" );
+    String extension = MimeHelper.getExtension( data.getMimeType(), ".bin" );
+    
+    String finalAttachmentName;
+    
+    if ( "true".equalsIgnoreCase( useGeneratedName ) ) {
+      finalAttachmentName = sourceFile.getName();
+    } else if ( !StringUtils.isEmpty( customAttachmentName ) ) {
+      finalAttachmentName = customAttachmentName;
+    } else {
       String path = filePath;
       if ( path.endsWith( ".*" ) ) {
         path = path.replace( ".*", "" );
       }
-      String extension = MimeHelper.getExtension( data.getMimeType(), ".bin" );
-      path = path.substring( path.lastIndexOf( "/" ) + 1, path.length() );
-      emailer.setAttachmentName( attachmentName.endsWith( extension ) ?  path : path + extension );
+      finalAttachmentName = path.substring( path.lastIndexOf( "/" ) + 1, path.length() );
     }
-    if ( data == null || data.getMimeType() == null || "".equals( data.getMimeType() ) ) {
+
+    emailer.setAttachmentName( finalAttachmentName.endsWith( extension ) ? finalAttachmentName : finalAttachmentName + extension );
+    if ( data.getMimeType() == null || "".equals( data.getMimeType() ) ) {
       emailer.setAttachmentMimeType( "binary/octet-stream" );
     } else {
       emailer.setAttachmentMimeType( data.getMimeType() );

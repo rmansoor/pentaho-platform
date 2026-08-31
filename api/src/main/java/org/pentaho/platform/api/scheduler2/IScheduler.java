@@ -1,26 +1,19 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.api.scheduler2;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -37,23 +30,26 @@ import org.pentaho.platform.api.util.QuartzActionUtil;
 public interface IScheduler {
 
   String RESERVEDMAPKEY_ACTIONCLASS = QuartzActionUtil.QUARTZ_ACTIONCLASS;
-  String RESERVEDMAPKEY_ACTIONUSER = QuartzActionUtil.QUARTZ_ACTIONUSER;
-
   String RESERVEDMAPKEY_ACTIONID = QuartzActionUtil.QUARTZ_ACTIONID;
-
-  String RESERVEDMAPKEY_STREAMPROVIDER = QuartzActionUtil.QUARTZ_STREAMPROVIDER;
-
-  String RESERVEDMAPKEY_STREAMPROVIDER_INPUTFILE = QuartzActionUtil.QUARTZ_STREAMPROVIDER_INPUT_FILE;
-
-  String RESERVEDMAPKEY_UIPASSPARAM = QuartzActionUtil.QUARTZ_UIPASSPARAM;
-
-  String RESERVEDMAPKEY_LINEAGE_ID = QuartzActionUtil.QUARTZ_LINEAGE_ID;
-
-  String RESERVEDMAPKEY_RESTART_FLAG = QuartzActionUtil.QUARTZ_RESTART_FLAG;
-
-  String RESERVEDMAPKEY_AUTO_CREATE_UNIQUE_FILENAME = QuartzActionUtil.QUARTZ_AUTO_CREATE_UNIQUE_FILENAME;
-
+  String RESERVEDMAPKEY_ACTIONUSER = QuartzActionUtil.QUARTZ_ACTIONUSER;
   String RESERVEDMAPKEY_APPEND_DATE_FORMAT = QuartzActionUtil.QUARTZ_APPEND_DATE_FORMAT;
+  String RESERVEDMAPKEY_AUTO_CREATE_UNIQUE_FILENAME = QuartzActionUtil.QUARTZ_AUTO_CREATE_UNIQUE_FILENAME;
+  String RESERVEDMAPKEY_LINEAGE_ID = QuartzActionUtil.QUARTZ_LINEAGE_ID;
+  String RESERVEDMAPKEY_LAST_EXECUTION_TIME = QuartzActionUtil.QUARTZ_LAST_EXECUTION_TIME;
+  /**
+   * @deprecated since 2026-02
+   * 
+   * This reserved map key is no longer used by the scheduler and should not be used by callers.
+   * Can only remove if we ensure that no clients have schedules with this property set in their jobParams.
+   * Otherwise, it will appear in the UI variable list.
+   */
+  @Deprecated( since = "2026-02", forRemoval = false )
+  String RESERVEDMAPKEY_PREVIOUS_TRIGGER_NOW = QuartzActionUtil.QUARTZ_PREVIOUS_TRIGGER_NOW;
+  String RESERVEDMAPKEY_RESTART_FLAG = QuartzActionUtil.QUARTZ_RESTART_FLAG;
+  String RESERVEDMAPKEY_START_TIME = QuartzActionUtil.QUARTZ_START_TIME;
+  String RESERVEDMAPKEY_STREAMPROVIDER = QuartzActionUtil.QUARTZ_STREAMPROVIDER;
+  String RESERVEDMAPKEY_STREAMPROVIDER_INPUTFILE = QuartzActionUtil.QUARTZ_STREAMPROVIDER_INPUT_FILE;
+  String RESERVEDMAPKEY_UIPASSPARAM = QuartzActionUtil.QUARTZ_UIPASSPARAM;
 
   enum SchedulerStatus {
     RUNNING, PAUSED, STOPPED
@@ -74,7 +70,7 @@ public interface IScheduler {
    * @throws SchedulerException
    *           If the job could not be scheduled
    */
-  IJob createJob( String jobName, Class<? extends IAction> action, Map<String, Serializable> jobParams,
+  IJob createJob( String jobName, Class<? extends IAction> action, Map<String, Object> jobParams,
       IJobTrigger trigger ) throws SchedulerException;
 
   /**
@@ -92,7 +88,7 @@ public interface IScheduler {
    * @throws SchedulerException
    *           If the job could not be scheduled
    */
-  IJob createJob( String jobName, String actionId, Map<String, Serializable> jobParams, IJobTrigger trigger )
+  IJob createJob( String jobName, String actionId, Map<String, Object> jobParams, IJobTrigger trigger )
     throws SchedulerException;
 
   /**
@@ -113,7 +109,7 @@ public interface IScheduler {
    * @throws SchedulerException
    *           If the job could not be scheduled
    */
-  IJob createJob( String jobName, Class<? extends IAction> action, Map<String, Serializable> jobParams,
+  IJob createJob( String jobName, Class<? extends IAction> action, Map<String, Object> jobParams,
       IJobTrigger trigger, IBackgroundExecutionStreamProvider outputStreamProvider ) throws SchedulerException;
 
   /**
@@ -134,7 +130,7 @@ public interface IScheduler {
    * @throws SchedulerException
    *           If the job could not be scheduled
    */
-  IJob createJob( String jobName, String actionId, Map<String, Serializable> jobParams, IJobTrigger trigger,
+  IJob createJob( String jobName, String actionId, Map<String, Object> jobParams, IJobTrigger trigger,
       IBackgroundExecutionStreamProvider outputStreamProvider ) throws SchedulerException;
 
   /**
@@ -149,7 +145,7 @@ public interface IScheduler {
    * @throws SchedulerException
    *           If the job could not be updated
    */
-  void updateJob( String jobId, Map<String, Serializable> jobParams, IJobTrigger trigger )
+  void updateJob( String jobId, Map<String, Object> jobParams, IJobTrigger trigger )
     throws SchedulerException;
 
   /**
@@ -301,7 +297,7 @@ public interface IScheduler {
    * @param streamProvider
    */
   void fireJobCompleted( final IAction actionBean, final String actionUser,
-      final Map<String, Serializable> params, IBackgroundExecutionStreamProvider streamProvider );
+      final Map<String, Object> params, IBackgroundExecutionStreamProvider streamProvider );
 
   IJobScheduleRequest createJobScheduleRequest();
 
@@ -328,6 +324,6 @@ public interface IScheduler {
    * @param jobParams scheduling job parameters
    * @throws SchedulerException
    */
-  default void validateJobParams( final Map<String, Serializable> jobParams ) throws SchedulerException {
+  default void validateJobParams( final Map<String, Object> jobParams ) throws SchedulerException {
   }
 }

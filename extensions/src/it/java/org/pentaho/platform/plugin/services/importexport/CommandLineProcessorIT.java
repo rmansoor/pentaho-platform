@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importexport;
 
@@ -28,7 +22,14 @@ import java.io.File;
 import java.io.IOException;
 
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.servlet.ServletContainer;
+import org.glassfish.jersey.test.DeploymentContext;
+import org.glassfish.jersey.test.JerseyTest;
+import org.glassfish.jersey.test.ServletDeploymentContext;
+import org.glassfish.jersey.test.grizzly.GrizzlyWebTestContainerFactory;
+import org.glassfish.jersey.test.spi.TestContainerFactory;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.pentaho.platform.api.engine.IAuthorizationAction;
@@ -48,16 +49,11 @@ import org.pentaho.platform.security.policy.rolebased.actions.AdministerSecurity
 import org.pentaho.platform.web.http.filters.PentahoRequestContextFilter;
 import org.pentaho.test.platform.engine.core.MicroPlatform;
 
-import com.sun.jersey.test.framework.AppDescriptor;
-import com.sun.jersey.test.framework.JerseyTest;
-import com.sun.jersey.test.framework.WebAppDescriptor;
-import com.sun.jersey.test.framework.spi.container.TestContainerFactory;
-import com.sun.jersey.test.framework.spi.container.grizzly.web.GrizzlyWebTestContainerFactory;
 import org.pentaho.test.platform.utils.TestResourceLocation;
 
 /**
  * Class Description
- * 
+ *
  * @author <a href="mailto:dkincade@pentaho.com">David M. Kincade</a>
  */
 public class CommandLineProcessorIT extends JerseyTest {
@@ -67,9 +63,10 @@ public class CommandLineProcessorIT extends JerseyTest {
       + "--file-path=/home/dkincade/pentaho/platform/trunk/biserver-ee/pentaho-solutions " + VALID_URL_OPTION;
 
   private String tmpZipFileName;
-  private static WebAppDescriptor webAppDescriptor = new WebAppDescriptor.Builder(
-      "org.pentaho.platform.web.http.api.resources" ).contextPath( "api" ).addFilter(
-      PentahoRequestContextFilter.class, "pentahoRequestContextFilter" ).build();
+  private static ResourceConfig config = new ResourceConfig().packages( "org.pentaho.platform.web.http.api.resources" );
+  private static ServletDeploymentContext servletDeploymentContext = ServletDeploymentContext.forServlet( new ServletContainer( config ) )
+     .addFilter( PentahoRequestContextFilter.class, "pentahoRequestContextFilter" ).contextPath( "api" )
+     .build();
   private MicroPlatform mp = new MicroPlatform( TestResourceLocation.TEST_RESOURCES + "/solution" );
 
   public CommandLineProcessorIT() throws IOException {
@@ -80,7 +77,7 @@ public class CommandLineProcessorIT extends JerseyTest {
     NameBaseMimeResolver mimeResolver = mock( NameBaseMimeResolver.class );
     IRepositoryContentConverterHandler converterHandler = mock( IRepositoryContentConverterHandler.class );
 
-    mp.setFullyQualifiedServerUrl( getBaseURI() + webAppDescriptor.getContextPath() + "/" );
+    mp.setFullyQualifiedServerUrl( getBaseUri() + servletDeploymentContext.getContextPath() + "/" );
     mp.define( ISolutionEngine.class, SolutionEngine.class );
     mp.define( IUnifiedRepository.class, FileSystemBackedUnifiedRepository.class,
         IPentahoDefinableObjectFactory.Scope.GLOBAL );
@@ -196,8 +193,8 @@ public class CommandLineProcessorIT extends JerseyTest {
 
 
   @Override
-  protected AppDescriptor configure() {
-    return webAppDescriptor;
+  protected DeploymentContext configureDeployment() {
+    return servletDeploymentContext;
   }
 
   @Override
@@ -206,7 +203,7 @@ public class CommandLineProcessorIT extends JerseyTest {
   }
 
   private String getBaseUrl() {
-    String baseUrl = getBaseURI().toString();
+    String baseUrl = getBaseUri().toString();
     if ( baseUrl.endsWith( "/" ) ) {
       baseUrl = baseUrl.substring( 0, baseUrl.length() - 1 );
     }

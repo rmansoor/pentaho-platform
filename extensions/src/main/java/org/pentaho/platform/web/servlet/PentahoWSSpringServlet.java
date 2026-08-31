@@ -1,40 +1,38 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.servlet;
 
 import com.sun.xml.ws.transport.http.servlet.ServletAdapterList;
-import com.sun.xml.ws.transport.http.servlet.SpringBinding;
 import com.sun.xml.ws.transport.http.servlet.WSServletDelegate;
+
+import org.pentaho.platform.api.engine.IPentahoSession;
+import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
+import org.pentaho.platform.web.jaxws.spring.SpringBinding;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.context.ConfigurableWebApplicationContext;
 import org.springframework.web.context.support.XmlWebApplicationContext;
 
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -95,7 +93,15 @@ public class PentahoWSSpringServlet extends HttpServlet {
   }
 
   protected void doPost( HttpServletRequest request, HttpServletResponse response ) throws ServletException {
+    String soapAction = request.getHeader("SOAPAction");
+    // Handle logout requests by invoking Spring Security logout handler
     delegate.doPost( request, response, getServletContext() );
+    if ( soapAction.endsWith( "logoutRequest\"" ) ) {
+      IPentahoSession userSession = PentahoSessionHolder.getSession();
+      PentahoSystem.invokeLogoutListeners( userSession );
+      SecurityContextLogoutHandler logoutHandler = new SecurityContextLogoutHandler();
+      logoutHandler.logout( request, response, null );
+    }
   }
 
   protected void doGet( HttpServletRequest request, HttpServletResponse response ) throws ServletException {

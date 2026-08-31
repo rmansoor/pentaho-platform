@@ -1,19 +1,16 @@
-/*!
-* This program is free software; you can redistribute it and/or modify it under the
-* terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
-* Foundation.
-*
-* You should have received a copy of the GNU Lesser General Public License along with this
-* program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
-* or from the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-* See the GNU Lesser General Public License for more details.
-*
-* Copyright (c) 2002-2017 Hitachi Vantara..  All rights reserved.
-*/
+/*! ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 // add the subscription specific ignored hidden fields used by getParameters
 pentaho_ignoreFields.push('subscribe-name');
@@ -81,7 +78,6 @@ function doParameterFormDisplay( id ) {
 					}
 				}
 				alert(destMsg);
-				// subsMsgObj.value = '';
 			}
 		} catch (ignored) {
 		}
@@ -134,7 +130,7 @@ function doCancelScheduling( id, cancelEditing) {
 		var form = document.forms['form_'+id];
 		var form2 = document.forms['save_form_'+id];
 		doClearEditingFields(form, form2);
-		if (USEPOSTFORFORMS) {
+		if (typeof USEPOSTFORFORMS !== "undefined" && USEPOSTFORFORMS) {
 			if (cancelEditing) {
 				form2.target = '';
 				form2.submit();
@@ -205,7 +201,7 @@ function modifyURL(url, appendStr) {
 function doSave( id, url, createNew ) {
 	var submitUrl = null;
 
-	if (!USEPOSTFORFORMS) {
+	if (typeof USEPOSTFORFORMS === "undefined" || !USEPOSTFORFORMS) {
 		submitUrl = modifyURL(url, 'subscribe=save');
 	} else {
 		submitUrl = url;
@@ -239,7 +235,7 @@ function doSave( id, url, createNew ) {
 		var element = form.elements[ n ];
 		if( (element.type == 'checkbox') && (element.id.indexOf( 'schedule-' ) == 0 ) && (element.checked == true) ) {
 			hasSchedules = true;
-			if (!USEPOSTFORFORMS) {
+			if (typeof USEPOSTFORFORMS === "undefined" || !USEPOSTFORFORMS) {
 				submitUrl += '&'+element.id+'=true';
 			} else {
 				break;
@@ -288,7 +284,7 @@ function doSave( id, url, createNew ) {
 		}
 	}
 
-	if (!USEPOSTFORFORMS) {
+	if (typeof USEPOSTFORFORMS === "undefined" || !USEPOSTFORFORMS) {
 		submitUrl += '&subscribe-name='+escape(name);		
 		submitUrl += '&destination='+escape(destination);
 		document.location.href=submitUrl;
@@ -304,8 +300,6 @@ function doSave( id, url, createNew ) {
 		form.elements['_PENTAHO_ADDITIONAL_PARAMS_'].value = submitUrl;
 
 		form.elements['subscribe'].value = 'save';
-		// document.location.href=submitUrl;
-		// return false;
 		form.target = '';
 		form.action = url;
 		form.submit();
@@ -322,7 +316,7 @@ function doSubscribed(id, actionUrl, displayUrl ) {
 	var target='REPORTWINDOW';
 	var options = '';
 	var form = document.forms['save_form_'+id];
-	if (!USEPOSTFORFORMS) {
+	if (typeof USEPOSTFORFORMS === "undefined" || !USEPOSTFORFORMS) {
 
 		if( action == 'run' ) {
 			submitUrl += actionUrl + 'subscribe=run';
@@ -343,7 +337,7 @@ function doSubscribed(id, actionUrl, displayUrl ) {
 		if( target == '' ) {
 			document.location.href=submitUrl;
 		} else {
-			window.open( submitUrl, target, options );
+			pho.util.xss.open( submitUrl, target, options );
 		}
 		return false;
 	} else {
@@ -383,12 +377,11 @@ function doSubscribed(id, actionUrl, displayUrl ) {
 			eval(mthName);
 		} catch (ignored) {
 		}
-
-	}	
+	}
 }
 
 function doSubscribedArchive( id, actionUrl ) {
-	if (!USEPOSTFORFORMS) {
+	if (typeof USEPOSTFORFORMS === "undefined" || !USEPOSTFORFORMS) {
  		var submitUrl = '';
 		var action= document.getElementById('subscription-archive-action'+id).value;
 		var target='REPORTWINDOW';
@@ -411,7 +404,7 @@ function doSubscribedArchive( id, actionUrl ) {
 		if( target == '' ) {
 			document.location.href=submitUrl;
 		} else {
-			window.open( submitUrl, target, '' );
+			pho.util.xss.open( submitUrl, target, '' );
 		}
 		 return false;
 	} else {
@@ -435,7 +428,6 @@ function doSubscribedArchive( id, actionUrl ) {
 	
 		var name= document.getElementById('subscription-archive'+id).value;
 		form.elements['subscribe-name'].value = name;
-		// submitUrl += '&subscribe-name='+escape(name);
 		form.action = formAction;
 		form.target = target;
 		form.submit();

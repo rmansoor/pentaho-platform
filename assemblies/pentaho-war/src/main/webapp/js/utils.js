@@ -1,19 +1,16 @@
-/*!
-* This program is free software; you can redistribute it and/or modify it under the
-* terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
-* Foundation.
-*
-* You should have received a copy of the GNU Lesser General Public License along with this
-* program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
-* or from the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-* See the GNU Lesser General Public License for more details.
-*
-* Copyright (c) 2002-2017 Hitachi Vantara..  All rights reserved.
-*/
+/*! ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 /**
 This is a JavaScript library that will allow you to easily add some basic DHTML
@@ -267,7 +264,8 @@ function refreshDatePicker(dateFieldName, year, month, day)
   // now, the days of the month
   do {
     dayNum = thisDay.getDate();
-    TD_onclick = " onclick=\"updateDateField('" + dateFieldName + "', '" + getDateString(thisDay) + "');\">";
+    const TD_onclick = " onclick=\"updateDateField('" + pho.util.xss.encodeForJavaScript(dateFieldName) +
+ "', '" + getDateString(thisDay) + "');\">";
     
     if (dayNum == day)
       html += TD_selected + TD_onclick + DIV_selected + dayNum + xDIV + xTD;
@@ -300,7 +298,7 @@ function refreshDatePicker(dateFieldName, year, month, day)
   // and finally, close the table
   html += xTABLE;
  
-  document.getElementById(datePickerDivID).innerHTML = html;
+  pho.util.xss.setHtmlUnsafe(document.getElementById(datePickerDivID), html);
   // add an "iFrame shim" to allow the datepicker to display above selection lists
   adjustiFrame();
 }
@@ -319,7 +317,8 @@ function getButtonCode(dateFieldName, dateVal, adjust, label)
     newYear += -1;
   }
  
-  return "<button class='dpButton' onClick='refreshDatePicker(\"" + dateFieldName + "\", " + newYear + ", " + newMonth + ");'>" + label + "</button>";
+  return "<button class='dpButton' onClick='refreshDatePicker(\"" + pho.util.xss.encodeForJavaScript(dateFieldName) +
+ "\", " + newYear + ", " + newMonth + ");'>" + label + "</button>";
 }
 
 

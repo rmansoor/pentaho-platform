@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
 <beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:util="http://www.springframework.org/schema/util"
        xmlns:pen="http://www.pentaho.com/schema/pentaho-system"
@@ -29,8 +40,14 @@
 		<value>org.pentaho.security.publish</value>
 	</util:list>
 
+	<util:list id="schedulePowerUser">
+		<value>org.pentaho.scheduler.execute</value>
+		<value>org.pentaho.repository.read</value>
+	</util:list>
+
 	<util:map id="role-mappings">
 		<entry key="Power User" value-ref="powerUser" />
+		<entry key="Schedule Power User" value-ref="schedulePowerUser" />
 		<entry key="Report Author" value-ref="reportAuthor" />
 		<entry key="Business Analyst" value-ref="businessAnalyst" />
 	</util:map>
@@ -58,18 +75,26 @@
 			</util:list>
 		</entry>
 
+		<entry key="bob">
+			<util:list>
+				<ref bean="singleTenantAuthenticatedAuthorityName"/>
+				<value>Schedule Power User</value>
+			</util:list>
+		</entry>
+
 		<entry key="tiffany">
 			<util:list>
 				<ref bean="singleTenantAuthenticatedAuthorityName"/>
 				<value>Report Author</value>
 			</util:list>
 		</entry>
-        <entry key-ref="singleTenantAdminUserName">
+
+		<entry key-ref="singleTenantAdminUserName">
 			<util:list>
 				<ref bean="singleTenantAuthenticatedAuthorityName"/>
 				<ref bean="singleTenantAdminAuthorityName"/>
 			</util:list>
 		</entry>
-	</util:map>	
-	
+	</util:map>
+
 </beans>

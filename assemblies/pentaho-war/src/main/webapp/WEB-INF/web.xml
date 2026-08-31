@@ -1,4 +1,15 @@
 <?xml version="1.0"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
 <!DOCTYPE web-app PUBLIC
     "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
     "http://java.sun.com/dtd/web-app_2_3.dtd">
@@ -25,9 +36,24 @@
   <!-- [BEGIN HSQLDB DATABASES] -->
   <context-param>
     <param-name>hsqldb-databases</param-name>
-    <param-value>sampledata@../../data/hsqldb/sampledata,hibernate@../../data/hsqldb/hibernate,quartz@../../data/hsqldb/quartz</param-value>
+    <!--
+      The database file base name (after '@file:') MUST differ from the seed
+      script name (<dbName>.script) to avoid a base-name collision: HSQLDB uses
+      <base>.script/<base>.properties as its own native database files, so using
+      'hibernate' would make HSQLDB treat the seed 'hibernate.script' as its
+      native store and fail to initialize (users like hibuser/jcr_user are never
+      created). The dbName alias (before '@') stays unchanged so datasource URLs
+      (hsql://localhost:9001/hibernate) and seed lookup (<dbName>.script) still work.
+    -->
+    <param-value>sampledata@file:./data/hsqldb/sampledatadb,hibernate@file:./data/hsqldb/hibernatedb,quartz@file:./data/hsqldb/quartzdb,jackrabbit@file:./data/hsqldb/jackrabbitdb</param-value>
   </context-param>
   <!-- [END HSQLDB DATABASES] -->
+  
+  <!-- Load data into HSQLDB databases after server starts -->
+  <context-param>
+    <param-name>hsqldb-init-script</param-name>
+    <param-value>../../../data/hsqldb</param-value>
+  </context-param>
 
   <!-- insert additional context-params -->
 
@@ -196,10 +222,6 @@
     <listener-class>org.pentaho.platform.web.http.session.PentahoCacheSessionListener</listener-class>
   </listener>
 
-  <listener>
-    <listener-class>net.sf.ehcache.constructs.web.ShutdownListener</listener-class>
-  </listener>
-
   <!-- insert additional listeners -->
 
   <!-- Last listener: PentahoSystemReadyListener, performs notification to plugins that the system
@@ -272,6 +294,10 @@
   <servlet>
     <servlet-name>PluginDispatchServlet</servlet-name>
     <servlet-class>org.pentaho.platform.web.servlet.PluginDispatchServlet</servlet-class>
+    <init-param>
+      <param-name>jakarta.ws.rs.Application</param-name>
+      <param-value>org.pentaho.platform.web.servlet.jersey.JAXRSPluginApplication</param-value>
+    </init-param>
   </servlet>
 
   <servlet>
@@ -353,8 +379,12 @@
     <description>JAX-RS endpoint</description>
     <servlet-class>org.pentaho.platform.web.servlet.JAXRSServlet</servlet-class>
     <init-param>
-      <param-name>com.sun.jersey.config.property.WadlGeneratorConfig</param-name>
+      <param-name>jersey.config.server.wadl.generatorConfig</param-name>
       <param-value>org.pentaho.platform.web.servlet.PentahoWadlGeneratorConfig</param-value>
+    </init-param>
+    <init-param>
+      <param-name>jakarta.ws.rs.Application</param-name>
+      <param-value>org.pentaho.platform.web.servlet.jersey.JAXRSApplication</param-value>
     </init-param>
   </servlet>
 

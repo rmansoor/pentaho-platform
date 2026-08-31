@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.engine.services.runtime;
 
@@ -44,7 +38,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dom4j.Document;
@@ -241,7 +235,7 @@ public class RuntimeContext extends PentahoMessenger implements IRuntimeContext 
     // If the component-definition's action-definition does not have an xsl element it reuses the one already
     // set by its previous component-definition's action-definition peer.
     // If the xsl element is not present for the component-definition then reset to the default xsl value
-    // specified in the Hitachi Vantara.xml tag "default-parameter-xsl"
+    // specified in the Pentaho.xml tag "default-parameter-xsl"
 
     // Proposed fix for bug BISERVER-238 by Ezequiel Cuellar
     // Added a default value of DefaultParameterForm.xsl when getting the value of default-parameter-xsl
@@ -1855,7 +1849,7 @@ public class RuntimeContext extends PentahoMessenger implements IRuntimeContext 
           if ( defaultValue instanceof Object[] ) {
             setObjectArrayParameters( fieldName, (Object[]) defaultValue );
           }
-          String value = StringEscapeUtils.escapeXml( defaultValue.toString() );
+          String value = StringEscapeUtils.escapeXml11( defaultValue.toString() );
           body.append( "<input type=\"hidden\" name=\"" + fieldName + "\" value=\"" + value + "\"></input>" ); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         } catch ( Exception e ) {
           body.append( "<input type=\"hidden\" name=\"" + fieldName + "\" value=\"" + defaultValue + "\"></input>" ); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$

@@ -1,19 +1,16 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2023 Hitachi Vantara. All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.mantle.client.dialogs;
 
@@ -63,7 +60,7 @@ import org.pentaho.mantle.client.messages.Messages;
 public class ImportDialog extends PromptDialogBox {
 
   private static final String UPLOAD_ACCESS_DENIED_SNIPPET = "UnifiedRepositoryAccessDeniedException";
-  private static final String IMPORT_API_PATH = "api/repo/files/import";
+  private static final String IMPORT_API_PATH = "api/repo/files/import/multiple";
 
   /**
    * The name of the CSRF token field to use when CSRF protection is disabled.
@@ -126,13 +123,22 @@ public class ImportDialog extends PromptDialogBox {
         String result = sce.getResults();
         if ( result.length() > 5 ) {
           HTML messageTextBox = null;
-          if ( result.contains( "INVALID_MIME_TYPE" )  ) {
+          // order matters here. second case is a substring of the first, so we have to check the longer one first.
+          if ( result.contains( "INVALID_MIME_TYPE_PARTIAL" )  ) {
+              MessageDialogBox dialogBox = new MessageDialogBox(
+                      Messages.getString( "uploadPartialSuccess" ),
+                      Messages.getString( "uploadInvalidFileTypeQuestionPartial", result ),
+                      true,
+                      Messages.getString( "close" ) );
+              dialogBox.center();
+          } else if ( result.contains( "INVALID_MIME_TYPE" )  ) {
             MessageDialogBox dialogBox = new MessageDialogBox(
                     Messages.getString( "uploadUnsuccessful" ),
                     Messages.getString( "uploadInvalidFileTypeQuestion", result ),
                     true,
                     Messages.getString( "close" ) );
             dialogBox.center();
+
           } else if ( result.contains( UPLOAD_ACCESS_DENIED_SNIPPET ) ) {
             MessageDialogBox messageDialogBox = new MessageDialogBox(
                     Messages.getString( "uploadUnsuccessful" ),
@@ -177,17 +183,17 @@ public class ImportDialog extends PromptDialogBox {
 
     final FileUpload upload = new FileUpload();
     upload.setName( "fileUpload" );
+    upload.getElement().setAttribute( "multiple" , "multiple" );
     ChangeHandler fileUploadHandler = new ChangeHandler() {
       @Override
       public void onChange( ChangeEvent event ) {
-        fileTextBox.setText( upload.getFilename() );
         if ( !"".equals( importDir.getValue() ) ) {
+          String selectedFiles = getSelectedFiles( upload );
           //Set the fileNameOverride because the fileUpload object can only reliably transmit US-ASCII
           //character set.  See RFC283 section 2.3 for details
-          String fileNameValue = upload.getFilename().replaceAll( "\\\\", "/" );
-          fileNameValue = fileNameValue.substring( fileNameValue.lastIndexOf( "/" ) + 1 );
-          fileNameOverride.setValue( fileNameValue );
-          okButton.setEnabled( true );
+          fileNameOverride.setValue( getEncodedFilenames( upload ) );
+          fileTextBox.setText( selectedFiles );
+          okButton.setEnabled( !selectedFiles.isEmpty() );
         } else {
           okButton.setEnabled( false );
         }
@@ -403,6 +409,26 @@ public class ImportDialog extends PromptDialogBox {
      <html><head><title>' + windowTitle + '</title></head><body bgcolor="#FFFFFF" topmargin="6" leftmargin="6">'
      + innerText + "</body></html>";
      logWindow.document.write(htmlText);
+  }-*/;
+
+  // Method to extract selected filenames from FileUpload widget using JavaScript
+  private native String getSelectedFiles(FileUpload upload) /*-{
+    var files = upload.@com.google.gwt.user.client.ui.FileUpload::getElement()().files;
+    var selectedFiles = [];
+    for (var i = 0; i < files.length; i++) {
+      selectedFiles.push( files[i].name );
+    }
+    return selectedFiles.join(", ");
+  }-*/;
+
+  // Get URL-encoded filenames for server submission
+  private native String getEncodedFilenames(FileUpload upload) /*-{
+    var files = upload.@com.google.gwt.user.client.ui.FileUpload::getElement()().files;
+    var selectedFiles = [];
+    for (var i = 0; i < files.length; i++) {
+      selectedFiles.push( encodeURIComponent(files[i].name) );
+    }
+    return selectedFiles.join(",");
   }-*/;
 
   /**

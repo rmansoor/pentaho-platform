@@ -1,16 +1,35 @@
+/*! ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
+
 package org.pentaho.platform.engine.security;
 
 import org.junit.Test;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.*;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 
 public class PentahoJsonValidatorTest {
 
     private final String VALID_JSON = "{\"class\":\"org.pentaho.platform.engine.security.TestObject\",\"intValue\":\"5\",\"stringValue\":\"XPTO\"}";
     private final String INVALID_CLASS_JSON = "{\"class\":\"org.pentaho.platform.engine.security.TestObjectW\",\"intValue\":\"5\",\"stringValue\":\"XPTO\"}";
     private final String EMPTY_JSON = "";
+    private final String VALID_JSONArray = "{\"class\":\"org.pentaho.platform.engine.security.TestObject\",\"list\":[{\"class\":\"org.pentaho.platform.engine.security.TestObject\",\"intValue\":\"5\"\n}],\"intValue\":\"5\",\"stringValue\":\"XPTO\"}";
 
     @Test
     public void testInvalidJson() {
@@ -39,18 +58,25 @@ public class PentahoJsonValidatorTest {
     public void testValidJson() {
         assertTrue( PentahoJsonValidator.isJsonValid( VALID_JSON, TestObject.class ) );
     }
+
+    @Test
+    public void testValidJsonArray() {
+        assertTrue( PentahoJsonValidator.isJsonValid( VALID_JSONArray, TestObject.class ) );
+    }
 }
 
 class TestObject {
     int intValue;
     String stringValue;
+    List<String> list = new ArrayList<>();
 
     public TestObject(){
     }
 
-    public TestObject( int intValue, String stringValue ){
+    public TestObject( int intValue, String stringValue, List< String > list ){
         this.intValue = intValue;
         this.stringValue = stringValue;
+        this.list = list;
     }
 
     public int getIntValue() {
@@ -67,6 +93,14 @@ class TestObject {
 
     public void setStringValue( String stringValue ) {
         this.stringValue = stringValue;
+    }
+
+    public List<String> getList() {
+        return list;
+    }
+
+    public void setList(List<String> list) {
+        this.list = list;
     }
 
     @Override

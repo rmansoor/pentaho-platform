@@ -1,30 +1,25 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002 - 2022 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 package org.pentaho.platform.osgi;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.AbstractFileFilter;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.karaf.main.Main;
+import org.pentaho.di.core.Const;
 import org.pentaho.di.core.KettleClientEnvironment;
 import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.api.engine.IPentahoSystemListener;
@@ -40,10 +35,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -58,6 +56,8 @@ public class KarafBoot implements IPentahoSystemListener {
   private Main main;
   private KarafInstance karafInstance;
   private Properties karafCustomProperties;
+  private static FileLock karafBootFileLock;
+  private static File lockFile;
 
   Logger logger = LoggerFactory.getLogger( getClass() );
 
@@ -129,6 +129,10 @@ public class KarafBoot implements IPentahoSystemListener {
         transientRoot = true;
       }
 
+      boolean shouldWaitForLock = Boolean.parseBoolean( System.getProperty( Const.KARAF_WAIT_FOR_BOOT_LOCK_FILE, "false" ) );
+      if ( shouldWaitForLock ) {
+        waitForBootLock();
+      }
       final File destDir;
       if ( transientRoot ) {
         if ( rootCopyFolderString == null ) {
@@ -497,5 +501,80 @@ public class KarafBoot implements IPentahoSystemListener {
     } catch ( Exception e ) {
       logger.error( "Error stopping Karaf", e );
     }
+  }
+
+  /**
+   * Ensures no other karaf instances are starting at the same time.  This can cause problems when using an alternative
+   * karaf root and several instances of kitchen/pan are starting at once.
+   * @throws InterruptedException
+   */
+  @VisibleForTesting
+  boolean waitForBootLock() throws InterruptedException {
+    boolean success = false;
+    try {
+      String tempDir = System.getProperty( "java.io.tmpdir" );
+      long bootWaitTime = 300000;
+      try {
+        bootWaitTime = Long.parseLong( System.getProperty( Const.KARAF_BOOT_LOCK_WAIT_TIME, "300000" ) );
+      } catch ( NumberFormatException e ) {
+        logger.warn( String.format( "Error parsing value of %s, using default 5 minutes", Const.KARAF_BOOT_LOCK_WAIT_TIME ), e );
+      }
+      long waitTimeUp = System.currentTimeMillis() + bootWaitTime;
+      setLockFile( new File( Paths.get( tempDir, Const.KARAF_BOOT_LOCK_FILE ).toUri() ) );
+
+      // wait until the lock file is gone or we run out of time
+      logger.debug( "Waiting for karaf boot lock..." );
+      while ( lockFile.exists() && System.currentTimeMillis() < waitTimeUp ) {
+        Thread.sleep( 1000 );
+      }
+
+      if ( lockFile.exists() ) {
+        logger.warn( "Karaf boot lock timed out, but lock file {} still present.  Proceeding anyway. Please remove any stale lock file.", lockFile.getAbsolutePath() );
+      } else if ( lockFile.createNewFile() ) {
+        // createNewFile should be atomic, so we should be safe
+        // deleteOnExit only works if the JVM shuts down normally and we shouldn't need it, but we might as well set it anyway
+        lockFile.deleteOnExit();
+        // lock the file to prevent other processes from stepping on it
+        try ( FileChannel fileChannel = FileChannel.open( lockFile.toPath(), Set.of( StandardOpenOption.WRITE ) ) ) {
+          setLockFileLock( fileChannel.lock() );
+          logger.info( "Karaf boot lock secured." );
+          fileChannel.write( ByteBuffer.wrap( getCurrentPid().getBytes() ) );
+        }
+        success = true;
+      } else {
+        // another process got here first and created the file before we could; start waiting again because we know
+        logger.debug( "Karaf boot lock claimed by another process, waiting again..." );
+        waitForBootLock();
+      }
+    } catch ( InterruptedException e ) {
+      logger.error( "Caught interrupted exception waiting for karaf boot file lock", e );
+      if ( Thread.interrupted() ) {
+        throw new InterruptedException();
+      }
+    } catch ( IOException e ) {
+      logger.warn( "Exception trying to get karaf boot file lock; proceeding anyway", e );
+    }
+    return success;
+  }
+
+  @VisibleForTesting
+  String getCurrentPid() {
+    return Long.toString( ProcessHandle.current().pid() );
+  }
+
+  public static File getLockFile() {
+    return lockFile;
+  }
+
+  public static void setLockFile( File lockFile ) {
+    KarafBoot.lockFile = lockFile;
+  }
+
+  public static FileLock getLockFileLock() {
+    return karafBootFileLock;
+  }
+
+  public static void setLockFileLock( FileLock fileLock ) {
+    KarafBoot.karafBootFileLock = fileLock;
   }
 }

@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.engine.core.system.objfac;
 
@@ -44,7 +38,7 @@ import java.util.Map;
  * responsible for setting the {@link ApplicationContext}.
  * <p/>
  * A note on creation and management of objects: Object creation and scoping is handled by Spring with one exception: in
- * the case of a {@link StandaloneSession}. Spring's session scope relates a bean to an javax.servlet.http.HttpSession,
+ * the case of a {@link StandaloneSession}. Spring's session scope relates a bean to an jakarta.servlet.http.HttpSession,
  * and as such it does not know about custom sessions. The correct approach to solve this problem is to write a custom
  * Spring scope (called something like "pentahosession"). Unfortunately, we cannot implement a custom scope to handle
  * the {@link StandaloneSession} because the custom scope would not be able to access it. There is currently no way to
@@ -210,12 +204,11 @@ public abstract class AbstractSpringPentahoObjectFactory implements IPentahoObje
 
       previousSpringSession = SpringScopeSessionHolder.SESSION.get();
 
-      if ( session instanceof StandaloneSession ) {
-        // first ask Spring for the object, if it is session scoped it will fail
-        // since Spring doesn't know about StandaloneSessions
+      // Save the session off to support Session and Request scope.
+      // If it is session scoped it would fail without this, since Spring doesn't know about StandaloneSessions.
+      SpringScopeSessionHolder.SESSION.set( session );
 
-        // Save the session off to support Session and Request scope.
-        SpringScopeSessionHolder.SESSION.set( session );
+      if ( session instanceof StandaloneSession ) {
         try {
           if ( key != null ) { // if they want it by id, look for it that way first
             object = retrieveViaSpring( key );
@@ -244,10 +237,9 @@ public abstract class AbstractSpringPentahoObjectFactory implements IPentahoObje
           }
         }
       } else {
-        // be sure to clear out any session held.
-        SpringScopeSessionHolder.SESSION.set( null );
-        // Spring can handle the object retrieval since we are not dealing with StandaloneSession
-
+        // Spring can handle the object retrieval. However, SpringScopeSessionHolder.SESSION still needs
+        // to be set for session/request scoped beans, given this is used by
+        // StandaloneSpringPentahoObjectFactory.ThreadLocalScope, for request and session scopes.
         if ( key != null ) { // if they want it by id, look for it that way first
           object = retrieveViaSpring( key );
         } else {

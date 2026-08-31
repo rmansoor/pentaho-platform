@@ -277,12 +277,18 @@
       <param name="schema" value="mssql"/>
       <param name="schemaObjectPrefix" value="${wsp.name}_pm_ws_"/>
     </PersistenceManager>
-    -->
-
 
     <PersistenceManager class="org.apache.jackrabbit.core.persistence.pool.H2PersistenceManager">
       <param name="url" value="jdbc:h2:${wsp.home}/db"/>
       <param name="schemaObjectPrefix" value="${wsp.name}_"/>
+    </PersistenceManager>
+    -->
+
+    <PersistenceManager class="org.apache.jackrabbit.core.persistence.bundle.BundleDbPersistenceManager">
+      <param name="driver" value="javax.naming.InitialContext"/>
+      <param name="url" value="java:comp/env/jdbc/jackrabbit"/>
+      <param name="schemaObjectPrefix" value="${wsp.name}_"/>
+      <param name="schema" value="hsqldb"/>
     </PersistenceManager>
 
     <!--
@@ -291,7 +297,10 @@
     -->
     <SearchIndex class="org.apache.jackrabbit.core.query.lucene.SearchIndex">
       <param name="path" value="${wsp.home}/index"/>
-      <param name="supportHighlighting" value="true"/>
+      <param name="extractorPoolSize" value="0"/>
+      <param name="enableConsistencyCheck" value="false"/>
+      <param name="respectDocumentOrder" value="false"/>
+      <param name="initializeHierarchyCache" value="false" />
     </SearchIndex>
 
 
@@ -394,11 +403,18 @@
       <param name="schema" value="mssql"/>
       <param name="schemaObjectPrefix" value="pm_ver_"/>
     </PersistenceManager>
-    -->
 
     <PersistenceManager class="org.apache.jackrabbit.core.persistence.pool.H2PersistenceManager">
       <param name="url" value="jdbc:h2:${rep.home}/version/db"/>
       <param name="schemaObjectPrefix" value="version_"/>
+    </PersistenceManager>
+    -->
+
+    <PersistenceManager class="org.apache.jackrabbit.core.persistence.bundle.BundleDbPersistenceManager">
+      <param name="driver" value="javax.naming.InitialContext"/>
+      <param name="url" value="java:comp/env/jdbc/jackrabbit"/>
+      <param name="schemaObjectPrefix" value="version_"/>
+      <param name="schema" value="hsqldb"/>
     </PersistenceManager>
 
   </Versioning>

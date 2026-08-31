@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.jcr.transform;
 
@@ -153,7 +147,7 @@ public class NodeRepositoryFileDataTransformer implements ITransformer<NodeRepos
       final Node fileNode ) throws RepositoryException {
     Node unstructuredNode = fileNode.getNode( pentahoJcrConstants.getJCR_CONTENT() );
     final String pattern = session.getNamespacePrefix( PentahoJcrConstants.PHO_NS ) + ":" + "*"; //$NON-NLS-1$ //$NON-NLS-2$
-    Assert.isTrue( unstructuredNode.getNodes( pattern ).getSize() == 1 );
+    Assert.isTrue( unstructuredNode.getNodes( pattern ).getSize() == 1, "The unstructured node must contain exactly one child node matching the pattern. Ensure the repository structure is correct." );
     Node jcrNode = unstructuredNode.getNodes( pattern ).nextNode();
     return new NodeRepositoryFileData( internalRead( session, pentahoJcrConstants, jcrNode, null ) );
   }

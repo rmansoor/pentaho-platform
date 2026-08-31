@@ -1,22 +1,15 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
 
 package org.pentaho.platform.engine.core.system.objfac.spring;
 
@@ -35,9 +28,9 @@ import java.util.Map;
 
 /**
  * Parses a bean from Spring XML
- * 
+ *
  * {@code} <pen:bean class="com.foo.Clazz"/> {@code}
- * 
+ *
  * User: nbaker Date: 3/2/13
  */
 public class BeanParser extends AbstractBeanDefinitionParser {
@@ -58,7 +51,7 @@ public class BeanParser extends AbstractBeanDefinitionParser {
     // BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(BeanBuilder.class.getName());
     definition.getPropertyValues().addPropertyValue( "type", originalClassName );
 
-    Map<String, String> propMap = new HashMap<String, String>();
+    Map<String, String> propMap = new HashMap<>();
     Element objectproperties = DomUtils.getChildElementByTagName( element, Const.ATTRIBUTES );
     if ( objectproperties != null ) {
       List props = DomUtils.getChildElementsByTagName( objectproperties, Const.ATTR );
@@ -71,6 +64,7 @@ public class BeanParser extends AbstractBeanDefinitionParser {
         }
       }
     }
+
     definition.getPropertyValues().addPropertyValue( Const.ATTRIBUTES, propMap );
 
     // AbstractBeanDefinition definition = builder.getRawBeanDefinition();
@@ -81,7 +75,7 @@ public class BeanParser extends AbstractBeanDefinitionParser {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see org.springframework.beans.factory.xml.AbstractBeanDefinitionParser#shouldGenerateIdAsFallback()
    */
   @Override

@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.metadata;
 
@@ -33,7 +27,7 @@ import java.util.Set;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.junit.After;
 import org.junit.Before;
@@ -698,6 +692,11 @@ public class PentahoMetadataDomainRepositoryIT {
     domainRepositorySpy.storeAnnotationsXml( null, annotationsXml );
     verify( domainRepositorySpy, times( 0 ) ).getMetadataRepositoryFile( nullable( String.class ) );
 
+    final RepositoryFile domainFile = mock( RepositoryFile.class );
+    final RepositoryFile annotationsFile = mock( RepositoryFile.class );
+    doReturn( domainFile ).when( domainRepositorySpy ).getMetadataRepositoryFile( domainId );
+    doReturn( annotationsFile ).when( domainRepositorySpy ).getAnnotationsXmlFile( domainFile );
+
     domainRepositorySpy.storeAnnotationsXml( domainId, annotationsXml );
     verify( domainRepositorySpy, times( 1 ) ).getMetadataRepositoryFile( nullable( String.class ) );
     verify( domainRepositorySpy, times( 1 ) ).getAnnotationsXmlFile( any( RepositoryFile.class ) );
@@ -729,13 +728,13 @@ public class PentahoMetadataDomainRepositoryIT {
     domainRepositorySpy.createOrUpdateAnnotationsXml( domainFile, null, annotationsXml );
     verify( repository, times( 1 ) )
         .createFile( any( String.class ), any( RepositoryFile.class ), any( IRepositoryFileData.class ),
-            any( String.class ) );
+        nullable( String.class ) );
 
     // Update
     RepositoryFile annotationsFile = mock( RepositoryFile.class );
     domainRepositorySpy.createOrUpdateAnnotationsXml( domainFile, annotationsFile, annotationsXml );
     verify( repository, times( 1 ) )
-        .updateFile( any( RepositoryFile.class ), any( IRepositoryFileData.class ), any( String.class ) );
+      .updateFile( any( RepositoryFile.class ), any( IRepositoryFileData.class ), nullable( String.class ) );
 
     // Error
     doThrow( new RuntimeException() ).when( domainRepositorySpy ).getRepository();

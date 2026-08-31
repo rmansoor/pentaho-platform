@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importexport;
 
@@ -35,6 +29,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.io.ByteArrayOutputStream;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,6 +43,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.logging.log4j.Level;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -70,6 +67,7 @@ import org.pentaho.platform.api.repository2.unified.RepositoryFileSid;
 import org.pentaho.platform.api.repository2.unified.RepositoryFileSid.Type;
 import org.pentaho.platform.api.repository2.unified.RepositoryRequest;
 import org.pentaho.platform.api.repository2.unified.data.simple.SimpleRepositoryFileData;
+import org.pentaho.platform.api.util.IRepositoryExportLogger;
 import org.pentaho.platform.core.mimetype.MimeType;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
@@ -108,7 +106,7 @@ public class ZipExportProcessorTest {
 
   @Before
   public void init() throws IOException, PlatformInitializationException, DomainIdNullException,
-    DomainAlreadyExistsException, DomainStorageException {
+      DomainAlreadyExistsException, DomainStorageException {
 
     List<Locale> availableLocales = java.util.Collections.singletonList( LOCALE_DEFAULT );
     Properties localePropertries = new Properties();
@@ -126,7 +124,7 @@ public class ZipExportProcessorTest {
     final RepositoryFile fileX =
         new RepositoryFile.Builder( "eval (+)%.prpt" ).path( "/home/test user/two words/eval (+)%.prpt" ).id(
             "/home/test user/two words/eval (+)%.prpt" ).folder( false ).build();
-    final RepositoryFile[] repoFiles = new RepositoryFile[] { file0, file1, file2, file3, fileX };
+    final RepositoryFile[] repoFiles = new RepositoryFile[] {file0, file1, file2, file3, fileX};
     final Map<Serializable, RepositoryFile> repoFilesMap = new HashMap<Serializable, RepositoryFile>();
     for ( RepositoryFile f : repoFiles ) {
       repoFilesMap.put( f.getId(), f );
@@ -137,7 +135,7 @@ public class ZipExportProcessorTest {
       @Override
       public RepositoryFile answer( InvocationOnMock invocation ) throws Throwable {
         Object[] args = invocation.getArguments();
-        final Object fileId = args[0];
+        final Object fileId = args[ 0 ];
         return getRepoFile( repoFilesMap, fileId );
       }
 
@@ -159,16 +157,16 @@ public class ZipExportProcessorTest {
       @Override
       public List<RepositoryFile> answer( InvocationOnMock invocation ) throws Throwable {
         // returns the following item from <repoFiles>
-        RepositoryRequest r = (RepositoryRequest) invocation.getArguments()[0];
+        RepositoryRequest r = (RepositoryRequest) invocation.getArguments()[ 0 ];
         String path = r.getPath();
         RepositoryFile thisFile = getRepoFile( repoFilesMap, path );
         if ( thisFile == null || !thisFile.isFolder() ) {
           return Collections.emptyList();
         }
         for ( int i = 0, n = repoFiles.length - 1; i < n; i++ ) {
-          RepositoryFile iFile = repoFiles[i];
+          RepositoryFile iFile = repoFiles[ i ];
           if ( iFile == thisFile || iFile.getId().equals( thisFile.getId() ) ) {
-            return Collections.singletonList( repoFiles[i + 1] );
+            return Collections.singletonList( repoFiles[ i + 1 ] );
           }
         }
         return Collections.emptyList();
@@ -192,10 +190,10 @@ public class ZipExportProcessorTest {
     Answer<IRepositoryFileData> answerGetDataForRead = new Answer<IRepositoryFileData>() {
       @Override
       public IRepositoryFileData answer( InvocationOnMock invocation ) throws Throwable {
-        Serializable id = (Serializable) invocation.getArguments()[0];
+        Serializable id = (Serializable) invocation.getArguments()[ 0 ];
         RepositoryFile file = getRepoFile( repoFilesMap, id );
         if ( !file.isFolder() ) {
-          return new SimpleRepositoryFileData( new ByteArrayInputStream( new byte[0] ), "UTF-8", MIME_PRPT.getName() );
+          return new SimpleRepositoryFileData( new ByteArrayInputStream( new byte[ 0 ] ), "UTF-8", MIME_PRPT.getName() );
         }
         return null;
       }
@@ -307,11 +305,16 @@ public class ZipExportProcessorTest {
     RepositoryFile expFolder = repo.getFile( expFolderPath );
     assertNotNull( expFolder );
 
+    // mock logger to prevent npe
+    IRepositoryExportLogger exportLogger = new Log4JRepositoryExportLogger();
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    exportLogger.startJob( outputStream, Level.INFO, new RepositoryTextLayout( Level.INFO ) );
+    zipNoMF.setRepositoryExportLogger( exportLogger );
     File result = zipNoMF.performExport( repo.getFile( expFolderPath ) );
-
+    exportLogger.endJob();
     Set<String> zipEntriesFiles = extractZipEntries( result );
     final String[] expectedEntries =
-        new String[] { "two words/eval (+)%.prpt", "two words/eval (+)%.prpt_en.locale", "two words/index_en.locale" };
+        new String[] {"two words/eval (+)%.prpt", "two words/eval (+)%.prpt_en.locale", "two words/index_en.locale"};
     for ( String e : expectedEntries ) {
       assertTrue( "expected entry: [" + e + "]", zipEntriesFiles.contains( e ) );
     }
@@ -328,13 +331,18 @@ public class ZipExportProcessorTest {
 
     RepositoryFile expFolder = repo.getFile( expFolderPath );
     assertNotNull( expFolder );
-
+    // mock logger to prevent npe
+    IRepositoryExportLogger exportLogger = new Log4JRepositoryExportLogger();
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    exportLogger.startJob( outputStream, Level.INFO, new RepositoryTextLayout( Level.INFO ) );
+    zipMF.setRepositoryExportLogger( exportLogger );
+    exportLogger.endJob();
     File result = zipMF.performExport( repo.getFile( expFolderPath ) );
 
     Set<String> zipEntriesFiles = extractZipEntries( result );
     final String[] expectedEntries =
-        new String[] { "two+words/eval+%28%2B%29%25.prpt", "two+words/eval+%28%2B%29%25.prpt_en.locale",
-          "two+words/index_en.locale", "exportManifest.xml" };
+        new String[] {"two+words/eval+%28%2B%29%25.prpt", "two+words/eval+%28%2B%29%25.prpt_en.locale",
+            "two+words/index_en.locale", "exportManifest.xml"};
     for ( String e : expectedEntries ) {
       assertTrue( "expected entry: [" + e + "]", zipEntriesFiles.contains( e ) );
     }

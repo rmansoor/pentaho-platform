@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2023 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 /*
  * This class is built to support saving and loading of long strings from hibernate. Specifically,
@@ -51,15 +45,16 @@ public class LongStringUserType implements UserType {
 
   private static final boolean debug = PentahoSystem.debug;
 
-  private static final int[] SQLTYPE = { Types.CLOB }; // Persists as CLOBs
+  private static final int SQLTYPE = Types.CLOB; // Persists as CLOBs
 
   /*
    * (non-Javadoc)
    * 
-   * @see org.hibernate.usertype.UserType#sqlTypes()
+   * @see org.hibernate.usertype.UserType#getSqlType()
    */
-  public int[] sqlTypes() {
-    return LongStringUserType.SQLTYPE;
+  @Override
+  public int getSqlType() {
+    return java.sql.Types.CLOB;
   }
 
   /*
@@ -96,8 +91,7 @@ public class LongStringUserType implements UserType {
   }
 
   @Override
-  public Object nullSafeGet( ResultSet rs, String[] names, SharedSessionContractImplementor session, Object owner )
-    throws HibernateException, SQLException {
+  public Object nullSafeGet( ResultSet resultSet, int i, SharedSessionContractImplementor sharedSessionContractImplementor, Object o ) throws SQLException {
     return null;
   }
 
@@ -136,7 +130,7 @@ public class LongStringUserType implements UserType {
       int sLen = ( (StringBuffer) value ).length();
       st.setCharacterStream( index, rdr, sLen );
     } else {
-      st.setNull( index, LongStringUserType.SQLTYPE[0] );
+      st.setNull( index, LongStringUserType.SQLTYPE );
     }
   }
 

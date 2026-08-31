@@ -1,26 +1,20 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.pluginmgr;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.action.IAction;
@@ -48,6 +42,7 @@ import org.pentaho.platform.api.engine.perspective.pojo.IPluginPerspective;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.core.system.objfac.StandaloneSpringPentahoObjectFactory;
+import org.pentaho.platform.engine.core.system.objfac.spring.Const;
 import org.pentaho.platform.engine.core.system.objfac.spring.PentahoBeanScopeValidatorPostProcessor;
 import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.plugin.services.pluginmgr.servicemgr.ServiceConfig;
@@ -422,6 +417,16 @@ public class DefaultPluginManager implements IPluginManager {
     }
     beanFactory.addBeanFactoryPostProcessor( new PentahoBeanScopeValidatorPostProcessor() );
     beanFactoryMap.put( plugin.getId(), beanFactory );
+
+    // Register the special owner plugin marker bean.
+    // This information is later used to annotate beans of this context that are published to the PentahoSystem with an
+    // attribute named {@link Const#PUBLISHER_PLUGIN_ID_ATTRIBUTE} with the plugin id as a value.
+    beanFactory.registerBeanDefinition(
+      Const.OWNER_PLUGIN_ID_BEAN,
+      BeanDefinitionBuilder.genericBeanDefinition( String.class )
+        .setScope( BeanDefinition.SCOPE_SINGLETON )
+        .addConstructorArgValue( plugin.getId() )
+        .getBeanDefinition() );
 
     //
     // Register any beans defined via the pluginProvider

@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.spring;
 
@@ -33,6 +27,7 @@ import org.springframework.core.Ordered;
 import org.springframework.security.authentication.event.AbstractAuthenticationEvent;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.security.authentication.event.InteractiveAuthenticationSuccessEvent;
+import org.springframework.security.core.Authentication;
 
 import java.util.concurrent.Callable;
 
@@ -76,7 +71,7 @@ public class BackingRepositoryLifecycleManagerAuthenticationSuccessListener impl
       final IBackingRepositoryLifecycleManager lifecycleManager = getLifecycleManager();
       // Execute new tenant with the tenant id from the logged in user
       final AbstractAuthenticationEvent aEvent = (AbstractAuthenticationEvent) event;
-      final String principalName = aEvent.getAuthentication().getName();
+      final String principalName = getPrincipalName( aEvent.getAuthentication() );
 
       try {
         getSecurityHelper().runAsSystem( new Callable<Void>() {
@@ -135,6 +130,10 @@ public class BackingRepositoryLifecycleManagerAuthenticationSuccessListener impl
       }
       logger.info( "The user \"" + principalName +"\"" + " connected to repository" );
     }
+  }
+
+  protected String getPrincipalName( Authentication authentication ) {
+    return authentication.getName();
   }
 
   public int getOrder() {

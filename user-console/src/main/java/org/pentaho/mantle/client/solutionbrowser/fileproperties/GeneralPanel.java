@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.mantle.client.solutionbrowser.fileproperties;
 
@@ -225,7 +219,7 @@ public class GeneralPanel extends FlexTable implements IFileModifier {
     locationLabel
         .setText( isInTrash
             ? Messages.getString( "recycleBin" ) : fileSummary.getPath().substring( 0, fileSummary.getPath().lastIndexOf( "/" ) ) ); //$NON-NLS-1$//$NON-NLS-2$
-    sizeLabel.setText( NumberFormat.getDecimalFormat().format( fileSummary.getFileSize() / 1000.00 )
+    sizeLabel.setText( NumberFormat.getDecimalFormat().format( fileSummary.getFileSize() / 1024.00 )
         + " " + Messages.getString( "kiloBytes" ) ); //$NON-NLS-1$ //$NON-NLS-2$\
     DateTimeFormat df = DateTimeFormat.getFormat( DateTimeFormat.PredefinedFormat.DATE_TIME_FULL );
     createdLabel.setText( df.format( fileSummary.getCreatedDate() ) );

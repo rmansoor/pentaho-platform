@@ -1,19 +1,16 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2022 Hitachi Vantara. All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.http.filters;
 
@@ -30,18 +27,18 @@ import org.pentaho.platform.web.http.session.PentahoHttpSession;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.security.authentication.AuthenticationProvider;
 
-import javax.servlet.Filter;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.SessionCookieConfig;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpServletResponseWrapper;
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.SessionCookieConfig;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponseWrapper;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -53,7 +50,7 @@ import java.util.Locale;
  * Originally this functionality existed in PentahoHttpRequestListener but has been moved here. Javadoc for that class:
  * </p>
  *
- * <blockquote> In a J2EE environment, sets the Hitachi Vantara session statically per request so the session can be retrieved
+ * <blockquote> In a J2EE environment, sets the Pentaho session statically per request so the session can be retrieved
  * by other consumers within the same request without having it passed to them explicitly. -- aphillips </blockquote>
  *
  * <p>
@@ -77,7 +74,7 @@ import java.util.Locale;
  * <p/>
  * No <code>HttpSession</code> will be created by this filter if one does not already exist. If at the end of the web
  * request the <code>HttpSession</code> does not exist, a <code>HttpSession</code> will <b>only</b> be created if the
- * current Hitachi Vantara session in <code>PentahoSessionHolder</code> is not null. This avoids needless
+ * current Pentaho session in <code>PentahoSessionHolder</code> is not null. This avoids needless
  * <code>HttpSession</code> creation, but automates the storage of changes made to the <code>PentahoSessionHolder</code>
  * . There is one exception to this rule, that is if the {@link #forceEagerSessionCreation} property is
  * <code>true</code>, in which case sessions will always be created irrespective of normal session-minimization logic
@@ -92,7 +89,7 @@ import java.util.Locale;
  * with Basic authentication or similar clients that will never present the same <code>jsessionid</code> etc), the
  * {@link #setAllowSessionCreation(boolean)} should be set to <code>false</code>. Only do this if you really need to
  * conserve server memory and ensure all classes using the <code>PentahoSessionHolder</code> are designed to have no
- * persistence of the Hitachi Vantara session between web requests. Please note that if {@link #forceEagerSessionCreation} is
+ * persistence of the Pentaho session between web requests. Please note that if {@link #forceEagerSessionCreation} is
  * <code>true</code>, the <code>allowSessionCreation</code> must also be <code>true</code> (setting it to
  * <code>false</code> will cause a startup time error).
  * </p>
@@ -182,9 +179,11 @@ public class HttpSessionPentahoSessionIntegrationFilter implements Filter, Initi
 
     HttpSession httpSession = httpRequest.getSession( false );
     if ( httpSession != null ) {
+      logger.debug( String.format( "generating new Pentaho session %s", httpSession.getId() ));
       pentahoSession = new PentahoHttpSession( null, httpSession, httpRequest.getLocale(), null );
     } else {
       pentahoSession = new NoDestroyStandaloneSession( null );
+      logger.debug( String.format( "generating new STANDALONE Pentaho session %s", pentahoSession.getId() ) );
     }
 
     if ( callSetAuthenticatedForAnonymousUsers ) {
@@ -240,6 +239,7 @@ public class HttpSessionPentahoSessionIntegrationFilter implements Filter, Initi
     }
 
     HttpSession httpSession = safeGetSession( httpRequest, forceEagerSessionCreation );
+    logger.debug( String.format( "HttpSession obtained: %s", httpSession == null ? "null" : httpSession.getId() ) );
     boolean httpSessionExistedAtStartOfRequest = httpSession != null;
     IPentahoSession pentahoSessionBeforeChainExecution = readPentahoSessionFromHttpSession( httpSession );
 
@@ -258,17 +258,21 @@ public class HttpSessionPentahoSessionIntegrationFilter implements Filter, Initi
 
       if ( logger.isDebugEnabled() ) {
         logger.debug( "Found no IPentahoSession in HTTP session; created new IPentahoSession" );
+        logger.debug( String.format( "New session created %s %s %s ", pentahoSessionBeforeChainExecution.getId(),
+          pentahoSessionBeforeChainExecution.getName(), pentahoSessionBeforeChainExecution.getActionName() ) );
       }
     } else {
       if ( logger.isDebugEnabled() ) {
         logger.debug( "Obtained a valid IPentahoSession from HTTP session to "
           + "associate with PentahoSessionHolder: '" + pentahoSessionBeforeChainExecution + "'" );
+        logger.debug( String.format( "Existing session %s %s %s ", pentahoSessionBeforeChainExecution.getId(),
+          pentahoSessionBeforeChainExecution.getName(), pentahoSessionBeforeChainExecution.getActionName() ) );
       }
     }
 
     httpRequest.setAttribute( FILTER_APPLIED, Boolean.TRUE );
 
-    // Create a wrapper that will eagerly update the session with the Hitachi Vantara session
+    // Create a wrapper that will eagerly update the session with the Pentaho session
     // if anything in the chain does a sendError() or sendRedirect().
 
     OnRedirectUpdateSessionResponseWrapper responseWrapper =
@@ -307,9 +311,9 @@ public class HttpSessionPentahoSessionIntegrationFilter implements Filter, Initi
   }
 
   /**
-   * Gets the Hitachi Vantara session from the HTTP session (if available) and returns it.
+   * Gets the Pentaho session from the HTTP session (if available) and returns it.
    * <p/>
-   * If the HTTP session is null or the Hitachi Vantara session is null it will return null.
+   * If the HTTP session is null or the Pentaho session is null it will return null.
    * <p/>
    *
    * @param httpSession
@@ -324,7 +328,7 @@ public class HttpSessionPentahoSessionIntegrationFilter implements Filter, Initi
       return null;
     }
 
-    // HTTP session exists, so try to obtain a Hitachi Vantara session from it.
+    // HTTP session exists, so try to obtain a Pentaho session from it.
 
     IPentahoSession pentahoSessionFromHttpSession =
       (IPentahoSession) httpSession.getAttribute( PentahoSystem.PENTAHO_SESSION_KEY );
@@ -341,10 +345,10 @@ public class HttpSessionPentahoSessionIntegrationFilter implements Filter, Initi
   }
 
   /**
-   * Stores the supplied Hitachi Vantara session in the HTTP session (if available).
+   * Stores the supplied Pentaho session in the HTTP session (if available).
    *
    * @param pentahoSession
-   *          the Hitachi Vantara session obtained from the PentahoSessionHolder after the request has been processed by the
+   *          the Pentaho session obtained from the PentahoSessionHolder after the request has been processed by the
    *          filter chain. PentahoSessionHolder.getSession() cannot be used to obtain the Pentaho session as it has
    *          already been cleared by the time this method is called.
    * @param request

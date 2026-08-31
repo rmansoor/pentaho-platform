@@ -1,28 +1,22 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importexport;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.engine.IPentahoSession;
@@ -30,6 +24,7 @@ import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.repository2.unified.RepositoryFileAcl;
 import org.pentaho.platform.api.repository2.unified.RepositoryRequest;
+import org.pentaho.platform.api.importexport.ExportException;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.plugin.services.importexport.exportManifest.ExportManifest;
@@ -68,6 +63,9 @@ public class ZipExportProcessor extends BaseExportProcessor {
 
   private static final int SAFETY_TMP_FILE_SIZE = 50;
 
+  private Log logger;
+
+
   /**
    * Encapsulates the logic of registering import handlers, generating the manifest, and performing the export
    */
@@ -100,7 +98,7 @@ public class ZipExportProcessor extends BaseExportProcessor {
 
     exportManifest.getManifestInformation().setExportBy( session.getName() );
     exportManifest.getManifestInformation().setExportDate(
-            dateFormat.format( todaysDate ) + " " + timeFormat.format( todaysDate ) );
+        dateFormat.format( todaysDate ) + " " + timeFormat.format( todaysDate ) );
     exportManifest.getManifestInformation().setManifestVersion( "2" );
   }
 
@@ -114,6 +112,7 @@ public class ZipExportProcessor extends BaseExportProcessor {
    * @throws ExportException indicates an error in import processing
    */
   public File performExport( RepositoryFile exportRepositoryFile ) throws ExportException, IOException {
+    logger = getRepositoryExportLogger();
     File exportFile = null;
 
     // create temp file
@@ -187,13 +186,28 @@ public class ZipExportProcessor extends BaseExportProcessor {
       try ( InputStream is = exportHandler.doExport( repositoryFile, filePath ) ) {
         // if we don't get a valid input stream back, skip it
         if ( is != null ) {
+          if ( logger != null ) {
+            logger.debug( "Adding repository object [ " + repositoryFile.getName() + " ] to the manifest" );
+          }
+
           addToManifest( repositoryFile );
+          if ( logger != null ) {
+            logger.debug( "Starting to add repository object [ " + repositoryFile.getName() + " ] to the bundle" );
+          }
           String zipEntryName = getFixedZipEntryName( repositoryFile, filePath );
           ZipEntry entry = new ZipEntry( zipEntryName );
           zos.putNextEntry( entry );
           IOUtils.copy( is, outputStream );
           zos.closeEntry();
+
+          if ( logger != null ) {
+            logger.debug( "Successfully added repository object [ " + repositoryFile.getName() + " ] to the bundle" );
+            logger.trace( "Starting to create locale entry for repository object [ " + ( ( repositoryFile != null ) ? repositoryFile.getName() : "" ) + " ] " );
+          }
           createLocales( repositoryFile, filePath, repositoryFile.isFolder(), outputStream );
+          if ( logger != null ) {
+            logger.trace( "Finished creating locale entry for repository object [ " + ( ( repositoryFile != null ) ? repositoryFile.getName() : "" ) + " ] " );
+          }
         }
       }
     }
@@ -224,31 +238,59 @@ public class ZipExportProcessor extends BaseExportProcessor {
   @Override
   public void exportDirectory( RepositoryFile repositoryDir, OutputStream outputStream, String filePath ) throws
       ExportException, IOException {
+    if ( logger != null ) {
+      logger.debug( "Adding repository object [ " + repositoryDir.getName() + " ] to the manifest" );
+    }
     addToManifest( repositoryDir );
     List<RepositoryFile> children = getUnifiedRepository().getChildren( new RepositoryRequest(
         String.valueOf( repositoryDir.getId() ), true, 1, null ) );
+    if ( logger != null ) {
+      logger.debug( "Found  [ " + children.size() + " ] children in folder [ " + repositoryDir.getName() + " ]" );
+    }
     for ( RepositoryFile repositoryFile : children ) {
       // exclude 'etc' folder - datasources and etc.
       if ( isExportCandidate( repositoryFile.getPath() ) ) {
+        if ( logger != null ) {
+          logger.trace( "Repository object is a candidate for backup [ " + repositoryFile.getName() + " ]" );
+        }
         if ( repositoryFile.isFolder() ) {
+          if ( logger != null ) {
+            logger.debug( "Repository Object [ " + repositoryFile.getName() + " ] is a folder. Adding it to the bundle" );
+          }
           if ( outputStream.getClass().isAssignableFrom( ZipOutputStream.class ) ) {
             ZipOutputStream zos = (ZipOutputStream) outputStream;
             String zipEntryName = getFixedZipEntryName( repositoryFile, filePath );
             ZipEntry entry = new ZipEntry( zipEntryName );
             zos.putNextEntry( entry );
+            if ( logger != null ) {
+              logger.debug( "Successfully added repository Object [ " + repositoryFile.getName() + " ] to the bundle" );
+            }
           }
           exportDirectory( repositoryFile, outputStream, filePath );
         } else {
           try {
+            if ( logger != null ) {
+              logger.debug( "Repository Object [ " + repositoryFile.getName() + " ] is a file. Adding it to the bundle" );
+            }
             exportFile( repositoryFile, outputStream, filePath );
           } catch ( ZipException e ) {
             // possible duplicate entry, log it and continue on with the other files in the directory
             log.debug( e.getMessage(), e );
           }
         }
+      } else {
+        if ( logger != null ) {
+          logger.trace( "Repository object is a candidate for backup [ " + repositoryFile.getName() + " ] skipping it" );
+        }
       }
     }
+    if ( logger != null ) {
+      logger.trace( "Starting to create locale entry for repository object [ " + repositoryDir.getName() + " ] " );
+    }
     createLocales( repositoryDir, filePath, repositoryDir.isFolder(), outputStream );
+    if ( logger != null ) {
+      logger.trace( "Finished creating locale entry for repository object [ " + repositoryDir.getName() + " ] " );
+    }
   }
 
   protected boolean isExportCandidate( String path ) {
@@ -301,7 +343,7 @@ public class ZipExportProcessor extends BaseExportProcessor {
    * @throws IOException
    */
   protected void createLocales( RepositoryFile repositoryFile, String filePath, boolean isFolder,
-                              OutputStream outputStream ) throws IOException {
+                                OutputStream outputStream ) throws IOException {
     ZipEntry entry;
     String zipEntryName;
     String name;
@@ -393,7 +435,7 @@ public class ZipExportProcessor extends BaseExportProcessor {
 
       try {
         localeFile = PentahoSystem
-          .getApplicationContext().createTempFile( getSession(), ExportFileNameEncoder.encodeZipFileName( name ), LOCALE_EXT, true );
+            .getApplicationContext().createTempFile( getSession(), ExportFileNameEncoder.encodeZipFileName( name ), LOCALE_EXT, true );
       } catch ( IOException e ) {
         // BISERVER-14140 - Retry when temp file name exceeds the limit of OS
         // Retry inside a catch because there isn't an accurate mechanism to determine the effective temp file max length
@@ -401,7 +443,7 @@ public class ZipExportProcessor extends BaseExportProcessor {
         String smallerName = ExportFileNameEncoder.encodeZipFileName( name ).substring( 0, SAFETY_TMP_FILE_SIZE );
         log.debug( "Error with original name file. Retrying with a smaller temp file name - " + smallerName );
         localeFile = PentahoSystem
-          .getApplicationContext().createTempFile( getSession(), smallerName, LOCALE_EXT, true );
+            .getApplicationContext().createTempFile( getSession(), smallerName, LOCALE_EXT, true );
       } finally {
         if ( localeFile != null ) {
           localeFile.deleteOnExit();

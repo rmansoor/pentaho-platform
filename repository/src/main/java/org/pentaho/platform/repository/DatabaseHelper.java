@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2022 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository;
 
@@ -51,6 +45,8 @@ public class DatabaseHelper {
   private static final String PROP_SERVERNAME = "SERVERNAME"; //$NON-NLS-1$
 
   private static final String PROP_PASSWORD = "PASSWORD"; //$NON-NLS-1$
+
+  private static final String PROP_CONNECTION_ID = "CONNECTION_ID"; //$NON-NLS-1$LS-1$
 
   private static final String PROP_USERNAME = "USERNAME"; //$NON-NLS-1$
 
@@ -111,6 +107,7 @@ public class DatabaseHelper {
     rootNode.setProperty( PROP_HOST_NAME, setNull( databaseConnection.getHostname() ) );
     rootNode.setProperty( PROP_DATABASE_NAME, setNull( databaseConnection.getDatabaseName() ) );
     rootNode.setProperty( PROP_PORT, Long.parseLong( port ) );
+    rootNode.setProperty( PROP_CONNECTION_ID, setNull( databaseConnection.getConnectionId() ) );
     rootNode.setProperty( PROP_USERNAME, setNull( databaseConnection.getUsername() ) );
     rootNode.setProperty( PROP_PASSWORD, encryptPassword( databaseConnection.getPassword() ) );
     rootNode.setProperty( PROP_SERVERNAME, setNull( databaseConnection.getInformixServername() ) );
@@ -195,6 +192,7 @@ public class DatabaseHelper {
     databaseConnection.setAccessType( accessType != null
       ? DatabaseAccessType.getAccessTypeByName( accessType ) : null );
     databaseConnection.setHostname( databaseMeta.environmentSubstitute( databaseMeta.getHostname() ) );
+    databaseConnection.setConnectionId( databaseMeta.environmentSubstitute( databaseMeta.getConnectionId() ) );
     databaseConnection.setDatabaseName( databaseMeta.environmentSubstitute( databaseMeta.getDatabaseName() ) );
     databaseConnection.setDatabasePort( databaseMeta.environmentSubstitute( databaseMeta.getDatabasePortNumberString() ) );
     databaseConnection.setUsername( databaseMeta.environmentSubstitute( databaseMeta.getUsername() ) );
@@ -258,6 +256,7 @@ public class DatabaseHelper {
     databaseConnection.setAccessType( accessType != null
       ? DatabaseAccessType.getAccessTypeByName( accessType ) : null );
     databaseConnection.setHostname( getString( rootNode, PROP_HOST_NAME ) );
+    databaseConnection.setConnectionId( getString( rootNode, PROP_CONNECTION_ID ) );
     databaseConnection.setDatabaseName( getString( rootNode, PROP_DATABASE_NAME ) );
     databaseConnection.setDatabasePort( getString( rootNode, PROP_PORT ) );
     databaseConnection.setUsername( getString( rootNode, PROP_USERNAME ) );

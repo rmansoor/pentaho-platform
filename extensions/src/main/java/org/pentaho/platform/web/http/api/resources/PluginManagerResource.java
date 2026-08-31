@@ -1,26 +1,20 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.http.api.resources;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.codehaus.enunciate.Facet;
 import org.pentaho.platform.api.engine.IAuthorizationPolicy;
 import org.pentaho.platform.api.engine.IPluginManager;
@@ -33,19 +27,19 @@ import org.pentaho.platform.security.policy.rolebased.actions.RepositoryCreateAc
 import org.pentaho.platform.security.policy.rolebased.actions.RepositoryReadAction;
 import org.pentaho.ui.xul.XulOverlay;
 
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
+import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 
 @Path( "/plugin-manager/" )
 public class PluginManagerResource {
@@ -65,7 +59,7 @@ public class PluginManagerResource {
   @Path( "/overlays" )
   @Produces( { APPLICATION_JSON } )
   @Facet( name = "Unsupported" )
-  public List<Overlay> getOverlays( @QueryParam( "id" ) @DefaultValue( "" ) String id ) {
+  public OverlayWrapper getOverlays( @QueryParam( "id" ) @DefaultValue( "" ) String id ) {
     IPluginManager pluginManager = PentahoSystem.get( IPluginManager.class, PentahoSessionHolder.getSession() ); //$NON-NLS-1$
     List<XulOverlay> overlays = pluginManager.getOverlays();
     ArrayList<Overlay> result = new ArrayList<Overlay>();
@@ -78,7 +72,7 @@ public class PluginManagerResource {
               overlay.getPriority() );
       result.add( tempOverlay );
     }
-    return result;
+    return new OverlayWrapper( result );
   }
 
   /**
@@ -90,7 +84,7 @@ public class PluginManagerResource {
   @Path( "/perspectives" )
   @Produces( { APPLICATION_JSON } )
   @Facet ( name = "Unsupported" )
-  public ArrayList<PluginPerspective> getPluginPerpectives() {
+  public PluginPerspectiveWrapper getPluginPerpectives() {
     IPluginPerspectiveManager manager =
         PentahoSystem.get( IPluginPerspectiveManager.class, PentahoSessionHolder.getSession() ); //$NON-NLS-1$
 
@@ -117,7 +111,7 @@ public class PluginManagerResource {
       perspectives.add( pp );
     }
 
-    return perspectives;
+    return new PluginPerspectiveWrapper( perspectives );
   }
 
   /**

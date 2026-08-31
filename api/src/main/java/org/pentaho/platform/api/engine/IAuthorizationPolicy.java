@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.api.engine;
 
@@ -26,17 +20,22 @@ import java.util.List;
  * An access control policy.
  * 
  * <p>
- * Reponsible for determining if access to a given action should be allowed or denied. A implementation could be
+ * Responsible for determining if access to a given action should be allowed or denied. A implementation could be
  * one based on roles, as is done in the Servlet specification. (In other words, if the policy has an association
  * between the given action and a role that has been granted to the user, then the decision will be to allow.)
- * </p>
+ * <p>
+ * The {@code IAuthorizationPolicy} interface has been deprecated in favor of the new authorization service,
+ * {@link org.pentaho.platform.api.engine.security.authorization.IAuthorizationService} and will be removed in a future
+ * version of the platform.
  * 
  * @author mlowery
+ * @deprecated since 11.0, for removal in a future release.
  */
+@Deprecated( since = "11.0", forRemoval = true )
 public interface IAuthorizationPolicy {
 
   /**
-   * Returns {@code true} if the the action should be allowed.
+   * Returns {@code true} if the action should be allowed.
    * 
    * @param actionName
    *          name of action (e.g. {@code org.pentaho.di.repository.create})
@@ -52,5 +51,4 @@ public interface IAuthorizationPolicy {
    * @return list of actions
    */
   List<String> getAllowedActions( final String actionNamespace );
-
 }

@@ -1,27 +1,21 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2022 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.metadata;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -114,7 +108,7 @@ public class PentahoMetadataDomainRepository implements IMetadataDomainRepositor
   // The default encoding for file storage
   private static final String DEFAULT_ENCODING = "UTF-8";
 
-  // The default mime-type for the Hitachi Vantara Domain files
+  // The default mime-type for the Pentaho Domain files
   private static final String DOMAIN_MIME_TYPE = "text/xml";
 
   // The default mime-type for locale files
@@ -250,7 +244,7 @@ public class PentahoMetadataDomainRepository implements IMetadataDomainRepositor
     int datasourceModelTagPosition = sb.indexOf( "datasourceModel" );
     if ( datasourceModelTagPosition != -1 ) {
       String xmiDomainId = endsWithXmi( domainId );
-      String noXmiDomainId = StringEscapeUtils.escapeXml( noXmi( domainId ) );
+      String noXmiDomainId = StringEscapeUtils.escapeXml11( noXmi( domainId ) );
       String tag = "<CWM:Description body=";
 
       int startTagPosition = sb.indexOf( tag, datasourceModelTagPosition );
@@ -1042,13 +1036,12 @@ public class PentahoMetadataDomainRepository implements IMetadataDomainRepositor
     if ( StringUtils.isEmpty( locale ) ) {
       // This is a domain file
       metadataMap.put( PROPERTY_NAME_TYPE, TYPE_DOMAIN );
+      addDataSourceType( metadataMap, data );
     } else {
       // This is a locale property file
       metadataMap.put( PROPERTY_NAME_TYPE, TYPE_LOCALE );
       metadataMap.put( PROPERTY_NAME_LOCALE, locale );
     }
-
-    addDataSourceType( metadataMap, data );
 
     // Create the new file
     final RepositoryFile file = repository.createFile( getMetadataDir().getId(),
@@ -1062,7 +1055,9 @@ public class PentahoMetadataDomainRepository implements IMetadataDomainRepositor
   public RepositoryFile updateFile( RepositoryFile domainFile, SimpleRepositoryFileData data ) {
 
     final Map<String, Serializable> fileMetadata = repository.getFileMetadata( domainFile.getId() );
-    addDataSourceType( fileMetadata, data );
+    if ( isDomain( fileMetadata ) ) {
+      addDataSourceType( fileMetadata, data );
+    }
     repository.setFileMetadata( domainFile.getId(), fileMetadata );
     return repository.updateFile( domainFile, data, null );
   }

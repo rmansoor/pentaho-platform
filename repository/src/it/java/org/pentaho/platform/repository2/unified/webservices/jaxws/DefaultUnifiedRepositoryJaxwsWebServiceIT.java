@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.webservices.jaxws;
 
@@ -25,6 +19,7 @@ import com.sun.xml.ws.developer.JAXWSProperties;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,13 +43,14 @@ import org.pentaho.platform.repository2.unified.jcr.JcrRepositoryDumpToFile;
 import org.pentaho.platform.repository2.unified.jcr.JcrRepositoryFileUtils;
 import org.pentaho.platform.repository2.unified.jcr.JcrRepositoryDumpToFile.Mode;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import javax.xml.namespace.QName;
-import javax.xml.ws.BindingProvider;
-import javax.xml.ws.Endpoint;
-import javax.xml.ws.Service;
-import javax.xml.ws.soap.SOAPBinding;
+import jakarta.xml.ws.BindingProvider;
+import jakarta.xml.ws.Endpoint;
+import jakarta.xml.ws.Service;
+import jakarta.xml.ws.soap.SOAPBinding;
 
 import java.io.ByteArrayInputStream;
 import java.io.Serializable;
@@ -84,6 +80,9 @@ public class DefaultUnifiedRepositoryJaxwsWebServiceIT extends DefaultUnifiedRep
 
   private final Logger logger = LogManager.getLogger( DefaultUnifiedRepositoryJaxwsWebServiceIT.class );
 
+  private Endpoint endpoint;
+  private SecurityContextHolderStrategy previousSecurityContextHolderStrategy;
+
   // ~ Instance fields
   // =================================================================================================
 
@@ -98,6 +97,7 @@ public class DefaultUnifiedRepositoryJaxwsWebServiceIT extends DefaultUnifiedRep
 
   @Before
   public void setUp() throws Exception {
+    previousSecurityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
     super.setUp();
 
     IRepositoryVersionManager mockRepositoryVersionManager = mock( IRepositoryVersionManager.class );
@@ -109,11 +109,7 @@ public class DefaultUnifiedRepositoryJaxwsWebServiceIT extends DefaultUnifiedRep
 
     String address = "http://localhost:9000/repo";
 
-    try {
-      Endpoint.publish( address, new DefaultUnifiedRepositoryJaxwsWebService( repo ) );
-    } catch ( Throwable th ) {
-      //ignore
-    }
+    endpoint = Endpoint.publish( address, new DefaultUnifiedRepositoryJaxwsWebService( repo ) );
 
     Service service =
         Service.create( new URL( "http://localhost:9000/repo?wsdl" ), new QName( "http://www.pentaho.org/ws/1.0",
@@ -131,6 +127,21 @@ public class DefaultUnifiedRepositoryJaxwsWebServiceIT extends DefaultUnifiedRep
 
     repo = new UnifiedRepositoryToWebServiceAdapter( repoWebService );
 
+  }
+
+  @After
+  public void stopEndpoint() {
+    try {
+      if ( endpoint != null ) {
+        endpoint.stop();
+        endpoint = null;
+      }
+    } finally {
+      SecurityContextHolder.clearContext();
+      if ( previousSecurityContextHolderStrategy != null ) {
+        SecurityContextHolder.setContextHolderStrategy( previousSecurityContextHolderStrategy );
+      }
+    }
   }
 
   @Test

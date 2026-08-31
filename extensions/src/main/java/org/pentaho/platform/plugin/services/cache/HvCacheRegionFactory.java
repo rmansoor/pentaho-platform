@@ -1,34 +1,64 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2023 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 package org.pentaho.platform.plugin.services.cache;
 
-import org.hibernate.cache.ehcache.internal.SingletonEhcacheRegionFactory;
-import org.hibernate.cache.spi.TimestampsRegion;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.boot.spi.SessionFactoryOptions;
+import org.hibernate.cache.CacheException;
+import org.hibernate.cache.jcache.ConfigSettings;
+import org.hibernate.cache.jcache.MissingCacheStrategy;
+import org.hibernate.cache.jcache.internal.JCacheRegionFactory;
+import javax.cache.Cache;
+import java.util.Map;
+import static org.hibernate.cache.spi.SecondLevelCacheLogger.L2CACHE_LOGGER;
 
-public class HvCacheRegionFactory extends SingletonEhcacheRegionFactory {
+public class HvCacheRegionFactory extends JCacheRegionFactory {
+
+  private static final String EHCACHE_XML_PATH = "ehcache.xml";
+
+  private MissingCacheStrategy missingCacheStrategy;
+
   @Override
-  public TimestampsRegion buildTimestampsRegion(
-    String regionName, SessionFactoryImplementor sessionFactory) {
-    verifyStarted();
-    return new HvTimestampsRegion(
-      regionName, this, createTimestampsRegionStorageAccess( regionName, sessionFactory ) );
+  protected void prepareForUse( SessionFactoryOptions settings, Map<String, Object> configValues ) {
+    super.prepareForUse( settings, configValues );
+    this.missingCacheStrategy = MissingCacheStrategy.interpretSetting( configValues != null ? configValues.get( ConfigSettings.MISSING_CACHE_STRATEGY ) : null );
+  }
+
+  @Override
+  protected Cache<Object, Object> createCache( String regionName ) {
+    // Parent's getOrCreateCache() already checked getCache() - this is only called when cache doesn't exist in ehcache.xml
+    // EhCache3 removed support for default cache creation from ehcache.xml so explicitly handling the default cache creation here
+    switch ( missingCacheStrategy ) {
+      case CREATE_WARN:
+        L2CACHE_LOGGER.missingCacheCreated( regionName, ConfigSettings.MISSING_CACHE_STRATEGY, MissingCacheStrategy.CREATE.getExternalRepresentation() );
+      case CREATE:
+        try {
+          return getCacheManager().createCache( regionName,
+                  PentahoCacheUtil.getDefaultCacheConfiguration( regionName,
+                          HvCacheRegionFactory.class.getClassLoader().getResource( EHCACHE_XML_PATH ) ) );
+        } catch ( javax.cache.CacheException e ) {
+          // A concurrent thread may have created the cache between the parent's getCache() check and our
+          // createCache() call. Attempt to retrieve the already-created cache before giving up.
+          Cache<Object, Object> existing = getCacheManager().getCache( regionName );
+          if ( existing != null ) {
+            return existing;
+          }
+          throw e;
+        }
+      case FAIL:
+        throw new CacheException( "On-the-fly creation of JCache Cache objects is not supported [" + regionName + "]" );
+      default:
+        throw new IllegalStateException( "Unsupported missing cache strategy: " + missingCacheStrategy );
+    }
   }
 }

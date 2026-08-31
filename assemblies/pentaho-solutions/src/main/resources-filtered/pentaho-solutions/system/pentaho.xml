@@ -30,12 +30,13 @@
     System admins must change what are the users/roles that have permissions for download action.
     If not defined here, the default value is set to 'Administrator'.
   -->
-  <download-roles>Administrator</download-roles>
+  <download-roles>Administrator,Authenticated</download-roles>
 
   <!--
     This is the URL to the user guide
+    TODO: URL may need to include version number.
   -->
-  <documentation-url>${doc.base.url}/mk-95pdia004/pentaho-user-console</documentation-url>
+  <documentation-url>https://docs.pentaho.com/pba/11.0-pba/pentaho-user-console</documentation-url>
 
   <log-file>server.log</log-file>
   <log-level>DEBUG</log-level>
@@ -63,17 +64,18 @@
 		or interpret an XML document.
 	-->
 
-        <cache-provider>
-          <class>org.pentaho.platform.plugin.services.cache.HvCacheRegionFactory</class>
-          <region>pentahoCache</region>
-          <!--
-          Uncomment this block to specify some parameters for your cache provider. EHCache has no parameters
-          other than what are provided in the ehcache.xml.
-          <properties>
-              <property name="someProperty">someValue</property>
-          </properties>
-          -->
-        </cache-provider>
+    <cache-provider>
+      <!-- Not using this anymore since pentaho uses JCache. Underlying implementation will be chosen by JCache  -->
+      <class>org.pentaho.platform.plugin.services.cache.HvCacheRegionFactory</class>
+      <region>pentahoCache</region>
+      <!--
+      Uncomment this block to specify some parameters for your cache provider. EHCache has no parameters
+      other than what are provided in the ehcache.xml.
+      <properties>
+          <property name="someProperty">someValue</property>
+      </properties>
+      -->
+    </cache-provider>
 	<!-- Insert additional pentaho-system -->
 
     <audit>
@@ -150,7 +152,23 @@
 	  <test-on-borrow>true</test-on-borrow>
 	  <test-on-return>false</test-on-return>
 	  <pre-populate-pool>false</pre-populate-pool>
-   </dbcp-defaults>
+  </dbcp-defaults>
+
+  <!--
+    Allowed Datasource JNDI URL Schemes.
+
+    Comma separated list of schemes.
+
+    This property specifies the allowed schemes for datasource JNDI names with a scheme. Schemeless names are not affected.
+
+    Please, be advised that changing this property to include schemes other than `java` may pose a security risk, such
+    as enabling remote code execution attacks.
+
+    Examples (first is default value):
+    <allowed-datasource-jndi-schemes>java</allowed-datasource-jndi-schemes>
+    <allowed-datasource-jndi-schemes>java,other</allowed-datasource-jndi-schemes>
+  -->
+
    <file-upload-defaults>
    		<relative-path>/system/metadata/csvfiles/</relative-path>
 
@@ -178,4 +196,44 @@
      content
     <edit-permission>org.pentaho.repository.create</edit-permission>
     -->
+
+    <!--
+      This property controls whether admin users have access to all users' trash.
+      This is enabled by default, set the value to "false" to disable this access.
+    -->
+  <adminAccessAllUsersTrash>true</adminAccessAllUsersTrash>
+
+  <!--
+    System fallback scheduler output location.
+
+    When a schedule's output location is unavailable, the first available fallback location is used, in the order:
+    1. schedule owner user setting `default-scheduler-output-path`
+    2. system setting `default-scheduler-output-path` (this property)
+    3. schedule owner user home folder
+
+    A location is unavailable if:
+    1. Value is unspecified or empty.
+    2. Specified path has an invalid syntax.
+    3. Specified path does not exist.
+    4. Specified path is not a folder.
+    5. The schedule owner user does not have read/write access to the specified folder.
+
+    Example:
+    <default-scheduler-output-path>/public/output</default-scheduler-output-path>
+  -->
+
+  <!--
+    Controls whether scheduler-level failure emails are sent for failed scheduled actions
+    (reports, jobs, transformations, etc.).
+    Defaults to disabled.
+
+    When enabled, failure emails are sent to:
+      - The schedule's own email recipients (_SCH_EMAIL_TO/_SCH_EMAIL_CC/_SCH_EMAIL_BCC)
+      - Admin recipients configured in system/scheduler_failure_email.properties (ADMIN_TO/CC/BCC)
+
+    true  = send failure email when a scheduled action fails
+    false = do not send scheduler-level failure emails
+  -->
+  <scheduler.failure.email.enabled>false</scheduler.failure.email.enabled>
+
 </pentaho-system>

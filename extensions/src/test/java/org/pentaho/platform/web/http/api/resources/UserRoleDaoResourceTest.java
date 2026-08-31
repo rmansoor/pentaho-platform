@@ -1,29 +1,22 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.http.api.resources;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.internal.util.reflection.Whitebox;
 import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.api.engine.security.userroledao.AlreadyExistsException;
 import org.pentaho.platform.api.engine.security.userroledao.IPentahoRole;
@@ -36,8 +29,8 @@ import org.pentaho.platform.web.http.api.resources.services.UserRoleDaoService;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -408,13 +401,11 @@ public class UserRoleDaoResourceTest {
   public void testCreateUserAndCheckDataSent() throws Exception {
     ArgumentCaptor<User> argument = ArgumentCaptor.forClass( User.class );
 
-    UserRoleDaoService userRoleDaoService = mock( UserRoleDaoService.class );
-    Whitebox.setInternalState( userRoleResource, "userRoleDaoService", userRoleDaoService );
     String username = "name";
     String password = "password";
     String b64Password = "ENC:" + Base64.getEncoder().encodeToString( password.getBytes() );
     Response response = userRoleResource.createUser( new User( username, b64Password ) );
-    verify( userRoleDaoService, times( 1 ) ).createUser( argument.capture() );
+    verify( userRoleService, times( 1 ) ).createUser( argument.capture() );
 
     assertEquals( username, argument.getValue().getUserName() );
     assertEquals( password, argument.getValue().getPassword() );

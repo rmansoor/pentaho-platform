@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
 <tns:ImportHandlerMimeTypeDefinitions xmlns:tns="http://www.pentaho.com/schema/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.pentaho.com/schema/ImportHandlerMimeTypeDefinitions.xsd ">
   <ImportHandler class="org.pentaho.platform.plugin.services.importer.RepositoryFileImportFileHandler">
     <MimeTypeDefinitions>
@@ -79,10 +90,10 @@
   
   <ImportHandler class="org.pentaho.platform.plugin.services.importer.PDIImportFileHandler">
     <MimeTypeDefinitions>
-      <MimeTypeDefinition mimeType="application/vnd.pentaho.job" converter="PDIJobStreamConverter" hidden="true" versionEnabled="true" versionCommentEnabled="true">
+      <MimeTypeDefinition mimeType="application/vnd.pentaho.job" converter="PDIJobStreamConverter" hidden="false" versionEnabled="true" versionCommentEnabled="true">
         <extension>kjb</extension>
       </MimeTypeDefinition>
-      <MimeTypeDefinition mimeType="application/vnd.pentaho.transformation" converter="PDITransformationStreamConverter" hidden="true" versionEnabled="true" versionCommentEnabled="true">
+      <MimeTypeDefinition mimeType="application/vnd.pentaho.transformation" converter="PDITransformationStreamConverter" hidden="false" versionEnabled="true" versionCommentEnabled="true">
         <extension>ktr</extension>
       </MimeTypeDefinition>
     </MimeTypeDefinitions>

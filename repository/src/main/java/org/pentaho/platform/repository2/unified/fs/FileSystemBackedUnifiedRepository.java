@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.fs;
 
@@ -271,18 +265,18 @@ public class FileSystemBackedUnifiedRepository implements IUnifiedRepository {
 
   public <T extends IRepositoryFileData> List<T> getDataForReadInBatch( List<RepositoryFile> files,
                                                                         Class<T> dataClass ) {
-    Assert.notNull( files );
+    Assert.notNull( files, "Files list must not be null" );
     List<T> data = new ArrayList<T>( files.size() );
     for ( RepositoryFile f : files ) {
-      Assert.notNull( f );
+      Assert.notNull( f, "Repository file in the list must not be null" );
       data.add( repositoryFileDao.getData( f.getId(), f.getVersionId(), dataClass ) );
     }
     return data;
   }
 
   public List<VersionSummary> getVersionSummaryInBatch( List<RepositoryFile> files ) {
-    
-    Assert.notNull( files );
+
+    Assert.notNull( files, "Files list must not be null" );
     List<VersionSummary> versionSummaryList = new ArrayList<VersionSummary>( files.size() );
     
     for(RepositoryFile file : files){

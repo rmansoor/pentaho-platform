@@ -1,41 +1,45 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.http.api.resources;
 
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentMatcher;
+import org.mockito.MockedStatic;
 import org.mockito.stubbing.Answer;
 import org.pentaho.metadata.repository.DomainAlreadyExistsException;
 import org.pentaho.metadata.repository.DomainIdNullException;
@@ -44,6 +48,7 @@ import org.pentaho.platform.api.engine.IAuthorizationPolicy;
 import org.pentaho.platform.api.engine.IPentahoObjectFactory;
 import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.api.engine.ObjectFactoryException;
+import org.pentaho.platform.api.engine.PentahoAccessControlException;
 import org.pentaho.platform.api.mt.ITenant;
 import org.pentaho.platform.api.mt.ITenantedPrincipleNameResolver;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
@@ -59,7 +64,8 @@ import org.pentaho.platform.plugin.services.importer.PentahoPlatformImporter;
 import org.pentaho.platform.plugin.services.importer.PlatformImportException;
 import org.pentaho.platform.plugin.services.importer.SolutionImportHandler;
 
-import com.sun.jersey.core.header.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.pentaho.platform.web.http.api.resources.utils.SystemUtils;
 
 public class RepositoryImportResourceTest {
   private static final String REAL_USER = "testUser";
@@ -85,7 +91,6 @@ public class RepositoryImportResourceTest {
     resolver = mock( ITenantedPrincipleNameResolver.class );
     doReturn( tenat ).when( resolver ).getTenant( nullable( String.class ) );
     doReturn( REAL_USER ).when( resolver ).getPrincipleName( nullable( String.class ) );
-    policy = mock( IAuthorizationPolicy.class );
     pentahoObjectFactory = mock( IPentahoObjectFactory.class );
     iPlatformMimeResolver = mock( NameBaseMimeResolver.class );
     iRepositoryImportLogger = mock( IRepositoryImportLogger.class );
@@ -150,6 +155,21 @@ public class RepositoryImportResourceTest {
     importResource.doPostImport( IMPORT_DIR, mockInputStream, "true", "true", "true", "true", "UTF-8", "WARN", formDataContentDisposition, "" );
     Assert.assertNull( ImportSession.getSession().getManifest()  );
   }
+
+  @Test
+  public void doPostImportMultipleFiles() {
+    RepositoryImportResource importResource = new RepositoryImportResource();
+    List<FormDataBodyPart> fileParts = new ArrayList<>();
+    FormDataBodyPart mockInputStream1 = mock( FormDataBodyPart.class );
+    FormDataBodyPart mockInputStream2 = mock( FormDataBodyPart.class );
+    fileParts.add( mockInputStream1 );
+    fileParts.add( mockInputStream2 );
+    FormDataContentDisposition formDataContentDisposition =  mock( FormDataContentDisposition.class );
+    when( policy.isAllowed( nullable( String.class ) ) ).thenAnswer( (Answer<Boolean>) invocation -> true );
+    importResource.doPostImport( IMPORT_DIR, fileParts, "true", "true", "true", "true", "UTF-8", "WARN", formDataContentDisposition, "" );
+    Assert.assertNull( ImportSession.getSession().getManifest()  );
+  }
+
   private Class<?> anyClass() {
     return argThat( new AnyClassMatcher() );
   }
@@ -158,5 +178,43 @@ public class RepositoryImportResourceTest {
     public boolean matches( final Class<?> arg ) {
       return true;
     }
+  }
+
+  @Test
+  public void validateImportAccess() throws PentahoAccessControlException {
+    try ( MockedStatic<SystemUtils> systemUtils = mockStatic( SystemUtils.class ) ) {
+      systemUtils.when( () -> SystemUtils.canUpload( anyString(), anyBoolean() ) ).thenReturn( true );
+
+      RepositoryImportResource importResource = new RepositoryImportResource();
+
+      try {
+        importResource.validateImportAccess( "/mock/path/" );
+      } catch ( IllegalArgumentException e ) {
+        Assert.fail( "Should not throw exception" );
+      }
+    }
+  }
+
+  @Test
+  public void validateImportAccess_throwsPentahoAccessControlException() {
+    try ( MockedStatic<SystemUtils> systemUtils = mockStatic( SystemUtils.class ) ) {
+      systemUtils.when( () -> SystemUtils.canUpload( anyString(), anyBoolean() ) ).thenReturn( false );
+
+      RepositoryImportResource importResource = new RepositoryImportResource();
+
+      Assert.assertThrows( PentahoAccessControlException.class,
+        () -> importResource.validateImportAccess( "/mock/path/" ) );
+    }
+  }
+
+  @Test
+  public void doPostImportClearsBowlCacheBeforeImport() {
+    RepositoryImportResource importResource = spy( new RepositoryImportResource() );
+    doNothing().when( importResource ).clearBowlCache();
+    InputStream mockInputStream = mock( InputStream.class );
+    FormDataContentDisposition formDataContentDisposition = mock( FormDataContentDisposition.class );
+    when( policy.isAllowed( nullable( String.class ) ) ).thenAnswer( (Answer<Boolean>) invocation -> true );
+    importResource.doPostImport( IMPORT_DIR, mockInputStream, "true", "true", "true", "true", "UTF-8", "WARN", formDataContentDisposition, "" );
+    verify( importResource ).clearBowlCache();
   }
 }

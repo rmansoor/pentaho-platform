@@ -1,29 +1,23 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.test.platform.web;
 
-import com.mockrunner.mock.web.MockHttpServletRequest;
-import com.mockrunner.mock.web.MockHttpServletResponse;
-import com.mockrunner.mock.web.MockHttpSession;
-import com.mockrunner.mock.web.MockServletConfig;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.mock.web.MockServletConfig;
 import org.apache.http.client.utils.URIBuilder;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
@@ -34,8 +28,9 @@ import org.pentaho.platform.web.servlet.ProxyServlet;
 import org.pentaho.test.platform.engine.core.BaseTestCase;
 import org.pentaho.test.platform.utils.TestResourceLocation;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -43,7 +38,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -68,7 +62,7 @@ public class ProxyServletIT extends BaseTestCase {
     PentahoSessionHolder.setSession( getPentahoSession() );
 
     StandaloneApplicationContext applicationContext =
-      new StandaloneApplicationContext( getSolutionPath(), "" ); //$NON-NLS-1$
+      new StandaloneApplicationContext( getSolutionPath(), "" );
     PentahoSystem.init( applicationContext, getRequiredListeners() );
   }
 
@@ -79,17 +73,19 @@ public class ProxyServletIT extends BaseTestCase {
     PentahoSessionHolder.setSession( null );
   }
 
-  protected Map getRequiredListeners() {
-    HashMap listeners = new HashMap();
-    listeners.put( "globalObjects", "globalObjects" ); //$NON-NLS-1$ //$NON-NLS-2$
-    return listeners;
+  protected Map<String, String> getRequiredListeners() {
+    return new HashMap<String, String>() {
+      {
+        put( "globalObjects", "globalObjects" );
+      }
+    };
   }
 
   public void testServiceWithNoConfig() throws ServletException, IOException {
     MockHttpServletRequest request = new MockHttpServletRequest();
     MockHttpSession session = new MockHttpSession();
     request.setSession( session );
-    request.setupAddParameter( "ProxyURL", "http://www.pentaho.org" ); //$NON-NLS-1$//$NON-NLS-2$
+    request.addParameter( "ProxyURL", "http://www.pentaho.org" );
 
     MockHttpServletResponse response = new MockHttpServletResponse();
     ProxyServlet servlet = new ProxyServlet();
@@ -100,7 +96,7 @@ public class ProxyServletIT extends BaseTestCase {
   public void testServiceInitParameterProxyURL() throws ServletException {
 
     MockServletConfig config = new MockServletConfig();
-    config.setInitParameter( "ProxyURL", "http://www.pentaho.org" );
+    config.addInitParameter( "ProxyURL", "http://www.pentaho.org" );
 
     ProxyServlet servlet = new ProxyServlet();
     servlet.init( config );
@@ -111,7 +107,7 @@ public class ProxyServletIT extends BaseTestCase {
   public void testServiceInitParameterErrorURL() throws ServletException {
 
     MockServletConfig config = new MockServletConfig();
-    config.setInitParameter( "ErrorURL", "http://www.pentaho.org" );
+    config.addInitParameter( "ErrorURL", "http://www.pentaho.org" );
 
     ProxyServlet servlet = new ProxyServlet();
     servlet.init( config );
@@ -132,12 +128,12 @@ public class ProxyServletIT extends BaseTestCase {
   public void testServiceInitParameterLocaleOverrideEnabled() throws ServletException {
 
     MockServletConfig config = new MockServletConfig();
-    config.setInitParameter( "LocaleOverrideEnabled", "false" );
+    config.addInitParameter( "LocaleOverrideEnabled", "false" );
 
     ProxyServlet servlet = new ProxyServlet();
     servlet.init( config );
 
-    assertEquals( servlet.isLocaleOverrideEnabled(), false );
+    assertFalse( servlet.isLocaleOverrideEnabled() );
   }
 
   public void testServiceInitParameterLocaleOverrideEnabledDefault() throws ServletException {
@@ -147,7 +143,7 @@ public class ProxyServletIT extends BaseTestCase {
     ProxyServlet servlet = new ProxyServlet();
     servlet.init( config );
 
-    assertEquals( servlet.isLocaleOverrideEnabled(), true );
+    assertTrue( servlet.isLocaleOverrideEnabled() );
   }
   // endregion
 
@@ -158,7 +154,7 @@ public class ProxyServletIT extends BaseTestCase {
   // We're only stubbing the parts where network access would occur.
   private static class TestProxyServlet extends ProxyServlet {
     @Override
-    protected void doProxyCore( URI requestUri, HttpServletResponse response ) {
+    protected void doProxyCore( final URI requestUri, final HttpServletRequest request, final HttpServletResponse response ) {
       // Do not access network.
     }
   }
@@ -166,6 +162,7 @@ public class ProxyServletIT extends BaseTestCase {
   public void testServiceTrustUserQueryParameter() throws ServletException, IOException, URISyntaxException {
 
     MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setMethod( "GET" );
     MockHttpServletResponse response = new MockHttpServletResponse();
 
     request.setServletPath( "/pentaho" );
@@ -174,22 +171,24 @@ public class ProxyServletIT extends BaseTestCase {
     request.setSession( session );
 
     MockServletConfig config = new MockServletConfig();
-    config.setInitParameter( "ProxyURL", "http://foo.bar" );
+    config.addInitParameter( "ProxyURL", "http://foo.bar" );
 
     URIBuilder uriBuilder = new URIBuilder( "http://foo.bar/pentaho" );
     uriBuilder.addParameter( "_TRUST_USER_", "system" );
+    uriBuilder.addParameter( "_TRUST_LOCALE_OVERRIDE_", LocaleHelper.getLocale().toString() );
 
     TestProxyServlet servlet = spy( new TestProxyServlet() );
     servlet.init( config );
 
     servlet.service( request, response );
 
-    verify( servlet ).doProxyCore( eq( uriBuilder.build() ), eq( response ) );
+    verify( servlet ).doProxyCore( uriBuilder.build(), request, response );
   }
 
   public void testServiceTrustLocaleOverrideQueryParameter() throws ServletException, IOException, URISyntaxException {
 
     MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setMethod( "GET" );
     MockHttpServletResponse response = new MockHttpServletResponse();
 
     request.setServletPath( "/pentaho" );
@@ -198,7 +197,7 @@ public class ProxyServletIT extends BaseTestCase {
     request.setSession( session );
 
     MockServletConfig config = new MockServletConfig();
-    config.setInitParameter( "ProxyURL", "http://foo.bar" );
+    config.addInitParameter( "ProxyURL", "http://foo.bar" );
 
     URIBuilder uriBuilder = new URIBuilder( "http://foo.bar/pentaho" );
     uriBuilder.addParameter( "_TRUST_USER_", "system" );
@@ -212,24 +211,25 @@ public class ProxyServletIT extends BaseTestCase {
 
     servlet.service( request, response );
 
-    verify( servlet ).doProxyCore( eq( uriBuilder.build() ), eq( response ) );
+    verify( servlet ).doProxyCore( uriBuilder.build(), request, response );
   }
 
   public void testServiceNoUserSessionQueryParameter() throws ServletException, IOException, URISyntaxException {
 
     MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setMethod( "GET" );
     MockHttpServletResponse response = new MockHttpServletResponse();
 
     request.setServletPath( "/pentaho" );
 
     MockHttpSession session = new MockHttpSession();
     request.setSession( session );
-    
+
     PentahoSessionHolder.setSession( new StandaloneSession( "" ) );
-    
+
     MockServletConfig config = new MockServletConfig();
-    config.setInitParameter( "ProxyURL", "http://foo.bar" );
-    
+    config.addInitParameter( "ProxyURL", "http://foo.bar" );
+
     URIBuilder uriBuilder = new URIBuilder( "http://foo.bar/pentaho" );
 
     TestProxyServlet servlet = spy( new TestProxyServlet() );
@@ -237,7 +237,8 @@ public class ProxyServletIT extends BaseTestCase {
 
     servlet.service( request, response );
 
-    verify( servlet ).doProxyCore( eq( uriBuilder.build() ), eq( response ) );
+    verify( servlet ).doProxyCore( uriBuilder.build(), request, response );
   }
   // endregion
+
 }

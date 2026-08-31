@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
 <!--+
   | This should be the only file specified in web.xml's contextConfigLocation. It should only contain imports.
   +-->
@@ -68,6 +79,7 @@ http://www.pentaho.com/schema/pentaho-system http://www.pentaho.com/schema/penta
   <import resource="repository.spring.xml" />
   <import resource="applicationContext-spring-security.xml" />
   <import resource="applicationContext-spring-security-csrf.xml" />
+  <import resource="applicationContext-spring-security-ssrf.xml" />
   <import resource="applicationContext-spring-security-cors.xml" />
   <import resource="applicationContext-spring-security-superuser.xml" />
   <import resource="applicationContext-pentaho-security-superuser.xml" />
@@ -86,7 +98,6 @@ http://www.pentaho.com/schema/pentaho-system http://www.pentaho.com/schema/penta
 
   
   <import resource="pentahoObjects.spring.xml" />
-  <import resource="GettingStartedDB-spring.xml" /> <!-- Remove this line to unhook the Getting Started DB -->
   <import resource="importExport.xml" />
   <import resource="defaultUser.spring.xml"/>
   <import resource="sessionStartupActions.xml" />

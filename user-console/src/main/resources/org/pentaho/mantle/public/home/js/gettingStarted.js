@@ -1,25 +1,23 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2017 Hitachi Vantara..  All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 define([
   "common-ui/util/ContextProvider",
   "common-ui/util/BootstrappedTabLoader",
-  "common-ui/util/HandlebarsCompiler"
-], function (ContextProvider, BootstrappedTabLoader, HandlebarsCompiler) {
+  "common-ui/util/HandlebarsCompiler",
+  "common-ui/util/xss"
+], function (ContextProvider, BootstrappedTabLoader, HandlebarsCompiler, xssUtil) {
 
   var brightCoveVideoTemplate =
       '<iframe src="https://players.brightcove.net/4680021553001/default_default/index.html?videoId={{videoId}}&autoplay=true"' +
@@ -60,16 +58,10 @@ define([
               context.config.getting_started_sample_message_template,
               context.config.getting_started_sample_link_template,
               "sample-card");
-
-          injectMessagesArray(
-              "getting_started_tutorials",
-              context.config.getting_started_video_message_template,
-              context.config.getting_started_video_link_template,
-              "tutorial-card");
         });
 
         // Remove embedded youtube since it shows through the other tabs
-        $("a[href=\\#tab2], a[href=\\#tab3]").bind("click", disableWelcomeVideo);
+        $("a[href=\\#tab2]").bind("click", disableWelcomeVideo);
         $(".tab-list").keydown(function (event) {
           let nextItem;
           var keyCode = event.which || event.keyCode;
@@ -118,14 +110,6 @@ define([
         } else if (tabId == "tab2") {
           bindCardInteractions($html, ".sample-card", "#sample-details-content", "sample-img", true);
 
-        } else if (tabId == "tab3") {
-          checkInternet($html,
-              function () {
-                bindCardInteractions($html, ".tutorial-card", "#tutorial-details-content", "tutorial-img", true);
-              },
-              function () {
-                bindCardInteractions($html, ".tutorial-card", "#tutorial-details-content", "tutorial-img", false);
-              });
         }
       }
     });
@@ -211,7 +195,7 @@ define([
 
     launchLink.unbind("click");
     launchLink.bind("click", function () {
-      window.open(href, "_blank");
+      xssUtil.open(href, "_blank");
     });
   }
 

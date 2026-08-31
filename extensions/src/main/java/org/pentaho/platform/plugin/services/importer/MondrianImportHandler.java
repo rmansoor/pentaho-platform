@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2022 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importer;
 
@@ -40,8 +34,8 @@ import javax.xml.parsers.ParserConfigurationException;
 import mondrian.util.Pair;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eigenbase.xom.XOMException;
 import org.eigenbase.xom.XOMUtil;
 import org.pentaho.metadata.repository.DomainAlreadyExistsException;
@@ -64,7 +58,7 @@ public class MondrianImportHandler implements IPlatformImportHandler {
 
   protected static final String PARAMETERS = "parameters";
 
-  protected static final String ENABLE_XMLA = "EnableXmla";
+  public static final String ENABLE_XMLA = "EnableXmla";
 
   protected static final String DOMAIN_ID = "domain-id";
 
@@ -74,8 +68,10 @@ public class MondrianImportHandler implements IPlatformImportHandler {
 
   protected static final String DEFAULT_PROVIDER = "mondrian";
 
-  private List<IMimeType> mimeTypes;
-  IMondrianCatalogService mondrianRepositoryImporter;
+  private static final String QUOT_ENTITY = "&quot;"; //$NON-NLS-1$
+
+  private final List<IMimeType> mimeTypes;
+  private final IMondrianCatalogService mondrianRepositoryImporter;
 
   public MondrianImportHandler( List<IMimeType> mimeTypes, final IMondrianCatalogService mondrianImporter ) {
     if ( mondrianImporter == null ) {
@@ -226,7 +222,7 @@ public class MondrianImportHandler implements IPlatformImportHandler {
 
     if ( dsName != null ) {
       sb.append( "DataSource=\"" )
-        .append( StringEscapeUtils.escapeXml( dsName.replaceAll( "&quot;", "\"" ) ) )
+        .append( StringEscapeUtils.escapeXml11( dsName.replace( QUOT_ENTITY, "\"" ) ) )
         .append( "\";" );
     }
     if ( !parameters.containsKey( "EnableXmla" ) ) {
@@ -235,7 +231,7 @@ public class MondrianImportHandler implements IPlatformImportHandler {
         .append( ";" );
     }
     sb.append( "Provider=\"" )
-      .append( StringEscapeUtils.escapeXml( provider.replaceAll( "&quot;", "\"" ) ) )
+      .append( StringEscapeUtils.escapeXml11( provider.replace( QUOT_ENTITY, "\"" ) ) )
       .append( "\"" );
 
     // Build a list of the remaining properties
@@ -243,7 +239,7 @@ public class MondrianImportHandler implements IPlatformImportHandler {
       if ( !parameter.getKey().equals( DATA_SOURCE ) && !parameter.getKey().equals( PROVIDER ) ) {
         //value contains custom-escaped quotes.
         //It needs custom unescape and standard escapeXml for following mondrian parsing
-        String parseSafeValue = StringEscapeUtils.escapeXml( parameter.getValue().replaceAll( "&quot;", "\"" ) );
+        String parseSafeValue = StringEscapeUtils.escapeXml11( parameter.getValue().replace( QUOT_ENTITY, "\"" ) );
         sb.append( ";" );
         sb.append( parameter.getKey() );
         sb.append( "=\"" );

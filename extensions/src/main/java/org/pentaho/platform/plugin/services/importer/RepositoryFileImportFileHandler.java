@@ -1,26 +1,30 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2020 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importer;
 
-import org.apache.commons.lang.StringUtils;
+import java.io.IOException;
+import java.io.Serializable;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.pentaho.metadata.repository.DomainAlreadyExistsException;
 import org.pentaho.metadata.repository.DomainIdNullException;
@@ -42,13 +46,6 @@ import org.pentaho.platform.plugin.services.messages.Messages;
 import org.pentaho.platform.repository.RepositoryFilenameUtils;
 import org.pentaho.platform.web.http.api.resources.services.FileService;
 import org.springframework.util.Assert;
-
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * User: nbaker Date: 5/29/12
@@ -159,7 +156,7 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
   private void validateName( RepositoryFileImportBundle bundle ) throws PlatformImportException {
     if ( null != bundle ) {
       FileService fileService = new FileService();
-      String name = bundle.getName();
+      String name = getEncodedBundleName( bundle, StandardCharsets.UTF_8 );
       if ( bundle.isFolder() ) {
         if ( !fileService.isValidFolderName( name ) ) {
           throw new PlatformImportException( messages.getString( "DefaultImportHandler.ERROR_0012_INVALID_FOLDER_NAME",
@@ -454,7 +451,7 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
           }
         }
         Serializable parentFileId = parentFile.getId();
-        Assert.notNull( parentFileId );
+        Assert.notNull( parentFileId, "Parent file ID must not be null" );
       }
     }
     return getParentId( repositoryPath );
@@ -486,14 +483,14 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
    * @return
    */
   protected Serializable getParentId( final String repositoryPath ) {
-    Assert.notNull( repositoryPath );
+    Assert.notNull( repositoryPath, "Repository Path must not be null" );
     final String parentPath = RepositoryFilenameUtils.getFullPathNoEndSeparator( repositoryPath );
     final RepositoryFile parentFile = repository.getFile( parentPath );
     if ( parentFile == null ) {
       return null;
     }
     Serializable parentFileId = parentFile.getId();
-    Assert.notNull( parentFileId );
+    Assert.notNull( parentFileId, "Parent file ID must not be null" );
     return parentFileId;
   }
 
@@ -514,7 +511,7 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
     // The file doesn't exist and it is a folder. Create folder.
     getLogger().trace( messages.getString( "RepositoryFileImportFileHandler.CreatingImpliedFolder", folderPath ) );
     final Serializable parentId = getParentId( folderPath );
-    Assert.notNull( parentId );
+    Assert.notNull( parentId, "Parent ID must not be null" );
     boolean isHidden;
     if ( getImportSession().isFileHidden( manifestKey ) == null ) {
       isHidden = false;
@@ -560,5 +557,20 @@ public class RepositoryFileImportFileHandler implements IPlatformImportHandler {
 
   public List<String> getKnownExtensions() {
     return knownExtensions;
+  }
+
+  protected String getEncodedBundleName( RepositoryFileImportBundle bundle, Charset charset  ) throws PlatformImportException {
+    String name = bundle.getName();
+    try {
+      return URLEncoder.encode( name, charset );
+    } catch ( Exception ex ) {
+      if ( bundle.isFolder() ) {
+        throw new PlatformImportException( messages.getString( "DefaultImportHandler.ERROR_0012_INVALID_FOLDER_NAME",
+          name ), PlatformImportException.PUBLISH_NAME_ERROR );
+      } else {
+        throw new PlatformImportException( messages.getString( "DefaultImportHandler.ERROR_0011_INVALID_FILE_NAME",
+          name ), PlatformImportException.PUBLISH_NAME_ERROR );
+      }
+    }
   }
 }

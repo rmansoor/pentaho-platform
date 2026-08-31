@@ -1,27 +1,25 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2023 Hitachi Vantara. All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 define([
   "common-ui/util/PentahoSpinner",
   "common-ui/util/spin",
   "pentaho/csrf/service",
   "common-ui/util/_a11y",
+  "common-ui/util/xss",
   "pentaho/shim/css.escape"
-], function(spinner, Spinner, csrfService, a11yUtil) {
+], function(spinner, Spinner, csrfService, a11yUtil, xssUtil) {
 
   var local = {
     name: "favorites",
@@ -95,7 +93,21 @@ define([
         });
 
         Handlebars.registerHelper('escapeQuotes', function(stringInput) {
-          return stringInput.replace(/(['"])/g, '\\$1');
+          if (!stringInput) {
+            return '';
+          }
+          return stringInput
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\"');
+        });
+
+
+        Handlebars.registerHelper('encodeUri', function(stringInput) {
+          if (!stringInput) {
+            return '';
+          }
+          return encodeURIComponent(stringInput);
         });
 
         this.helperRegistered = true;
@@ -204,7 +216,9 @@ define([
       config.color = "#BBB";
       this.spinner = new Spinner(config);
       var s = this.spinner.spin();
-      $("#" + this.contentPanelId).html(s.el);
+      var $container = $("#" + this.contentPanelId);
+      $container.empty();
+      $container.append(s.el);
     },
 
     showList: function (items, context) {
@@ -242,7 +256,7 @@ define([
       // make sure the spinner is visible long enough for the user to see it
       setTimeout(function () {
         that.spinner.stop();
-        $("#" + that.displayContainerId).html(html);
+        xssUtil.setHtmlUnsafe($("#" + that.displayContainerId), html);
         $("#"+that.contentPanelId).find("a").first().attr("tabindex",0);
 
         $("#"+that.contentPanelId).find("a").keydown(function(event) {

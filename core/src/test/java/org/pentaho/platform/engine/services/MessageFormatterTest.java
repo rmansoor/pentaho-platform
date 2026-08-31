@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.engine.services;
 
@@ -48,11 +42,13 @@ import org.pentaho.platform.util.UUIDUtil;
 import org.pentaho.platform.util.web.SimpleUrlFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.anyString;
@@ -65,6 +61,9 @@ import static org.mockito.Mockito.when;
  * @author Andrei Abramov
  */
 public class MessageFormatterTest {
+
+  /** Matches the license header comment the build prepends to the test template resource. */
+  private static final Pattern LICENSE_HEADER_PATTERN = Pattern.compile( "^\\s*<!--.*?-->\\s*", Pattern.DOTALL );
 
   IRuntimeRepository mockedRuntimeRepository;
   ISolutionEngine mockedSolutionEngine;
@@ -128,12 +127,7 @@ public class MessageFormatterTest {
       MessageFormatter mf = new MessageFormatter() {
         @Override
         String getTemplate( StringBuffer messageBuffer ) {
-          try {
-            return IOUtils.toString( this.getClass()
-              .getResourceAsStream( "viewActionErrorTestTemplate.html" ), "UTF-8" );
-          } catch ( IOException e ) {
-            return null;
-          }
+          return loadTestTemplate();
         }
 
         @Override
@@ -170,12 +164,7 @@ public class MessageFormatterTest {
       MessageFormatter mf = new MessageFormatter() {
         @Override
         String getTemplate( StringBuffer messageBuffer ) {
-          try {
-            return IOUtils.toString( this.getClass()
-              .getResourceAsStream( "viewActionErrorTestTemplate.html" ), "UTF-8" );
-          } catch ( IOException e ) {
-            return null;
-          }
+          return loadTestTemplate();
         }
       };
       StringBuffer messageBuffer = new StringBuffer();
@@ -192,6 +181,20 @@ public class MessageFormatterTest {
           + "<div id=\"details\" class=\"details\"><span class=\"label\">%STACK_TRACE_LABEL%</span><pre "
           + "class=\"stackTrace\">%STACK_TRACE%<pre></div>",
         messageBuffer.toString() );
+    }
+  }
+
+  /**
+   * Loads the error template used by the tests. The build stamps a license header onto every source file, including
+   * this test resource, so the header is stripped here: it is not part of the template under test.
+   */
+  private String loadTestTemplate() {
+    try {
+      final String template = IOUtils.toString(
+        this.getClass().getResourceAsStream( "viewActionErrorTestTemplate.html" ), StandardCharsets.UTF_8 );
+      return LICENSE_HEADER_PATTERN.matcher( template ).replaceFirst( "" ).trim();
+    } catch ( IOException e ) {
+      return null;
     }
   }
 

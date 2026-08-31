@@ -1,58 +1,65 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importexport;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.StringLayout;
 
 import java.io.OutputStream;
 
 /**
  * {@inherit}
- * 
+ *
  * @author TKafalas
- * 
  */
 public class Log4JRepositoryImportLogger implements IRepositoryImportLogger {
 
   private ThreadLocal<Log4JRepositoryImportLog> repositoryImportLog = new ThreadLocal<Log4JRepositoryImportLog>();
 
+  private boolean isPerformingRestore = false;
+
   public Log4JRepositoryImportLogger() {
+  }
+
+  public void startJob( OutputStream outputStream, String importRootPath, Level logLevel, StringLayout layout ) {
+    repositoryImportLog.set( new Log4JRepositoryImportLog( outputStream, importRootPath, logLevel, layout ) );
+    getLog4JRepositoryImportLog().setCurrentFilePath( getLog4JRepositoryImportLog().getImportRootPath() );
+    if ( !isPerformingRestore ) {
+      getLogger().info( "Start Import Job" );
+    }
   }
 
   public void startJob( OutputStream outputStream, String importRootPath, Level logLevel ) {
     repositoryImportLog.set( new Log4JRepositoryImportLog( outputStream, importRootPath, logLevel ) );
     getLog4JRepositoryImportLog().setCurrentFilePath( getLog4JRepositoryImportLog().getImportRootPath() );
-    getLogger().info( "Start Import Job" );
+    if ( !isPerformingRestore ) {
+      getLogger().info( "Start Import Job" );
+    }
   }
 
   public void endJob() {
     getLog4JRepositoryImportLog().setCurrentFilePath( getLog4JRepositoryImportLog().getImportRootPath() );
-    getLogger().info( "End Import Job" );
     getLog4JRepositoryImportLog().endJob();
+    if ( !isPerformingRestore ) {
+      getLogger().info( "End Import Job" );
+    }
   }
 
   public void setCurrentFilePath( String currentFilePath ) {
     getLog4JRepositoryImportLog().setCurrentFilePath( currentFilePath );
-    getLogger().info( "Start File Import" );
   }
 
   public void info( String s ) {
@@ -91,6 +98,16 @@ public class Log4JRepositoryImportLogger implements IRepositoryImportLogger {
 
   public boolean hasLogger() {
     return ( repositoryImportLog.get() == null ) ? false : true;
+  }
+
+  @Override
+  public boolean isPerformingRestore() {
+    return isPerformingRestore;
+  }
+
+  @Override
+  public void setPerformingRestore( boolean value ) {
+    this.isPerformingRestore = value;
   }
 
   @Override

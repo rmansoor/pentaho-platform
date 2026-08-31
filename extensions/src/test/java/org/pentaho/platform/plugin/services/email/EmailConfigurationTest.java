@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2023 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.email;
 
@@ -27,10 +21,10 @@ public class EmailConfigurationTest extends TestCase {
   public void testEqualsEmailConfig() {
     final EmailConfiguration emailConfigOriginal =
               new EmailConfiguration( true, false, "test@pentaho.com", "Pentaho Scheduler", "smtp.com", 36,
-                      "SMTP", true, "user", "password", false, true );
+              "SMTP", true, true, "user", "password", false, true );
     final EmailConfiguration emailConfigNew =
               new EmailConfiguration( true, false, "test@pentaho.com", "Pentaho Scheduler", "smtp.com", 36,
-                      "SMTP", true, "user", "password", false, true );
+              "SMTP", true, true, "user", "password", false, true );
     assertEquals( emailConfigOriginal.equals( emailConfigNew ), true );
     emailConfigNew.setAuthenticate( false );
     assertEquals( emailConfigOriginal.equals( emailConfigNew ), false );
@@ -39,10 +33,10 @@ public class EmailConfigurationTest extends TestCase {
   public void testHashCodeEmailConfig() {
     final EmailConfiguration emailConfigOriginal =
             new EmailConfiguration( true, false, "test@pentaho.com", "Pentaho Scheduler", "smtp.com", 36,
-                    "SMTP", true, "user", "password", false, true );
+            "SMTP", true, true, "user", "password", false, true );
     final EmailConfiguration emailConfigNew =
             new EmailConfiguration( true, false, "test@pentaho.com", "Pentaho Scheduler", "smtp.com", 36,
-                    "SMTP", true, "user", "password", false, true );
+            "SMTP", true, true, "user", "password", false, true );
     int emailConfigOriginalHashCode = emailConfigOriginal.hashCode();
     int emailConfigNewHashCode = emailConfigNew.hashCode();
     assertEquals( emailConfigOriginalHashCode == emailConfigNewHashCode, true );

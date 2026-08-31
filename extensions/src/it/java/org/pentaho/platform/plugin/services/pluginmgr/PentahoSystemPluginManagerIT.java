@@ -1,37 +1,28 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
 
 package org.pentaho.platform.plugin.services.pluginmgr;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 import org.pentaho.platform.api.engine.IContentInfo;
 import org.pentaho.platform.api.engine.IPentahoDefinableObjectFactory;
-import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.api.engine.IPlatformPlugin;
 import org.pentaho.platform.api.engine.IPluginProvider;
 import org.pentaho.platform.api.engine.IPluginResourceLoader;
 import org.pentaho.platform.api.engine.IServiceManager;
 import org.pentaho.platform.api.engine.ISolutionEngine;
 import org.pentaho.platform.api.engine.ISystemConfig;
-import org.pentaho.platform.api.engine.PlatformPluginRegistrationException;
 import org.pentaho.platform.api.engine.PluginBeanException;
 import org.pentaho.platform.api.engine.perspective.pojo.IPluginPerspective;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
@@ -48,10 +39,12 @@ import org.pentaho.test.platform.utils.TestResourceLocation;
 import org.pentaho.ui.xul.XulOverlay;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -69,11 +62,11 @@ public class PentahoSystemPluginManagerIT extends DefaultPluginManagerIT {
     microPlatform.define( IPluginProvider.class, SystemPathXmlPluginProvider.class );
     microPlatform.define( IPluginResourceLoader.class, PluginResourceLoader.class );
     microPlatform
-        .define( IServiceManager.class, DefaultServiceManager.class, IPentahoDefinableObjectFactory.Scope.GLOBAL );
+      .define( IServiceManager.class, DefaultServiceManager.class, IPentahoDefinableObjectFactory.Scope.GLOBAL );
     microPlatform.define( IUnifiedRepository.class, FileSystemBackedUnifiedRepository.class,
-        IPentahoDefinableObjectFactory.Scope.GLOBAL );
+      IPentahoDefinableObjectFactory.Scope.GLOBAL );
     FileSystemBackedUnifiedRepository repo =
-        (FileSystemBackedUnifiedRepository) PentahoSystem.get( IUnifiedRepository.class );
+      (FileSystemBackedUnifiedRepository) PentahoSystem.get( IUnifiedRepository.class );
     repo.setRootDir( new File( TestResourceLocation.TEST_RESOURCES + "/PluginManagerTest" ) );
 
     session = new StandaloneSession();
@@ -102,7 +95,7 @@ public class PentahoSystemPluginManagerIT extends DefaultPluginManagerIT {
     assertEquals( "5432", setting.toString() );
 
     // Invalid plugin. Return default
-    setting = pluginManager.getPluginSetting( "Non-Existant Plugin", "settings/test-property", "ABCD" );
+    setting = pluginManager.getPluginSetting( "Non-Existent Plugin", "settings/test-property", "ABCD" );
     assertEquals( "ABCD", setting.toString() );
   }
 
@@ -125,25 +118,19 @@ public class PentahoSystemPluginManagerIT extends DefaultPluginManagerIT {
   }
 
   @Test
-  public void testPerspectiveUnRegistration() throws Exception {
+  public void testPerspectiveUnRegistration() {
     PentahoSystem.clearObjectFactory();
-    PentahoSystem.registerObject( new IPluginProvider() {
+    PentahoSystem.registerObject( (IPluginProvider) session -> List.of( new PlatformPlugin() {
       @Override
-      public List<IPlatformPlugin> getPlugins( IPentahoSession session )
-        throws PlatformPluginRegistrationException {
-        return Arrays.asList( (IPlatformPlugin) new PlatformPlugin() {
-          @Override
-          public List<IPluginPerspective> getPluginPerspectives() {
-            return Arrays.asList( mock( IPluginPerspective.class ) );
-          }
-
-          @Override
-          public String getId() {
-            return "foo";
-          }
-        } );
+      public List<IPluginPerspective> getPluginPerspectives() {
+        return List.of( mock( IPluginPerspective.class ) );
       }
-    }, IPluginProvider.class );
+
+      @Override
+      public String getId() {
+        return "foo";
+      }
+    } ), IPluginProvider.class );
     pluginManager = new PentahoSystemPluginManager();
     pluginManager.reload();
     assertEquals( 1, PentahoSystem.getAll( IPluginPerspective.class ).size() );
@@ -173,12 +160,12 @@ public class PentahoSystemPluginManagerIT extends DefaultPluginManagerIT {
     assertEquals( "Wrong number of contentInfos", 1, contentInfos.size() );
     pluginManager.unloadAllPlugins();
     contentInfos = PentahoSystem.getAll( IContentInfo.class );
-    assertEquals( "ContentInfo should have be deregistered.", 0, contentInfos.size() );
+    assertEquals( "ContentInfo should have been deregistered.", 0, contentInfos.size() );
   }
 
-  @Test()
+  @Test
   @Override
-  public void test5c_getBeanBadClassname() throws PluginBeanException, PlatformInitializationException {
+  public void test5c_getBeanBadClassname() throws PlatformInitializationException {
     microPlatform.define( IPluginProvider.class, Tst5DefaultPluginProviderBadClass.class ).start();
 
     // reload should register the beans
@@ -190,5 +177,28 @@ public class PentahoSystemPluginManagerIT extends DefaultPluginManagerIT {
     } catch ( Exception ex ) {
       assertTrue( ex instanceof PluginBeanException );
     }
+  }
+
+  @Test
+  public void testPluginResourceBundleProvider() throws Exception {
+    init0();
+    microPlatform.start();
+
+    PluginMessageLogger.clear();
+    pluginManager.reload();
+
+    List<IPlatformPlugin> plugins = PentahoSystem.getAll( IPlatformPlugin.class );
+    assertEquals( "Invalid plugin count", 1, plugins.size() );
+
+    IPlatformPlugin plugin = plugins.get( 0 );
+
+    // valid resource bundle class name
+    assertEquals( "Invalid plugin resource bundle classname", "messages",
+      plugin.getResourceBundleClassName() );
+
+    // validly translated and interpolated title and description
+    assertEquals( "Invalid plugin title", "Plugin 1 Title", plugin.getTitle() );
+    assertEquals( "Invalid plugin description", "Plugin 1 Description - Plugin 1 Description",
+      plugin.getDescription() );
   }
 }

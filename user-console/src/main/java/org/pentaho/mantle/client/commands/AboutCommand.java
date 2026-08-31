@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.mantle.client.commands;
 
@@ -38,6 +32,13 @@ import org.pentaho.mantle.client.messages.Messages;
 import java.util.Date;
 
 public class AboutCommand extends AbstractCommand {
+  private static final String LICENSE_FILE_URL = GWT.getHostPageBaseURL() + "mantle/LICENSE.TXT";
+
+  private static final String LICENSE_READ_ERROR =
+    "Error reading license file from server URL: \"" + LICENSE_FILE_URL + "\"";
+
+  private String versionText;
+  private String licenseText;
 
   public AboutCommand() {
   }
@@ -46,9 +47,33 @@ public class AboutCommand extends AbstractCommand {
     performOperation( true );
   }
 
+  /**
+   * Begins callback chain for About window values then opens the window:
+   * -> retrieve version (if not set)
+   * -> retrieve license text (if not set nor error)
+   * -> show the window
+   */
   protected void performOperation( boolean feedback ) {
-    if ( StringUtils.isEmpty( MantleApplication.mantleRevisionOverride ) == false ) {
-      showAboutDialog( MantleApplication.mantleRevisionOverride );
+    retrieveVersionValue();
+  }
+
+
+  //Setters are here to be accessible in RequestCallbacks
+  private void setVersionText( String text ) {
+    versionText = text;
+  }
+
+  private void setLicenseFileText( String text ) {
+    licenseText = text.replace( "\t", "&emsp;" );
+    licenseText = "<pre>" + licenseText + "</pre>";
+  }
+
+  private void retrieveVersionValue() {
+    if ( versionText != null && !versionText.isEmpty() ) {
+      retrieveLicenseFileText();
+    } else if ( StringUtils.isEmpty( MantleApplication.mantleRevisionOverride ) == false ) {
+      setVersionText( MantleApplication.mantleRevisionOverride );
+      retrieveLicenseFileText();
     } else {
       final String url = GWT.getHostPageBaseURL() + "api/version/show"; //$NON-NLS-1$
       RequestBuilder requestBuilder = new RequestBuilder( RequestBuilder.GET, url );
@@ -58,32 +83,58 @@ public class AboutCommand extends AbstractCommand {
         requestBuilder.sendRequest( null, new RequestCallback() {
 
           public void onError( Request request, Throwable exception ) {
-            // showError(exception);
           }
 
           public void onResponseReceived( Request request, Response response ) {
-            showAboutDialog( response.getText() );
+            setVersionText( response.getText() );
+            retrieveLicenseFileText();
           }
         } );
       } catch ( RequestException e ) {
         Window.alert( e.getMessage() );
-        // showError(e);
       }
     }
   }
 
-  private void showAboutDialog( String version ) {
-    @SuppressWarnings( "deprecation" )
-    String licenseInfo = Messages.getString( "licenseInfo", "" + ( ( new Date() ).getYear() + 1900 ) );
+  private void retrieveLicenseFileText() {
+    //if we already have a license text value that isn't the ERROR value, don't bother getting the value again.
+    if ( licenseText != null && !licenseText.isEmpty() && licenseText != LICENSE_READ_ERROR ) {
+      showAboutDialog();
+    } else {
+      RequestBuilder licenseFileRequest = new RequestBuilder( RequestBuilder.GET, LICENSE_FILE_URL );
+      licenseFileRequest.setHeader( "If-Modified-Since", "01 Jan 1970 00:00:00 GMT" );
+      licenseFileRequest.setHeader( "accept", "text/plain" );
+
+      try {
+        licenseFileRequest.sendRequest( null, new RequestCallback() {
+
+          public void onError( Request request, Throwable exception ) {
+            setLicenseFileText( LICENSE_READ_ERROR );
+            showAboutDialog();
+          }
+
+          public void onResponseReceived( Request request, Response response ) {
+            setLicenseFileText( response.getText() );
+            showAboutDialog();
+          }
+        } );
+      } catch ( RequestException e ) {
+        Window.alert( e.getMessage() );
+      }
+    }
+  }
+
+  private void showAboutDialog() {
     String releaseLabel = Messages.getString( "release" );
     PromptDialogBox dialogBox =
-        new PromptDialogBox( Messages.getString( "aboutDialogTitle" ), Messages.getString( "ok" ), null, false, true ); //$NON-NLS-1$
-
+      new PromptDialogBox( null, Messages.getString( "ok" ), null, false, true ); //$NON-NLS-1$
     VerticalPanel aboutContent = new VerticalPanel();
-    aboutContent.add( new Label( releaseLabel + " " + version ) );
-    aboutContent.add( new HTML( licenseInfo ) );
-
+    aboutContent.setBorderWidth( 0 );
+    aboutContent.setStyleName( "about-splash" );
+    aboutContent.add( new Label( releaseLabel + " " + versionText ) );
+    aboutContent.add( new HTML( licenseText ) );
     dialogBox.setContent( aboutContent );
+    dialogBox.setPixelSize( 700, 400 );
     dialogBox.center();
   }
 }

@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
 <!-- ===================================================================== -->
 <!--                                                                       -->
 <!--  Log4j2 Configuration                                                  -->
@@ -10,12 +21,12 @@
    | website: https://logging.apache.org/log4j/2.x/manual/configuration.html
  -->
 
-<Configuration name="PentahoPlatform" status="ERROR" dest="out">
+<Configuration name="PentahoPlatform" status="ERROR" dest="out" monitorInterval="30">
     <Appenders>
         <!-- ================================= -->
         <!-- Preserve messages in a local file -->
         <!-- ================================= -->
-        
+
         <!-- A time/date based rolling appender -->
         <RollingFile name="PENTAHOFILE" fileName="../logs/pentaho.log" filePattern="../logs/pentaho.log.%d{yyyy-MM-dd}">
             <PatternLayout>
@@ -83,7 +94,7 @@
             <DefaultRolloverStrategy max="1" />
         </RollingFile>
          -->
-         
+
         <!-- ========================================================== -->
         <!-- Special log file specifically for sensitive data access    -->
         <!-- on a per user/session/IP level                             -->
@@ -110,9 +121,8 @@
     <!-- Limit loggers    -->
     <!-- ================ -->
     <Loggers>
-        <Logger name="org.apache.hadoop.io.retry" level="INFO"/>
         <Logger name="org.hibernate" level="ERROR"/>
-        <Logger name="net.sf.ehcache" level="ERROR"/>
+        <Logger name="org.ehcache" level="ERROR"/>
         <Logger name="org.quartz" level="ERROR"/>
         <Logger name="org.springframework" level="ERROR"/>
         <Logger name="org.springframework.security" level="ERROR"/>
@@ -125,8 +135,9 @@
         <Logger name="org.pentaho.di.osgi" level="ERROR"/>
         <Logger name="org.pentaho.di.monitor" level="ERROR"/>
         <Logger name="org.pentaho.platform.engine.core.system.status" level="INFO"/>
-        <Logger name="org.pentaho.hadoop.shim.DriverManager" level="INFO"/>
-        
+        <Logger name="org.pentaho.reporting.engine.classic.core.modules.output.fast.validator.ReportStructureValidator" level="INFO"/>
+        <Logger name="org.pentaho.platform.engine.security.authorization" level="ERROR"/>
+
         <!-- =========================== -->
         <!-- Repository Import Log Level -->
         <!-- =========================== -->
@@ -137,6 +148,15 @@
         <Logger name="org.pentaho.di.job.Job" level="INFO" additivity="false">
             <appender-ref ref="pdi-execution-appender"/>
         </Logger>
+
+        <!-- =========================== -->
+        <!-- Scheduler Log Levels        -->
+        <!-- =========================== -->
+        <!-- Set these to WARN to enable logging of scheduler output location validation and fallback process. -->
+        <Logger name="org.pentaho.platform.scheduler2.action.SchedulerOutputPathResolver" level="WARN"/>
+        <Logger name="org.pentaho.platform.web.http.api.resources.SchedulerOutputPathResolver" level="WARN"/>
+        <Logger name="org.pentaho.platform.web.http.api.resources.SchedulerResource" level="WARN"/>
+        <Logger name="com.pentaho.appshell.scheduler" level="INFO"/>
 
         <!-- =========================== -->
         <!-- Mondrian Log Levels         -->

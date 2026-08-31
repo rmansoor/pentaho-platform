@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importer;
 
@@ -58,7 +52,7 @@ public class PRPTImportHandler extends RepositoryFileImportFileHandler implement
     String fileName = importBundle.getName();
 
     String filePath =
-      ( importBundle.getPath().equals( "/" ) || importBundle.getPath().equals( "\\" ) ) ? "" : importBundle.getPath();
+        ( importBundle.getPath().equals( "/" ) || importBundle.getPath().equals( "\\" ) ) ? "" : importBundle.getPath();
 
     // If is locale file store it for later processing.
     // need to extract this from meta.xml
@@ -83,7 +77,7 @@ public class PRPTImportHandler extends RepositoryFileImportFileHandler implement
   }
 
   private void fillLocaleEntry( LocaleFilesProcessor localeFilesProcessor, DocumentMetaData metaData, String filePath,
-      String fileName, RepositoryFile rf ) throws IOException {
+                                String fileName, RepositoryFile rf ) throws IOException {
     String description =
         (String) metaData.getBundleAttribute( ODFMetaAttributeNames.DublinCore.NAMESPACE, ODFMetaAttributeNames.DublinCore.DESCRIPTION );
     if ( StringUtils.isEmpty( description, true ) ) {
@@ -102,9 +96,10 @@ public class PRPTImportHandler extends RepositoryFileImportFileHandler implement
 
   // keep it protected for test goal, we should not add any logic for this method such we just
   // incapsulate getting information from external class
+
   /**
    * extract metadata from input bundle
-   * 
+   *
    * @param bytes
    * @return
    * @throws PlatformImportException if we are failed to create metadata from input data

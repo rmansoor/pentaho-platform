@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.test.platform.plugin.services.security.userrole.memory;
 
@@ -69,7 +63,7 @@ public class UserRoleListEnhancedUserMapFactoryBeanTests extends AbstractUserMap
   }
 
   protected boolean isRolePresent( final String[] roles, final String role ) {
-    Assert.hasLength( role );
+    Assert.hasLength( role, "Role must not be null or empty" );
     for ( int i = 0; i < roles.length; i++ ) {
       if ( null != roles[i] && roles[i].equals( role ) ) {
         return true;
@@ -79,7 +73,7 @@ public class UserRoleListEnhancedUserMapFactoryBeanTests extends AbstractUserMap
   }
 
   protected boolean isUserPresent( final String[] users, final String user ) {
-    Assert.hasLength( user );
+    Assert.hasLength( user, "User must not be null or empty" );
     for ( int i = 0; i < users.length; i++ ) {
       if ( user.equals( users[i] ) ) {
         return true;

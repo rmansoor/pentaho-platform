@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.wadl;
 
@@ -32,8 +26,8 @@ import com.sun.jersey.wadl.resourcedoc.ResourceDoclet;
 import org.apache.xml.serialize.OutputFormat;
 import org.apache.xml.serialize.XMLSerializer;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Marshaller;
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.Marshaller;
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
@@ -47,7 +41,7 @@ public class PentahoResourceDoclet extends ResourceDoclet {
   private static final String DEPRECATED_TAG = "<deprecated>{0}</deprecated>";
   private static final String DOCUMENTATION_TAG = "<documentation>{0}</documentation>";
 
-  private static final String PATH_ANNOTATION = "@javax.ws.rs.Path";
+  private static final String PATH_ANNOTATION = "@jakarta.ws.rs.Path";
   private static final String DEPRECATED_ANNOTATION = "@java.lang.Deprecated";
   private static final String FACET_ANNOTATION = "@org.codehaus.enunciate.Facet";
 

@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.http.api.resources.services;
 
@@ -65,14 +59,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.concurrent.Callable;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class UserRoleDaoService {
-  private IUserRoleDao roleDao;
-  private IAuthorizationPolicy policy;
-  private IRoleAuthorizationPolicyRoleBindingDao roleBindingDao;
   private static final String PASS_VALIDATION_ERROR_WRONG_PASS = "UserRoleDaoService.PassValidationError_WrongPass";
   public static final String PUC_USER_PASSWORD_LENGTH = "PUC_USER_PASSWORD_LENGTH";
   public static final String PUC_USER_PASSWORD_REQUIRE_SPECIAL_CHARACTER = "PUC_USER_PASSWORD_REQUIRE_SPECIAL_CHARACTER";
+  private static final String ALLOWED_CHARS = "^[a-zA-Z0-9_.,:;<>|!@#$%^&*()\\[\\]-]+$";
+  private static final String ALLOWED_CHARS_LIST = "a-z A-Z 0-9 _ . , : ; < > | ! @ # $ % ^ & * ( ) [ ] -";
+  private static final String SPEC_CHARS = "((?=.*[@#$%!]).{0,100})";
+  private final Pattern allowedCharsPattern = Pattern.compile( ALLOWED_CHARS );
+  private final Pattern specCharsPattern = Pattern.compile( SPEC_CHARS );
+
+  private IUserRoleDao roleDao;
+  private IAuthorizationPolicy policy;
+  private IRoleAuthorizationPolicyRoleBindingDao roleBindingDao;
   private ISystemConfig systemConfig = PentahoSystem.get( ISystemConfig.class );
 
   public UserListWrapper getUsers() throws Exception {
@@ -185,7 +187,7 @@ public class UserRoleDaoService {
     if ( canAdminister() ) {
       if ( userValid( user ) ) {
 
-        String userName = decode( user.getUserName() );
+        String userName = decode( user.getUserName() ).trim();
         String password = user.getPassword();
 
         ValidationFailedException exception = validatePasswordFormat( password );
@@ -228,7 +230,9 @@ public class UserRoleDaoService {
     } catch ( IOException e ) {
       return new ValidationFailedException( Messages.getInstance().getString( "UserRoleDaoService.PassValidationError_ReadingSecProperties" ) );
     }
-    final String PASSWORD_SPEC_CHAR_PATTERN = "((?=.*[@#$%!]).{0,100})";
+
+    Matcher specCharsMatcher = specCharsPattern.matcher( password );
+    Matcher allowedCharsMatcher = allowedCharsPattern.matcher( password );
     String errorMsg = "New password must: ";
     ValidationFailedException exception;
     ArrayList<String> validationCriteria = new ArrayList<>();
@@ -240,14 +244,21 @@ public class UserRoleDaoService {
       validationCriteria.add( Messages.getInstance().getString( "UserRoleDaoService.PassValidationError_SpecChar" ) );
     }
 
+    if ( !allowedCharsMatcher.matches() ) {
+      validationCriteria.add( Messages.getInstance().getString( "UserRoleDaoService.PassValidationError_PermittedChars", ALLOWED_CHARS_LIST ) );
+    }
+
     errorMsg = errorMsg + String.join( ", ", validationCriteria ) + ".";
 
-    if ( ( password.length() < reqPassLength ) || ( isSpecCharReq && !password.matches( PASSWORD_SPEC_CHAR_PATTERN ) ) ) {
-      exception = new ValidationFailedException( errorMsg );
-      return exception;
-    } else {
+    if ( ( password.length() >= reqPassLength )
+      && allowedCharsMatcher.matches()
+      && ( !isSpecCharReq || specCharsMatcher.matches() ) ) {
+
       return null;
     }
+
+    exception = new ValidationFailedException( errorMsg );
+    return exception;
   }
 
   private boolean credentialValid( IPentahoUser pentahoUser, String oldPass ) {

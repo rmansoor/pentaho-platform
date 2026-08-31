@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.mantle.client.admin;
 
@@ -132,7 +126,8 @@ public class PermissionsPanel extends VerticalPanel {
         final boolean isUncheckedCreateAction =
             permissionTitle.equals( RepositoryCreateAction.NAME ) && !event.getValue();
 
-        List<String> selectedLogicalRoles = new ArrayList<String>();
+        // use a Set to avoid duplicates
+        Set<String> selectedLogicalRoles = new HashSet<>();
         for ( LogicalRoleInfo logicalRoleInfo : logicalRoles.values() ) {
           if ( logicalRoleInfo.checkBox.getValue() ) {
             // BACKLOG-326 If the user selects "Administer Security" then select [READ & CREATE] permission for this
@@ -155,7 +150,7 @@ public class PermissionsPanel extends VerticalPanel {
             && selectedLogicalRoles.containsAll( originalRoles ) ) {
           newRoleAssignments.remove( runtimeRole );
         } else {
-          newRoleAssignments.put( runtimeRole, selectedLogicalRoles );
+          newRoleAssignments.put( runtimeRole, new ArrayList<>( selectedLogicalRoles ) );
         }
 
         saveSecuritySettings();
@@ -190,7 +185,7 @@ public class PermissionsPanel extends VerticalPanel {
         }
 
         public void onResponseReceived( Request request, Response response ) {
-          if ( response.getStatusCode() == 200 ) {
+          if ( response.getStatusCode() == 204 ) {
             masterRoleMap.putAll( newRoleAssignments );
             newRoleAssignments.clear();
           }

@@ -1,28 +1,22 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.connections.xquery;
 
-import net.sf.saxon.om.Axis;
-import net.sf.saxon.om.AxisIterator;
-import net.sf.saxon.tinytree.TinyNodeImpl;
+import net.sf.saxon.om.NodeInfo;
+import net.sf.saxon.tree.iter.AxisIterator;
+import net.sf.saxon.om.AxisInfo;
 import net.sf.saxon.type.Type;
 import org.pentaho.commons.connection.AbstractPentahoMetaData;
 
@@ -53,14 +47,14 @@ public class XQMetaData extends AbstractPentahoMetaData {
     while ( iter.hasNext() ) {
       rowCount++;
       Object obj = iter.next();
-      if ( obj instanceof TinyNodeImpl ) {
+      if ( obj instanceof NodeInfo ) {
         boolean processedChildren = false;
-        AxisIterator aIter = ( (TinyNodeImpl) obj ).iterateAxis( Axis.DESCENDANT );
+        AxisIterator aIter = ( (NodeInfo) obj ).iterateAxis( AxisInfo.DESCENDANT );
         Object descendent = aIter.next();
         while ( descendent != null ) {
-          if ( ( descendent instanceof TinyNodeImpl ) && ( ( (TinyNodeImpl) descendent )
+          if ( ( descendent instanceof NodeInfo ) && ( ( (NodeInfo) descendent )
             .getNodeKind() == Type.ELEMENT ) ) {
-            TinyNodeImpl descNode = (TinyNodeImpl) descendent;
+            NodeInfo descNode = (NodeInfo) descendent;
             processedChildren = true;
             if ( !headers.contains( descNode.getDisplayName() ) ) {
               headers.add( descNode.getDisplayName() );
@@ -69,7 +63,7 @@ public class XQMetaData extends AbstractPentahoMetaData {
           descendent = aIter.next();
         }
         if ( !processedChildren ) {
-          Object value = ( (TinyNodeImpl) obj ).getDisplayName();
+          Object value = ( (NodeInfo) obj ).getDisplayName();
           if ( !headers.contains( value ) ) {
             headers.add( value );
           }

@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2020 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.jcr;
 
@@ -41,7 +35,6 @@ import org.springframework.util.StringUtils;
 
 import javax.jcr.Node;
 import javax.jcr.NodeIterator;
-import javax.jcr.PathNotFoundException;
 import javax.jcr.Property;
 import javax.jcr.PropertyIterator;
 import javax.jcr.RepositoryException;
@@ -58,7 +51,6 @@ import javax.jcr.version.VersionHistory;
 import javax.jcr.version.VersionIterator;
 import javax.jcr.version.VersionManager;
 import java.io.Serializable;
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -368,7 +360,7 @@ public class DefaultDeleteHelper implements IDeleteHelper {
       final PentahoJcrConstants pentahoJcrConstants )
     throws RepositoryException {
 
-    if ( isAdmin() ) {
+    if ( isAdmin() && canAdminAccessAllUsersTrash() ) {
       List<RepositoryFile> deletedFiles = new ArrayList<>();
       ITenant tenant = JcrTenantUtils.getTenant();
       // Because of LDAP and others, for the admin to be able to access all the trash files, we iterate through all users' trash folders
@@ -389,6 +381,10 @@ public class DefaultDeleteHelper implements IDeleteHelper {
       return deletedFiles;
     }
     return getDeletedFiles( session, pentahoJcrConstants );
+  }
+
+  private boolean canAdminAccessAllUsersTrash() {
+    return Boolean.parseBoolean( PentahoSystem.getSystemSetting( "adminAccessAllUsersTrash", "true" ) );
   }
 
   protected String getHomePath( ITenant tenant, String user ) {
@@ -448,10 +444,10 @@ public class DefaultDeleteHelper implements IDeleteHelper {
    */
   public void permanentlyDeleteFile( final Session session, final PentahoJcrConstants pentahoJcrConstants,
                                      final Serializable fileId ) throws RepositoryException {
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "File ID must not be null" );
     Node fileNode = session.getNodeByIdentifier( fileId.toString() );
     // guard against using a file retrieved from a more lenient session inside a more strict session
-    Assert.notNull( fileNode );
+    Assert.notNull( fileNode, "File node must not be null" );
 
     // see if anything is referencing this node; if yes, then we cannot delete it as a
     // ReferentialIntegrityException will result

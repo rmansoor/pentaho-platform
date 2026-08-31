@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
 <?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
 <window width="400" height="275" title="Placeholder"
         xmlns="http://www.pentaho.org/there.is.only.xul" xmlns:pen="http://www.pentaho.org/2008/xul"
@@ -29,8 +40,6 @@
                 command="mantleXulHandler.showHiddenFilesClicked()" type="checkbox" checked="false"/>
       <menubarseparator id="descriptionsSeparator"/>
       <menubar id="languagemenu" label="${languages}" layout="vertical">
-           <menuitem id="additionalLanguagesMenuItem" label="${additionalLanguages}"
-                js-command="window.open('http://community.pentaho.com/marketplace/language-packs/', 'moreLang', '')" />
       </menubar>
       <menubar id="themesmenu" label="${themes}" layout="vertical">
       </menubar>
@@ -48,6 +57,8 @@
                   command="mantleXulHandler.executeMantleCommand('PurgeMondrianSchemaCacheCommand')"/>
         <menuitem id="purgeReportingDataCacheMenuItem" label="${purgeReportingDataCache}"
                   command="mantleXulHandler.executeMantleCommand('PurgeReportingDataCacheCommand')"/>
+        <menuitem id="purgeAuthorizationDecisionCacheMenuItem" label="${purgeAuthorizationDecisionCache}"
+                  command="mantleXulHandler.executeMantleCommand('PurgeAuthorizationDecisionCacheCommand')"/>
       </menubar>
 
       <!-- Uncomment line below to enable 'PDI Status page' menu item -->

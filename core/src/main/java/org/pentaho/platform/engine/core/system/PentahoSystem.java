@@ -1,42 +1,21 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.engine.core.system;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Properties;
-import java.util.StringTokenizer;
-import java.util.concurrent.Callable;
-
 import org.apache.commons.collections.list.UnmodifiableList;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.dom4j.Document;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
@@ -74,14 +53,27 @@ import org.pentaho.platform.engine.core.system.objfac.AggregateObjectFactory;
 import org.pentaho.platform.engine.core.system.objfac.OSGIRuntimeObjectFactory;
 import org.pentaho.platform.engine.security.SecurityHelper;
 import org.pentaho.platform.util.logging.Logger;
-import org.pentaho.platform.util.messages.LocaleHelper;
 import org.pentaho.platform.util.web.SimpleUrlFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.User;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Properties;
+import java.util.StringTokenizer;
+import java.util.concurrent.Callable;
 
 @SuppressWarnings( { "rawtypes", "unchecked" } )
 public class PentahoSystem {
@@ -210,6 +202,11 @@ public class PentahoSystem {
   private static final List<String> UnmodifiableSystemDatasourcesRolesList = UnmodifiableList
     .decorate( PentahoSystem.SystemDatasourcesRolesList );
 
+  private static final List<String> AllowedDatasourceJndiSchemesList = new ArrayList();
+
+  private static final List<String> UnmodifiableAllowedDatasourceJndiSchemesList = UnmodifiableList
+    .decorate( PentahoSystem.AllowedDatasourceJndiSchemesList );
+
   private static final List logoutListeners = Collections.synchronizedList( new ArrayList() );
 
   private static final IServerStatusProvider serverStatusProvider = IServerStatusProvider.LOCATOR.getProvider();
@@ -300,6 +297,7 @@ public class PentahoSystem {
       if ( debug ) {
         Logger.debug( PentahoSystem.class, "Reading ACL list from pentaho.xml" ); //$NON-NLS-1$
       }
+
       // Set Up ACL File Extensions by reading pentaho.xml for acl-files
       //
       // Read the files that are permitted to have ACLs on them from
@@ -329,14 +327,28 @@ public class PentahoSystem {
         PentahoSystem.DownloadRolesList.add( st.nextToken().trim() );
       }
 
+      if ( debug ) {
+        Logger.debug( PentahoSystem.class, "Reading System DataSources Roles from pentaho.xml" );
+      }
       st = new StringTokenizer( PentahoSystem.getSystemSetting( "system-datasources-roles", "Administrator" ), "," );
       while ( st.hasMoreElements() ) {
         PentahoSystem.SystemDatasourcesRolesList.add( st.nextToken().trim() );
       }
 
+      if ( debug ) {
+        Logger.debug( PentahoSystem.class, "Reading System DataSources from pentaho.xml" );
+      }
       st = new StringTokenizer( PentahoSystem.getSystemSetting( "system-datasources", "Hibernate,Quartz,jackrabbit" ), "," );
       while ( st.hasMoreElements() ) {
         PentahoSystem.SystemDatasourcesList.add( st.nextToken().trim() );
+      }
+
+      if ( debug ) {
+        Logger.debug( PentahoSystem.class, "Reading Allowed Datasource JNDI Schemes from pentaho.xml" );
+      }
+      st = new StringTokenizer( PentahoSystem.getSystemSetting( "allowed-datasource-jndi-schemes", "java" ), "," );
+      while ( st.hasMoreElements() ) {
+        PentahoSystem.AllowedDatasourceJndiSchemesList.add( st.nextToken().trim() );
       }
     }
 
@@ -436,12 +448,20 @@ public class PentahoSystem {
 
     final String name =
         StringUtils.defaultIfEmpty( PentahoSystem.get( String.class, "singleTenantAdminUserName", null ), "admin" );
+
+    boolean doTrace = Logger.getLogLevel() <= ILogger.TRACE;
+    if ( doTrace ) {
+      Logger.trace( PentahoSystem.class, String.format( "runAsSystem BEGIN '%s'", name ) );
+    }
+
     IPentahoSession origSession = PentahoSessionHolder.getSession();
     SecurityContext originalContext = SecurityContextHolder.getContext();
+
+    StandaloneSession systemSession = null;
     try {
       // create pentaho session
-      StandaloneSession session = new StandaloneSession( name );
-      session.setAuthenticated( name );
+      systemSession = new StandaloneSession( name );
+      systemSession.setAuthenticated( name );
       // create authentication
 
       List<GrantedAuthority> roles;
@@ -456,7 +476,7 @@ public class PentahoSystem {
       UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken( user, "", roles ); //$NON-NLS-1$
 
       // set holders
-      PentahoSessionHolder.setSession( session );
+      PentahoSessionHolder.setSession( systemSession );
 
       // Clearing the SecurityContext to force the subsequent call to getContext() to generate a new SecurityContext.
       // This prevents us from modifying the Authentication on a SecurityContext isntance which may be shared between
@@ -465,16 +485,24 @@ public class PentahoSystem {
       SecurityContextHolder.getContext().setAuthentication( auth );
       return callable.call();
     } finally {
-      IPentahoSession sessionToDestroy = PentahoSessionHolder.getSession();
-      if ( sessionToDestroy != null && sessionToDestroy != origSession ) {
+      if ( systemSession != null ) {
+        if ( doTrace ) {
+          Logger.trace( PentahoSystem.class, String.format( "runAsSystem destroying system session for '%s'", name ) );
+        }
+
         try {
-          sessionToDestroy.destroy();
+          systemSession.destroy();
         } catch ( Exception e ) {
-          e.printStackTrace();
+          Logger.error( PentahoSystem.class, String.format( "runAsSystem session destroy for '%s' error", name ), e );
         }
       }
+
       PentahoSessionHolder.setSession( origSession );
       SecurityContextHolder.setContext( originalContext );
+
+      if ( doTrace ) {
+        Logger.trace( PentahoSystem.class, String.format( "runAsSystem END '%s'", name ) );
+      }
     }
   }
 
@@ -1332,6 +1360,10 @@ public class PentahoSystem {
     return PentahoSystem.UnmodifiableSystemDatasourcesRolesList;
   }
 
+  public static List<String> getAllowedDatasourceJndiSchemesList() {
+    return PentahoSystem.UnmodifiableAllowedDatasourceJndiSchemesList;
+  }
+
   // Stuff for the logout listener subsystem
   public static void addLogoutListener( final ILogoutListener listener ) {
     // add items to vector of listeners
@@ -1349,6 +1381,14 @@ public class PentahoSystem {
   }
 
   public static void invokeLogoutListeners( final IPentahoSession session ) {
+    if ( Logger.getLogLevel() <= ILogger.TRACE ) {
+      Logger.trace(
+        PentahoSystem.class,
+        String.format(
+          "invokeLogoutListeners for %s",
+          session.getName() ) );
+    }
+
     Iterator iter = PentahoSystem.logoutListeners.iterator();
     while ( iter.hasNext() ) {
       ILogoutListener listener = (ILogoutListener) iter.next();

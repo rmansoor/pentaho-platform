@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importexport.legacy;
 
@@ -91,9 +85,9 @@ public class DbSolutionRepositoryImportSource extends AbstractImportSource {
   public DbSolutionRepositoryImportSource( final DataSource dataSource, final String srcCharset,
       final String requiredCharset, final String ownerName ) {
     super();
-    Assert.notNull( dataSource );
+    Assert.notNull( dataSource, "DataSource must not be null" );
     this.jdbcTemplate = new JdbcTemplate( dataSource );
-    Assert.hasLength( srcCharset );
+    Assert.hasLength( srcCharset, "Source charset must not be null or empty" );
     this.srcCharset = srcCharset;
     this.requiredCharset = requiredCharset;
     this.ownerName = ownerName;
@@ -113,7 +107,7 @@ public class DbSolutionRepositoryImportSource extends AbstractImportSource {
    * @return
    */
   public Iterable<IRepositoryFileBundle> getFiles() {
-    Assert.hasLength( requiredCharset );
+    Assert.hasLength( requiredCharset, "Required charset must not be null or empty" );
     return new Iterable<IRepositoryFileBundle>() {
       public Iterator<IRepositoryFileBundle> iterator() {
         return new RepositoryFileBundleIterator();
@@ -372,7 +366,7 @@ public class DbSolutionRepositoryImportSource extends AbstractImportSource {
       }
 
       private String getExtension( final String name ) {
-        Assert.notNull( name );
+        Assert.notNull( name, "File name must not be null" );
         int lastDot = name.lastIndexOf( '.' );
         if ( lastDot > -1 ) {
           return name.substring( lastDot + 1 ).toLowerCase();

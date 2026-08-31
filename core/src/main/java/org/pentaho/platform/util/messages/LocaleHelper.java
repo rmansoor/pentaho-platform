@@ -1,23 +1,20 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.util.messages;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.util.logging.Logger;
@@ -231,7 +228,7 @@ public class LocaleHelper {
    * Sets the <i>base</i> locale of the current thread.
    * <p>
    * The Pentaho server sets the base locale of threads handling HTTP requests
-   * to the corresponding request's locale, as given by {@code javax.servlet.http.HttpServletRequest#getLocale()}.
+   * to the corresponding request's locale, as given by {@code jakarta.servlet.http.HttpServletRequest#getLocale()}.
    * This is done by the
    * {@code org.pentaho.platform.web.http.filters.HttpSessionPentahoSessionIntegrationFilter}
    * filter.

@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.jcr;
 
@@ -25,6 +19,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;
+import org.mockito.MockedStatic;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.pentaho.platform.api.engine.IPentahoSession;
@@ -32,6 +27,7 @@ import org.pentaho.platform.api.locale.IPentahoLocale;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.core.mt.Tenant;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
+import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.repository2.unified.ServerRepositoryPaths;
 import org.pentaho.platform.repository2.unified.exception.RepositoryFileDaoFileExistsException;
 import org.pentaho.platform.repository2.unified.exception.RepositoryFileDaoReferentialIntegrityException;
@@ -80,6 +76,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.ArgumentMatchers.endsWith;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -307,9 +304,9 @@ public class DefaultDeleteHelperTest {
     verify( valueFactory ).createValue( someFilter );
   }
 
+  private void setupGetAllDeletedFiles( final String pathUsr, final boolean[] admin )
+      throws RepositoryException {
 
-  @Test
-  public void testGetAllDeletedFiles() throws Exception {
     final String path1 = "path1";
     final Calendar date1 = Calendar.getInstance();
     final Node deletedNode1 = createDeletedNode( path1, date1 );
@@ -332,7 +329,6 @@ public class DefaultDeleteHelperTest {
     when( nodeOtherFolder.hasNodes(  ) ).thenReturn( true );
     when( nodeOtherFolder.getNode( anyString() ) ).thenReturn( nodeTrash );
 
-    final String pathUsr = "pathUser";
     final Calendar dateUsr = Calendar.getInstance();
     final Node deletedNodeUsr = createDeletedNode( pathUsr, dateUsr );
     final Node nodeTrashUsr = mock( Node.class );
@@ -349,7 +345,6 @@ public class DefaultDeleteHelperTest {
     when( nodeUserFolder.hasNodes(  ) ).thenReturn( true );
     when( nodeUserFolder.getNode( anyString() ) ).thenReturn( nodeTrashUsr );
 
-    final boolean[] admin = { false };
     defaultDeleteHelper = new DefaultDeleteHelper( lockHelper, pathConversionHelper ) {
       @Override
       protected boolean isAdmin() {
@@ -372,19 +367,65 @@ public class DefaultDeleteHelperTest {
       return nodeIteratorHome;
     } );
 
-    when ( session.getItem( "/pentaho/tenant0/home" ) ).thenReturn( nodeHomeFolder );
+    when( session.getItem( "/pentaho/tenant0/home" ) ).thenReturn( nodeHomeFolder );
+  }
 
-    // regular user
+  @Test
+  public void testGetAllDeletedFiles_NonAdmin() throws RepositoryException {
+    final String pathUsr = "pathUser";
+    final boolean[] admin = { false };
+    setupGetAllDeletedFiles( pathUsr, admin );
+
     final List<RepositoryFile> deletedFiles = defaultDeleteHelper.getAllDeletedFiles( session, pentahoJcrConstants );
     assertNotNull( deletedFiles );
     assertEquals( 1, deletedFiles.size() );
     assertEquals( pathUsr, deletedFiles.get( 0 ).getOriginalParentFolderPath() );
+  }
 
-    // as admin
-    admin[0] = true;
-    final List<RepositoryFile> deletedFilesAdmin = defaultDeleteHelper.getAllDeletedFiles( session, pentahoJcrConstants );
-    assertNotNull( deletedFilesAdmin );
-    assertEquals( 3, deletedFilesAdmin.size() );
+  @Test
+  public void testGetAllDeletedFiles_Admin_Default() throws RepositoryException {
+    final String pathUsr = "pathUser";
+    final boolean[] admin = {true};
+    setupGetAllDeletedFiles( pathUsr, admin );
+
+    final List<RepositoryFile> deletedFiles = defaultDeleteHelper.getAllDeletedFiles( session, pentahoJcrConstants );
+    assertNotNull( deletedFiles );
+    assertEquals( 3, deletedFiles.size() );
+  }
+
+  private void assertAdminAccessAllUsersTrash( boolean adminAccessAllUsersTrash, int expectedFiles ) throws RepositoryException {
+    RepositoryFileProxyFactory repositoryFileProxyFactory = PentahoSystem.get( RepositoryFileProxyFactory.class );
+    try ( MockedStatic<PentahoSystem> mockedPentahoSystem = mockStatic( PentahoSystem.class ) ) {
+      // By mocking PentahoSystem, the value of this property will become null when called,
+      // so we need to set it up in the mocked object
+      mockedPentahoSystem.when( () -> PentahoSystem.get( RepositoryFileProxyFactory.class ) )
+        .thenReturn( repositoryFileProxyFactory );
+
+      mockedPentahoSystem.when(
+        () -> PentahoSystem.getSystemSetting( "adminAccessAllUsersTrash", "true" ) )
+        .thenReturn( String.valueOf( adminAccessAllUsersTrash ) );
+      final List<RepositoryFile> deletedFiles = defaultDeleteHelper.getAllDeletedFiles( session, pentahoJcrConstants );
+      assertNotNull( deletedFiles );
+      assertEquals( expectedFiles, deletedFiles.size() );
+    }
+  }
+
+  @Test
+  public void testGetAllDeletedFiles_AdminAccessAllUsersTrash() throws RepositoryException {
+    final String pathUsr = "pathUser";
+    final boolean[] admin = {true};
+    setupGetAllDeletedFiles( pathUsr, admin );
+
+    assertAdminAccessAllUsersTrash( true, 3 );
+  }
+
+  @Test
+  public void testGetAllDeletedFiles_AdminCannotAccessAllUsersTrash() throws RepositoryException {
+    final String pathUsr = "pathUser";
+    final boolean[] admin = {true};
+    setupGetAllDeletedFiles( pathUsr, admin );
+
+    assertAdminAccessAllUsersTrash( false, 1 );
   }
 
   @Test
@@ -470,7 +511,7 @@ public class DefaultDeleteHelperTest {
       return nodeIteratorHome;
     } );
 
-    when ( session.getItem( "/pentaho/tenant0/home" ) ).thenReturn( nodeHomeFolder );
+    when( session.getItem( "/pentaho/tenant0/home" ) ).thenReturn( nodeHomeFolder );
 
 
 

@@ -1,40 +1,30 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importexport;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.Appender;
-import org.apache.logging.log4j.core.Layout;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.appender.WriterAppender;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.StringLayout;
 import org.pentaho.platform.api.util.LogUtil;
 import org.slf4j.MDC;
 
@@ -48,17 +38,36 @@ public class Log4JRepositoryImportLog {
   private String importRootPath;
   private Level logLevel;
   private Appender appender;
+  private StringLayout layout;
+  private Writer writer;
 
   /**
    * Constructs an object that keeps track of additional fields for Log4j logging and writes/formats an html file to the
    * output stream provided.
-   * 
+   *
+   * @param outputStream
+   */
+  Log4JRepositoryImportLog( OutputStream outputStream, String importRootPath, Level logLevel, StringLayout layout ) {
+    this.outputStream = outputStream;
+    this.importRootPath = importRootPath;
+    this.logLevel = logLevel;
+    this.layout = layout;
+    init();
+  }
+
+  /**
+   * Constructs an object that keeps track of additional fields for Log4j logging and writes/formats an html file to the
+   * output stream provided.
+   *
    * @param outputStream
    */
   Log4JRepositoryImportLog( OutputStream outputStream, String importRootPath, Level logLevel ) {
     this.outputStream = outputStream;
     this.importRootPath = importRootPath;
     this.logLevel = logLevel;
+    RepositoryImportHTMLLayout htmlLayout = new RepositoryImportHTMLLayout( logLevel );
+    htmlLayout.setTitle( "Repository Import Log" );
+    this.layout = htmlLayout;
     init();
   }
 
@@ -66,10 +75,8 @@ public class Log4JRepositoryImportLog {
     logName = "RepositoryImportLog." + getThreadName();
     logger = LogManager.getLogger( logName );
     LogUtil.setLevel( logger, logLevel );
-    RepositoryImportHTMLLayout htmlLayout = new RepositoryImportHTMLLayout( logLevel );
-    htmlLayout.setTitle( "Repository Import Log" );
-    appender =
-        LogUtil.makeAppender( logName, new OutputStreamWriter( outputStream, Charset.forName( "utf-8" ) ), htmlLayout );
+    writer = new OutputStreamWriter( outputStream, StandardCharsets.UTF_8 );
+    appender = LogUtil.makeAppender( logName, writer, this.layout );
     LogUtil.addAppender( appender, logger, logLevel );
   }
 
@@ -85,8 +92,7 @@ public class Log4JRepositoryImportLog {
   }
 
   /**
-   * @param currentFilePath
-   *          the currentFilePath to set
+   * @param currentFilePath the currentFilePath to set
    */
   public void setCurrentFilePath( String currentFilePath ) {
     this.currentFilePath = currentFilePath;
@@ -101,13 +107,12 @@ public class Log4JRepositoryImportLog {
   }
 
   protected void endJob() {
-    try {
-      outputStream.write( appender.getLayout().getFooter() );
-    } catch ( Exception e ) {
-      System.out.println( e );
-      // Don't try logging a log error.
-    }
     LogUtil.removeAppender( appender, logger );
+    try {
+      writer.flush();
+    } catch ( IOException e ) {
+      System.out.println( e );
+    }
   }
 
   private String getThreadName() {

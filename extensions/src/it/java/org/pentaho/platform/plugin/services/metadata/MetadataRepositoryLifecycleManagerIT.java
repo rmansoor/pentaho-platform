@@ -1,39 +1,18 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.metadata;
-
-import static junit.framework.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-
-import javax.jcr.Repository;
-import javax.jcr.RepositoryException;
-import javax.jcr.Session;
-import javax.jcr.Workspace;
-import javax.jcr.security.AccessControlException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.jackrabbit.api.JackrabbitWorkspace;
@@ -46,7 +25,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.pentaho.platform.api.engine.IAuthorizationPolicy;
 import org.pentaho.platform.api.engine.IConfiguration;
-import org.pentaho.platform.api.engine.IPentahoDefinableObjectFactory.Scope;
 import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.api.engine.IPluginManager;
 import org.pentaho.platform.api.engine.IUserRoleListService;
@@ -64,7 +42,6 @@ import org.pentaho.platform.core.mt.Tenant;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.StandaloneSession;
 import org.pentaho.platform.engine.core.system.boot.PlatformInitializationException;
-import org.pentaho.platform.plugin.services.pluginmgr.DefaultPluginManager;
 import org.pentaho.platform.repository2.ClientRepositoryPaths;
 import org.pentaho.platform.repository2.unified.IRepositoryFileDao;
 import org.pentaho.platform.repository2.unified.ServerRepositoryPaths;
@@ -85,16 +62,31 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.extensions.jcr.JcrCallback;
 import org.springframework.extensions.jcr.JcrTemplate;
 import org.springframework.extensions.jcr.SessionFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import javax.jcr.Repository;
+import javax.jcr.RepositoryException;
+import javax.jcr.Session;
+import javax.jcr.Workspace;
+import javax.jcr.security.AccessControlException;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
+import static junit.framework.Assert.assertTrue;
 
 /**
  * Class Description User: dkincade
@@ -115,6 +107,8 @@ public class MetadataRepositoryLifecycleManagerIT implements ApplicationContextA
   private static MicroPlatform mp = new MicroPlatform();
 
   public static final String MAIN_TENANT_1 = "maintenant1";
+
+  private IPluginManager pluginManager;
 
   private IUnifiedRepository repo;
 
@@ -163,9 +157,16 @@ public class MetadataRepositoryLifecycleManagerIT implements ApplicationContextA
   private JcrTemplate jcrTemplate;
 
   public static final String SYSTEM_PROPERTY = "spring.security.strategy";
+  private static SecurityContextHolderStrategy previousSecurityContextHolderStrategy;
+  private static String previousPentahoSessionHolderStrategy;
+  private static String previousSpringSecurityStrategy;
 
   @BeforeClass
   public static void beforeClass() throws Exception {
+    previousSecurityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
+    previousPentahoSessionHolderStrategy = System.getProperty( PentahoSessionHolder.SYSTEM_PROPERTY,
+      PentahoSessionHolder.MODE_INHERITABLETHREADLOCAL );
+    previousSpringSecurityStrategy = System.getProperty( SYSTEM_PROPERTY );
     System.setProperty( SYSTEM_PROPERTY, "MODE_GLOBAL" );
     PentahoSessionHolder.setStrategyName( PentahoSessionHolder.MODE_GLOBAL );
     FileUtils.deleteDirectory( new File( "/tmp/jackrabbit-test-TRUNK" ) );
@@ -174,7 +175,15 @@ public class MetadataRepositoryLifecycleManagerIT implements ApplicationContextA
 
   @AfterClass
   public static void afterClass() {
-    PentahoSessionHolder.setStrategyName( PentahoSessionHolder.MODE_INHERITABLETHREADLOCAL );
+    PentahoSessionHolder.removeSession();
+    SecurityContextHolder.clearContext();
+    PentahoSessionHolder.setStrategyName( previousPentahoSessionHolderStrategy );
+    SecurityContextHolder.setContextHolderStrategy( previousSecurityContextHolderStrategy );
+    if ( previousSpringSecurityStrategy == null ) {
+      System.clearProperty( SYSTEM_PROPERTY );
+    } else {
+      System.setProperty( SYSTEM_PROPERTY, previousSpringSecurityStrategy );
+    }
   }
 
   @Before
@@ -182,7 +191,7 @@ public class MetadataRepositoryLifecycleManagerIT implements ApplicationContextA
     System.setProperty( SYSTEM_PROPERTY, "MODE_INHERITABLETHREADLOCAL" );
     mp = new MicroPlatform();
     mp.defineInstance( "tenantedUserNameUtils", tenantedUserNameUtils );
-    mp.define( IPluginManager.class, DefaultPluginManager.class, Scope.GLOBAL );
+    mp.defineInstance( IPluginManager.class, pluginManager );
     mp.defineInstance( IAuthorizationPolicy.class, authorizationPolicy );
     mp.defineInstance( ITenantManager.class, tenantManager );
     mp.define( ITenant.class, Tenant.class );
@@ -207,26 +216,42 @@ public class MetadataRepositoryLifecycleManagerIT implements ApplicationContextA
     ( (UserRoleDaoUserRoleListService) userRoleListService ).setUserDetailsService( userDetailsService );
     mp.defineInstance( IUserRoleListService.class, userRoleListService );
     mp.start();
+    SecurityContextHolder.setStrategyName( SecurityContextHolder.MODE_GLOBAL );
+    startupCalled = true;
     loginAsRepositoryAdmin();
     setAclManagement();
     logout();
-    startupCalled = true;
   }
 
   @After
   public void afterTest() throws Exception {
-    // null out fields to get back memory
-    loginAsRepositoryAdmin();
-    SimpleJcrTestUtils.deleteItem( testJcrTemplate, ServerRepositoryPaths.getPentahoRootFolderPath() );
-    logout();
+    try {
+      // null out fields to get back memory
+      loginAsRepositoryAdmin();
+      SimpleJcrTestUtils.deleteItem( testJcrTemplate, ServerRepositoryPaths.getPentahoRootFolderPath() );
+      logout();
 
-    repositoryAdminUsername = null;
-    adminAuthorityName = null;
-    tenantAuthenticatedAuthorityName = null;
-    authorizationPolicy = null;
-    testJcrTemplate = null;
-    if ( startupCalled ) {
-      manager.shutdown();
+      repositoryAdminUsername = null;
+      adminAuthorityName = null;
+      tenantAuthenticatedAuthorityName = null;
+      authorizationPolicy = null;
+      testJcrTemplate = null;
+      pluginManager = null;
+    } finally {
+      try {
+        if ( startupCalled && manager != null ) {
+          manager.shutdown();
+        }
+      } finally {
+        try {
+          if ( mp != null ) {
+            mp.stop();
+          }
+        } finally {
+          PentahoSessionHolder.removeSession();
+          SecurityContextHolder.clearContext();
+        }
+      }
     }
 
     // null out fields to get back memory
@@ -304,6 +329,7 @@ public class MetadataRepositoryLifecycleManagerIT implements ApplicationContextA
     testJcrTemplate = new JcrTemplate( jcrSessionFactory );
     testJcrTemplate.setAllowCreate( true );
     testJcrTemplate.setExposeNativeSession( true );
+    pluginManager = (IPluginManager) applicationContext.getBean( "IPluginManager" );
     repositoryAdminUsername = (String) applicationContext.getBean( "repositoryAdminUsername" );
     tenantAuthenticatedAuthorityName = (String) applicationContext.getBean( "singleTenantAuthenticatedAuthorityName" );
     adminAuthorityName = (String) applicationContext.getBean( "singleTenantAdminAuthorityName" );

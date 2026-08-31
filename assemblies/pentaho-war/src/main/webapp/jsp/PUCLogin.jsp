@@ -12,7 +12,7 @@
 * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 * See the GNU Lesser General Public License for more details.
 *
-* Copyright (c) 2002-2023 Hitachi Vantara..  All rights reserved.
+* Copyright (c) 2002-2023 Pentaho.  All rights reserved.
 --%>
 
 <%@ taglib prefix='c' uri='http://java.sun.com/jstl/core'%>
@@ -31,7 +31,7 @@
             java.util.List,
             java.util.Map,
             java.util.StringTokenizer,
-            javax.servlet.http.HttpSession,
+            jakarta.servlet.http.HttpSession,
             org.pentaho.platform.engine.core.system.PentahoSessionHolder,
             org.owasp.encoder.Encode"%>
 <%!
@@ -349,6 +349,8 @@
     else { %>
     var userState = '';
     <% } %>
+
+    $("#j_username").val($("#j_username").val().trim());
 
     jQuery.ajax({
       type: "POST",

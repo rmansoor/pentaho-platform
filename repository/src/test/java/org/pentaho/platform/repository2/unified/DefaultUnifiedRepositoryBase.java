@@ -1,42 +1,18 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified;
-
-import static org.junit.Assert.assertNotNull;
-import static org.mockito.Mockito.*;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.List;
-
-import javax.jcr.Repository;
-import javax.jcr.RepositoryException;
-import javax.jcr.Session;
-import javax.jcr.Workspace;
-import javax.jcr.security.AccessControlException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.jackrabbit.api.JackrabbitWorkspace;
@@ -88,11 +64,11 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.extensions.jcr.JcrCallback;
 import org.springframework.extensions.jcr.JcrTemplate;
 import org.springframework.extensions.jcr.SessionFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.context.ContextConfiguration;
@@ -100,6 +76,26 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import javax.jcr.Repository;
+import javax.jcr.RepositoryException;
+import javax.jcr.Session;
+import javax.jcr.Workspace;
+import javax.jcr.security.AccessControlException;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Integration test. Tests {@link DefaultUnifiedRepository} and
@@ -304,7 +300,7 @@ public class DefaultUnifiedRepositoryBase implements ApplicationContextAware {
     mp.defineInstance( IUnifiedRepository.class, repo );
     mp.defineInstance( IRepositoryFileAclDao.class, repositoryFileAclDao );
     IUserRoleListService userRoleListService = mock( IUserRoleListService.class );
-    when( userRoleListService.getRolesForUser( any( ITenant.class ), anyString() ) ).thenReturn( Arrays.asList(
+    when( userRoleListService.getRolesForUser( nullable( ITenant.class ), anyString() ) ).thenReturn( Arrays.asList(
         tenantAdminRoleName, AUTHENTICATED_ROLE_NAME ) );
     mp.defineInstance( IUserRoleListService.class, userRoleListService );
     mp.defineInstance( "singleTenantAdminUserName", singleTenantAdminUserName );
@@ -583,6 +579,7 @@ public class DefaultUnifiedRepositoryBase implements ApplicationContextAware {
     repositoryFileAclDao = (IRepositoryFileAclDao) applicationContext.getBean( "repositoryFileAclDao" );
     testUserRoleDao = userRoleDao;
     txnTemplate = (TransactionTemplate) applicationContext.getBean( "jcrTransactionTemplate" );
+
     TestPrincipalProvider.userRoleDao = testUserRoleDao;
     TestPrincipalProvider.adminCredentialsStrategy =
         (CredentialsStrategy) applicationContext.getBean( "jcrAdminCredentialsStrategy" );

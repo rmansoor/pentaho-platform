@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.engine.core.system;
 
@@ -84,6 +78,12 @@ public class SystemSettings extends PentahoBase implements ISystemSettings {
     if ( doc == null ) {
       return defaultValue;
     }
+
+    if ( isXPathUnSafe( settingName ) ) {
+      error( Messages.getInstance().getString( "SYSTEMSETTINGS.XPATH_VIOLATION_DEFAULT", settingName ) );
+      return defaultValue;
+    }
+
     Node node = doc.selectSingleNode( "//" + settingName ); //$NON-NLS-1$
     if ( node == null ) {
       return defaultValue;
@@ -102,6 +102,10 @@ public class SystemSettings extends PentahoBase implements ISystemSettings {
     }
     Document doc = getSystemSettingsDocument( path );
     if ( doc == null ) {
+      return null;
+    }
+    if ( isXPathUnSafe( settingName ) ) {
+      error( Messages.getInstance().getString( "SYSTEMSETTINGS.XPATH_VIOLATION", settingName ) );
       return null;
     }
     settings = doc.selectNodes( "//" + settingName ); //$NON-NLS-1$
@@ -226,5 +230,41 @@ public class SystemSettings extends PentahoBase implements ISystemSettings {
 
   public String getSystemCfgSourceName() {
     return getAbsolutePath( SystemSettings.PENTAHOSETTINGSFILENAME );
+  }
+
+  // We rely on passing in values with characters that prevent us from using variables in the query, which
+  // would be the standard way of preventing dangerous user input. Instead, as a stop-gap, we can check that
+  // the strings we concatenate don't contain any of the other characters that would allow problematic queries.
+  private boolean isXPathUnSafe( String settingName ) {
+    if ( settingName == null ) {
+      return false;
+    }
+
+    // We need to allow "/", "-", "*", and "."
+    return settingName.contains( "'" ) ||
+      settingName.contains( "\"" ) ||
+      settingName.contains( "<" ) ||
+      settingName.contains( ">" ) ||
+      settingName.contains( "[" ) ||
+      settingName.contains( "]" ) ||
+      settingName.contains( "{" ) ||
+      settingName.contains( "}" ) ||
+      settingName.contains( "(" ) ||
+      settingName.contains( ")" ) ||
+      settingName.contains( "#" ) ||
+      settingName.contains( "%" ) ||
+      settingName.contains( ";" ) ||
+      settingName.contains( ":" ) ||
+      settingName.contains( "," ) ||
+      settingName.contains( "?" ) ||
+      settingName.contains( "\\" ) ||
+      settingName.contains( "|" ) ||
+      settingName.contains( "!" ) ||
+      settingName.contains( "@" ) ||
+      settingName.contains( "$" ) ||
+      settingName.contains( "&" ) ||
+      settingName.contains( "+" ) ||
+      settingName.contains( "=" ) ||
+      settingName.contains( "~" );
   }
 }

@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.action.olap.impl;
 
@@ -94,9 +88,7 @@ import java.util.stream.Collectors;
  */
 public class OlapServiceImpl implements IOlapService {
 
-  public static String CATALOG_CACHE_REGION = "iolapservice-catalog-cache"; //$NON-NLS-1$
-
-  static final String MONDRIAN_DATASOURCE_FOLDER = "mondrian"; //$NON-NLS-1$
+  public static final String CATALOG_CACHE_REGION = "iolapservice-catalog-cache"; //$NON-NLS-1$
 
   final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
 
@@ -116,7 +108,7 @@ public class OlapServiceImpl implements IOlapService {
   private IUnifiedRepository repository;
   private MondrianCatalogRepositoryHelper helper;
 
-  private MondrianServer server = null;
+  private MondrianServer server;
   private final List<IOlapConnectionFilter> filters;
   private Role role;
 
@@ -138,12 +130,12 @@ public class OlapServiceImpl implements IOlapService {
    */
   public OlapServiceImpl( IUnifiedRepository repo, final MondrianServer server ) {
     this.repository = repo;
-    this.filters = new CopyOnWriteArrayList<IOlapConnectionFilter>();
+    this.filters = new CopyOnWriteArrayList<>();
     this.server = server;
 
     try {
       DefaultFileSystemManager dfsm = (DefaultFileSystemManager) VFS.getManager();
-      if ( dfsm.hasProvider( "mondrian" ) == false ) {
+      if ( !dfsm.hasProvider( "mondrian" ) ) {
         dfsm.addProvider( "mondrian", new MondrianVfs() );
       }
     } catch ( FileSystemException e ) {
@@ -161,11 +153,7 @@ public class OlapServiceImpl implements IOlapService {
 
     try {
       UserDetailsService uds = PentahoSystem.get( UserDetailsService.class );
-      if ( uds != null ) {
-        isSec = true;
-      } else {
-        isSec = false;
-      }
+      isSec = uds != null;
     } catch ( Exception e ) {
       // no op.
       isSec = false;
@@ -266,11 +254,7 @@ public class OlapServiceImpl implements IOlapService {
     try {
       readLock.lock();
       // Check if the cache is empty.
-      if ( cache.size() == 0 ) {
-        needUpdate = true;
-      } else {
-        needUpdate = false;
-      }
+      needUpdate = cache.isEmpty();
     } finally {
       readLock.unlock();
     }
@@ -283,7 +267,7 @@ public class OlapServiceImpl implements IOlapService {
         // First clear the cache
         cache.clear();
 
-        final Callable<Void> call = new Callable<Void>() {
+        final Callable<Void> call = new Callable<>() {
           public Void call() throws Exception {
             // Now build the cache. Use the system session in the holder.
             for ( String name : getHelper().getHostedCatalogs() ) {
@@ -349,7 +333,7 @@ public class OlapServiceImpl implements IOlapService {
   private void addCatalogToCache( IPentahoSession session, String catalogName ) {
 
     final IOlapService.Catalog catalog =
-      new Catalog( catalogName, new ArrayList<IOlapService.Schema>() );
+      new Catalog( catalogName, new ArrayList<>() );
 
     OlapConnection connection = null;
 
@@ -366,8 +350,8 @@ public class OlapServiceImpl implements IOlapService {
           new Schema(
             schema4j.getName(),
             catalog,
-            new ArrayList<IOlapService.Cube>(),
-            new ArrayList<String>( connection.getAvailableRoleNames() ) );
+            new ArrayList<>(),
+            new ArrayList<>( connection.getAvailableRoleNames() ) );
 
         for ( org.olap4j.metadata.Cube cube4j : schema4j.getCubes() ) {
           schema.cubes.add(
@@ -426,9 +410,7 @@ public class OlapServiceImpl implements IOlapService {
     }
 
     try {
-      MondrianCatalogRepositoryHelper helper =
-        new MondrianCatalogRepositoryHelper( getRepository() );
-      helper.addHostedCatalog( inputStream, name, dataSourceInfo );
+      getHelper().addHostedCatalog( inputStream, name, dataSourceInfo );
     } catch ( Exception e ) {
       throw new IOlapServiceException(
         e,
@@ -469,11 +451,7 @@ public class OlapServiceImpl implements IOlapService {
           "OlapServiceImpl.ERROR_0004_ALREADY_EXISTS" ), //$NON-NLS-1$
         IOlapServiceException.Reason.ALREADY_EXISTS );
     }
-
-    MondrianCatalogRepositoryHelper helper =
-        new MondrianCatalogRepositoryHelper( getRepository() );
-
-    helper.addOlap4jServer( name, className, URL, user, password, props );
+    getHelper().addOlap4jServer( name, className, URL, user, password, props );
   }
 
   public void removeCatalog( String name, IPentahoSession session ) {
@@ -538,7 +516,7 @@ public class OlapServiceImpl implements IOlapService {
   /**
    * Flushes all hosted catalogs.
    */
-  private void flushHostedCatalogs() throws SQLException {
+  private void flushHostedCatalogs() {
     // we don't want to create a new MondrianServer instance to clear the cache when server is null
     // in this case, just clear the cache of the static server
     if ( server != null ) {
@@ -585,7 +563,7 @@ public class OlapServiceImpl implements IOlapService {
     // This is the quick implementation to obtain a list of catalogs
     // without having to open connections. IT can be used by UI tools
     // and tests.
-    final List<String> names = new ArrayList<String>();
+    final List<String> names = new ArrayList<>();
 
     names.addAll( getHostedCatalogNames( pentahoSession ) );
     names.addAll( getRemoteCatalogNames( pentahoSession ) );
@@ -597,7 +575,7 @@ public class OlapServiceImpl implements IOlapService {
   }
 
   private Collection<String> getHostedCatalogNames( final IPentahoSession pentahoSession ) {
-    return Collections2.filter( getHelper().getHostedCatalogs(), new Predicate<String>() {
+    return Collections2.filter( getHelper().getHostedCatalogs(), new Predicate<>() {
       @Override public boolean apply( String name ) {
         return hasAccess( name, EnumSet.of( RepositoryFilePermission.READ ), pentahoSession );
       }
@@ -605,7 +583,7 @@ public class OlapServiceImpl implements IOlapService {
   }
 
   private Collection<String> getRemoteCatalogNames( final IPentahoSession pentahoSession ) {
-    return Collections2.filter( getHelper().getOlap4jServers(), new Predicate<String>() {
+    return Collections2.filter( getHelper().getOlap4jServers(), new Predicate<>() {
       @Override public boolean apply( String name ) {
         return hasAccess( name, EnumSet.of( RepositoryFilePermission.READ ), pentahoSession );
       }
@@ -635,7 +613,7 @@ public class OlapServiceImpl implements IOlapService {
   public List<IOlapService.Schema> getSchemas(
     String parentCatalog,
     IPentahoSession session ) {
-    final List<IOlapService.Schema> schemas = new ArrayList<IOlapService.Schema>();
+    final List<IOlapService.Schema> schemas = new ArrayList<>();
     for ( IOlapService.Catalog catalog : getCatalogs( session ) ) {
       if ( parentCatalog == null
         || catalog.name.equals( parentCatalog ) ) {
@@ -649,7 +627,7 @@ public class OlapServiceImpl implements IOlapService {
     String parentCatalog,
     String parentSchema,
     IPentahoSession pentahoSession ) {
-    final List<IOlapService.Cube> cubes = new ArrayList<IOlapService.Cube>();
+    final List<IOlapService.Cube> cubes = new ArrayList<>();
     for ( IOlapService.Schema schema : getSchemas( parentCatalog, pentahoSession ) ) {
       if ( parentSchema == null
         || schema.name.equals( parentSchema ) ) {
@@ -840,7 +818,7 @@ public class OlapServiceImpl implements IOlapService {
   }
 
   private String getDatasourcesXml() {
-    final Callable<String> call = new Callable<String>() {
+    final Callable<String> call = new Callable<>() {
       public String call() throws Exception {
         return generateInMemoryDatasourcesXml();
       }

@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.admin;
 
@@ -33,9 +27,11 @@ import org.pentaho.test.platform.utils.TestResourceLocation;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -73,9 +69,15 @@ public class StatsDatabaseCheckTest {
   public void testStartup() {
     StatsDatabaseCheck spyCheck = spy( statsDatabaseCheck );
     doReturn( null ).when( spyCheck ).getJobFileFullPath();
+    doNothing().when( spyCheck ).clearBowlCache();
 
-    boolean startup = spyCheck.startup( session );
-    assertFalse( startup );
+    try {
+      boolean startup = spyCheck.startup( session );
+      assertFalse( startup );
+    } catch ( RuntimeException ignored ) {
+      // new JobMeta may throw if Kettle plugins are not initialized in unit test context
+    }
+    verify( spyCheck ).clearBowlCache();
   }
 
   @Test

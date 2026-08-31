@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importexport;
 /*
@@ -33,7 +27,7 @@ package org.pentaho.platform.plugin.services.importexport;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU Lesser General Public License for more details.
  *
- * Copyright 2013 - 2017 Hitachi Vantara.  All rights reserved.
+ * Copyright 2013 - 2017 Pentaho.  All rights reserved.
  *
  * User: pminutillo
  * Date: 1/16/13
@@ -42,6 +36,8 @@ package org.pentaho.platform.plugin.services.importexport;
 
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
+import org.pentaho.platform.api.importexport.ExportException;
+import org.pentaho.platform.api.util.IRepositoryExportLogger;
 
 import java.io.File;
 import java.io.IOException;
@@ -61,6 +57,9 @@ public abstract class BaseExportProcessor {
   List<ExportHandler> exportHandlerList = new ArrayList();
 
   IUnifiedRepository unifiedRepository;
+
+  IRepositoryExportLogger repositoryExportLogger;
+
 
   protected static final String EXPORT_MANIFEST_FILENAME = "exportManifest.xml";
   protected static final String EXPORT_INFO_DATE_FORMAT = "dd-MM-yyyy";
@@ -113,6 +112,14 @@ public abstract class BaseExportProcessor {
     this.unifiedRepository = unifiedRepository;
   }
 
+  public IRepositoryExportLogger getRepositoryExportLogger() {
+    return repositoryExportLogger;
+  }
+
+  public void setRepositoryExportLogger( IRepositoryExportLogger repositoryExportLogger ) {
+    this.repositoryExportLogger = repositoryExportLogger;
+  }
+
   /**
    * Performs the export process, returns a zip File object
    *
@@ -126,13 +133,13 @@ public abstract class BaseExportProcessor {
    */
 
   public abstract void exportDirectory( RepositoryFile repositoryDir, OutputStream outputStream, String filePath )
-    throws ExportException, IOException;
+      throws ExportException, IOException;
 
   /**
    * @param repositoryFile
    * @param outputStream
    */
   public abstract void exportFile( RepositoryFile repositoryFile, OutputStream outputStream, String filePath )
-    throws ExportException, IOException;
+      throws ExportException, IOException;
 
 }

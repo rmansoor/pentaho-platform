@@ -1,27 +1,21 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.servlet;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.engine.IPentahoSession;
@@ -30,30 +24,36 @@ import org.pentaho.platform.api.engine.IPluginManagerListener;
 import org.pentaho.platform.api.websocket.IWebsocketEndpointConfig;
 import org.pentaho.platform.engine.core.audit.MDCUtil;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
+import org.pentaho.platform.web.servlet.jersey.JAXRSPluginApplication;
 import org.springframework.beans.factory.BeanFactoryUtils;
 import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-import javax.websocket.DeploymentException;
-import javax.websocket.HandshakeResponse;
-import javax.websocket.server.HandshakeRequest;
-import javax.websocket.server.ServerContainer;
-import javax.websocket.server.ServerEndpointConfig;
+import jakarta.servlet.Servlet;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import jakarta.websocket.DeploymentException;
+import jakarta.websocket.HandshakeResponse;
+import jakarta.websocket.server.HandshakeRequest;
+import jakarta.websocket.server.ServerContainer;
+import jakarta.websocket.server.ServerEndpointConfig;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.function.Predicate;
 
 /**
@@ -152,17 +152,27 @@ public class PluginDispatchServlet implements Servlet {
    * I.e. if the PluginDispatchServlet is mapped to the "/plugin" context in web.xml, then this method will return
    * "myPlugin/myServlet" given a request to "http://localhost:8080/pentaho/plugin/myPlugin/myServlet".
    *
-   * @return the part of the request url used to dispatch the request
+   * @param request the HTTP servlet request containing the extra URL path information.
+   *
+   * @return the part of the request url used to dispatch the request without leading or trailing forward slashes, or
+   *         <code>null</code> if the URL does not have any extra path information.
    */
   public String getDispatchKey( HttpServletRequest request ) {
     // path info will give us what we want with
     String requestPathInfo = request.getPathInfo();
-    if ( requestPathInfo.startsWith( "/" ) ) { //$NON-NLS-1$
+
+    if ( StringUtils.isEmpty( requestPathInfo ) ) {
+      return null;
+    }
+
+    if ( requestPathInfo.startsWith( "/" ) ) {
       requestPathInfo = requestPathInfo.substring( 1 );
     }
-    if ( requestPathInfo.endsWith( "/" ) ) { //$NON-NLS-1$
-      requestPathInfo = requestPathInfo.substring( requestPathInfo.length() );
+
+    if ( requestPathInfo.endsWith( "/" ) ) {
+      requestPathInfo = requestPathInfo.substring( 0, requestPathInfo.length() - 1 );
     }
+
     return requestPathInfo;
   }
 
@@ -220,7 +230,30 @@ public class PluginDispatchServlet implements Servlet {
               + context ); //$NON-NLS-1$//$NON-NLS-2$
         }
         try {
-          pluginServlet.init( servletConfig );
+          if ( pluginServlet instanceof JAXRSPluginServlet ) {
+            // If it is JAXRSPluginServlet, then we have to get the plugin context and register it with ServletContext. So that it will be available in PentahoSpringComponentProvider
+            GenericApplicationContext pluginContext = (GenericApplicationContext) pluginBeanFactoryEntry.getValue();
+            servletConfig.getServletContext().setAttribute( PentahoSpringComponentProvider.PLUGIN_CONTEXT, pluginContext );
+            // In case plugin is not defined the JAXRSPluginApplication then go with default definition of the same.
+            if ( BeanFactoryUtils.beanNamesForTypeIncludingAncestors( pluginContext, JAXRSPluginApplication.class ).length == 0 ) {
+              // Creating the bean with prototype scope, because there could be a chance of 2 JAXRSPluginServlets defined in one plugin. They will be treated as two different jersey applications.
+              BeanDefinition beanDef =
+                      BeanDefinitionBuilder.rootBeanDefinition( JAXRSPluginApplication.class ).setScope( BeanDefinition.SCOPE_PROTOTYPE )
+                              .addConstructorArgValue( getPackagesOfBeans( pluginContext ) ).getBeanDefinition();
+
+              pluginContext.registerBeanDefinition( JAXRSPluginApplication.APP_BEAN_NAME, beanDef );
+            }
+
+            ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+            try {
+              Thread.currentThread().setContextClassLoader( ( ( JAXRSPluginServlet ) pluginServlet ).getContext().getClassLoader() );
+              pluginServlet.init( servletConfig );
+            } finally {
+              Thread.currentThread().setContextClassLoader( originalClassLoader );
+            }
+          } else {
+            pluginServlet.init( servletConfig );
+          }
         } catch ( Throwable t ) {
           logger.error( "Could not load servlet '" + context + "'", t ); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         }
@@ -234,6 +267,25 @@ public class PluginDispatchServlet implements Servlet {
     // that invocations of service() before this method has completed will not
     // cause NullPointerException
     initialized = true;
+  }
+
+  private String[] getPackagesOfBeans( ListableBeanFactory factory ) {
+    String[] beanNames = BeanFactoryUtils.beanNamesIncludingAncestors( factory );
+    Set<String> packageNames = new HashSet<>();
+    for ( String beanName : beanNames ) {
+      Class beanClass = factory.getType( beanName, false );
+      if ( beanClass != null ) {
+        addPackageFromClassName( beanClass.getName(), packageNames );
+      }
+    }
+
+    return packageNames.toArray( new String[ 0 ] );
+  }
+
+  private void addPackageFromClassName( String fullyQualifiedClassName, Set<String> packageNames ) {
+    if ( fullyQualifiedClassName != null && fullyQualifiedClassName.contains( "." ) ) {
+      packageNames.add( fullyQualifiedClassName.substring( 0, fullyQualifiedClassName.lastIndexOf( "." ) ) );
+    }
   }
 
   public ServletConfig getServletConfig() {

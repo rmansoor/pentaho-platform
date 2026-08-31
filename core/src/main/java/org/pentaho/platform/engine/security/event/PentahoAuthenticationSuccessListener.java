@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.engine.security.event;
 
@@ -35,7 +29,7 @@ import org.springframework.security.authentication.event.AuthenticationSuccessEv
 import org.springframework.util.Assert;
 
 /**
- * Synchronizes the Hitachi Vantara session's principal with the Spring Security {@code Authentication}. This listener fires
+ * Synchronizes the Pentaho session's principal with the Spring Security {@code Authentication}. This listener fires
  * either on interactive or non-interactive logins.
  * 
  * <p>
@@ -74,8 +68,7 @@ public class PentahoAuthenticationSuccessListener implements ApplicationListener
         Authentication authentication = ( (AbstractAuthenticationEvent) event ).getAuthentication();
         IPentahoSession pentahoSession = PentahoSessionHolder.getSession();
         Assert.notNull( pentahoSession, "PentahoSessionHolder doesn't have a session" );
-        pentahoSession.setAuthenticated( authentication.getName() );
-        pentahoSession.setAttribute( IPentahoSession.SESSION_ROLES, authentication.getAuthorities() );
+        setUserDetailsInPentahoSession( pentahoSession, authentication );
         // audit session creation
         AuditHelper.audit( pentahoSession.getId(), pentahoSession.getName(), pentahoSession.getActionName(),
             pentahoSession.getObjectName(), "", MessageTypes.SESSION_START, "", "", 0, null ); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -84,6 +77,11 @@ public class PentahoAuthenticationSuccessListener implements ApplicationListener
         logger.error( e.getLocalizedMessage(), e );
       }
     }
+  }
+
+  protected void setUserDetailsInPentahoSession( IPentahoSession pentahoSession, Authentication authentication ) {
+    pentahoSession.setAuthenticated( authentication.getName() );
+    pentahoSession.setAttribute( IPentahoSession.SESSION_ROLES, authentication.getAuthorities() );
   }
 
   public int getOrder() {

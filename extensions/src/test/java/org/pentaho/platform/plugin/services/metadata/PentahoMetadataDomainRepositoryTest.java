@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2022 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.metadata;
 
@@ -73,6 +67,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.pentaho.platform.api.repository2.unified.RepositoryFilePermission.READ;
@@ -84,7 +79,7 @@ import static org.pentaho.platform.plugin.services.metadata.PentahoMetadataDomai
 import static org.pentaho.platform.plugin.services.metadata.PentahoMetadataDomainRepository.TYPE_DOMAIN;
 import static org.pentaho.platform.plugin.services.metadata.PentahoMetadataDomainRepository.TYPE_LOCALE;
 import static org.pentaho.test.platform.repository2.unified.MockUnifiedRepository.everyone;
-import static org.powermock.api.mockito.PowerMockito.when;
+import static org.mockito.Mockito.when;
 
 @RunWith ( MockitoJUnitRunner.class )
 public class PentahoMetadataDomainRepositoryTest {
@@ -343,7 +338,6 @@ public class PentahoMetadataDomainRepositoryTest {
     String createdFileId = "TEST_CREATED_FILE_ID";
 
     XmiParser xmiParser = Mockito.mock( XmiParser.class );
-    when( xmiParser.parseXmi( any( InputStream.class ) ) ).thenReturn( createMetadataTestObject() );
 
     RepositoryFile rfCreated = Mockito.mock( RepositoryFile.class );
     when( rfCreated.getId() ).thenReturn( createdFileId );
@@ -361,13 +355,11 @@ public class PentahoMetadataDomainRepositoryTest {
     PentahoMetadataDomainRepository pmdr = new PentahoMetadataDomainRepository( repository, null, xmiParser, null );
 
     SimpleRepositoryFileData srfd = Mockito.mock( SimpleRepositoryFileData.class );
-    when( srfd.getInputStream() ).thenReturn( new ByteArrayInputStream( new byte[0] ) );
 
     Map<String, Serializable> expectedMetadataMap = new HashMap<String, Serializable>() {{
       put( PROPERTY_NAME_DOMAIN_ID, domainId );
       put( PROPERTY_NAME_TYPE, TYPE_LOCALE );
       put( PROPERTY_NAME_LOCALE, locale );
-      put( PROPERTY_NAME_DATASOURCE_TYPE, PentahoDataSourceType.METADATA.toString() );
     } };
 
     // EXECUTE
@@ -383,6 +375,7 @@ public class PentahoMetadataDomainRepositoryTest {
             isNull() );
 
     verify( repository, times( 0 ) ).updateFile( any(), any(), any() );
+    verify( xmiParser, never() ).parseXmi( any( InputStream.class ) );
 
     verify( repository, times( 1 ) ).setFileMetadata(
             argThat( id -> createdFileId.equals( id ) ),
@@ -505,10 +498,8 @@ public class PentahoMetadataDomainRepositoryTest {
     } };
 
     XmiParser xmiParser = Mockito.mock( XmiParser.class );
-    when( xmiParser.parseXmi( any( InputStream.class ) ) ).thenReturn( createMetadataTestObject() );
 
     SimpleRepositoryFileData srfd = Mockito.mock( SimpleRepositoryFileData.class );
-    when( srfd.getInputStream() ).thenReturn( new ByteArrayInputStream( new byte[0] ) );
 
     IUnifiedRepository repository = Mockito.mock( IUnifiedRepository.class );
 
@@ -528,6 +519,7 @@ public class PentahoMetadataDomainRepositoryTest {
             argThat( map -> equalMaps( expectedMetadataMap, map ) ) );
 
     verify( repository, times( 0 ) ).createFile( any(), any(), any(), any() );
+    verify( xmiParser, never() ).parseXmi( any( InputStream.class ) );
 
     verify( repository, times( 1 ) ).updateFile(
             eq( domainFile ),
@@ -551,14 +543,12 @@ public class PentahoMetadataDomainRepositoryTest {
       put( PROPERTY_NAME_DOMAIN_ID, domainId );
       put( PROPERTY_NAME_TYPE, TYPE_LOCALE );
       put( PROPERTY_NAME_LOCALE, "jp" );
-      put( PROPERTY_NAME_DATASOURCE_TYPE, PentahoDataSourceType.METADATA.toString() );
+      put( PROPERTY_NAME_DATASOURCE_TYPE, PentahoDataSourceType.DATA_SOURCE_WIZARD.toString() );
     } };
 
     XmiParser xmiParser = Mockito.mock( XmiParser.class );
-    when( xmiParser.parseXmi( any( InputStream.class ) ) ).thenReturn( createMetadataTestObject() );
 
     SimpleRepositoryFileData srfd = Mockito.mock( SimpleRepositoryFileData.class );
-    when( srfd.getInputStream() ).thenReturn( new ByteArrayInputStream( new byte[0] ) );
 
     IUnifiedRepository repository = Mockito.mock( IUnifiedRepository.class );
 
@@ -578,6 +568,7 @@ public class PentahoMetadataDomainRepositoryTest {
             argThat( map -> equalMaps( expectedMetadataMap, map ) ) );
 
     verify( repository, times( 0 ) ).createFile( any(), any(), any(), any() );
+    verify( xmiParser, never() ).parseXmi( any( InputStream.class ) );
 
     verify( repository, times( 1 ) ).updateFile(
             eq( domainFile ),

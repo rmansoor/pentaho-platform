@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.http.api.resources;
 
@@ -28,21 +22,22 @@ import org.pentaho.platform.web.http.api.resources.services.UserRoleListService;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class UserRoleListResourceTest {
 
+  UserRoleListService userRoleListServiceMock;
   UserRoleListResource userRoleListResource;
 
   @Before
   public void setup() {
-    userRoleListResource = spy( new UserRoleListResource() );
-    userRoleListResource.userRoleListService = mock( UserRoleListService.class );
+    userRoleListServiceMock = mock( UserRoleListService.class );
+    userRoleListResource = spy( new UserRoleListResource( userRoleListServiceMock ) );
   }
 
   @After
@@ -59,7 +54,7 @@ public class UserRoleListResourceTest {
     List<String> listRoles = new ArrayList<>();
     listRoles.add( role1 );
     listRoles.add( role2 );
-    doReturn( listRoles ).when( userRoleListResource.userRoleListService ).doGetRolesForUser( user );
+    doReturn( listRoles ).when( userRoleListServiceMock ).doGetRolesForUser( user );
 
     RolesWrapper rolesWrapper = userRoleListResource.getRolesForUser( user );
 
@@ -67,18 +62,18 @@ public class UserRoleListResourceTest {
     assertEquals( listRoles.get( 0 ), rolesWrapper.getRoles().get( 0 ) );
     assertEquals( listRoles.get( 1 ), rolesWrapper.getRoles().get( 1 ) );
 
-    verify( userRoleListResource.userRoleListService, times( 1 ) ).doGetRolesForUser( user );
+    verify( userRoleListServiceMock, times( 1 ) ).doGetRolesForUser( user );
   }
 
   @Test
   public void testGetUsers() throws Exception {
     UserListWrapper mockWrapper = mock( UserListWrapper.class );
-    doReturn( mockWrapper ).when( userRoleListResource.userRoleListService ).getUsers();
+    doReturn( mockWrapper ).when( userRoleListServiceMock ).getUsers();
 
     UserListWrapper testWrapper = userRoleListResource.getUsers();
     assertEquals( mockWrapper, testWrapper );
 
-    verify( userRoleListResource.userRoleListService, times( 1 ) ).getUsers();
+    verify( userRoleListServiceMock, times( 1 ) ).getUsers();
   }
 
   @Test
@@ -101,7 +96,7 @@ public class UserRoleListResourceTest {
     List<String> listUsers = new ArrayList<>();
     listUsers.add( user1 );
     listUsers.add( user2 );
-    doReturn( listUsers ).when( userRoleListResource.userRoleListService ).doGetUsersInRole( role );
+    doReturn( listUsers ).when( userRoleListServiceMock ).doGetUsersInRole( role );
 
     UsersWrapper usersWrapper = userRoleListResource.getUsersInRole( role );
 
@@ -109,65 +104,83 @@ public class UserRoleListResourceTest {
     assertEquals( listUsers.get( 0 ), usersWrapper.getUsers().get( 0 ) );
     assertEquals( listUsers.get( 1 ), usersWrapper.getUsers().get( 1 ) );
 
-    verify( userRoleListResource.userRoleListService, times( 1 ) ).doGetUsersInRole( role );
+    verify( userRoleListServiceMock, times( 1 ) ).doGetUsersInRole( role );
   }
 
   @Test
   public void testGetRoles() throws Exception {
     RoleListWrapper mockWrapper = mock( RoleListWrapper.class );
     boolean includeExtraRoles = true;
-    doReturn( mockWrapper ).when( userRoleListResource.userRoleListService ).getRoles( includeExtraRoles );
+    doReturn( mockWrapper ).when( userRoleListServiceMock ).getRoles( includeExtraRoles );
 
     RoleListWrapper testWrapper = userRoleListResource.getRoles( "true" );
     assertEquals( mockWrapper, testWrapper );
 
-    verify( userRoleListResource.userRoleListService, times( 1 ) ).getRoles( includeExtraRoles );
+    verify( userRoleListServiceMock, times( 1 ) ).getRoles( includeExtraRoles );
   }
 
   @Test
-  public void testGetAllRoles() throws Exception {
+  public void testGetAllRoles() {
     RoleListWrapper mockWrapper = mock( RoleListWrapper.class );
-    doReturn( mockWrapper ).when( userRoleListResource.userRoleListService ).getAllRoles();
+    doReturn( mockWrapper ).when( userRoleListServiceMock ).getAllRoles( false );
 
-    RoleListWrapper testWrapper = userRoleListResource.getAllRoles();
+    RoleListWrapper testWrapper = userRoleListResource.getAllRoles( false );
     assertEquals( mockWrapper, testWrapper );
 
-    verify( userRoleListResource.userRoleListService, times( 1 ) ).getAllRoles();
+    verify( userRoleListServiceMock, times( 1 ) ).getAllRoles( false );
+  }
+
+  @Test
+  public void testGetAllRolesWithoutAnonymous() {
+    RoleListWrapper mockWrapper = mock( RoleListWrapper.class );
+    doReturn( mockWrapper ).when( userRoleListServiceMock ).getAllRoles( true );
+
+    RoleListWrapper testWrapper = userRoleListResource.getAllRoles( true );
+    assertEquals( mockWrapper, testWrapper );
+
+    verify( userRoleListServiceMock, times( 1 ) ).getAllRoles( true );
   }
 
   @Test
   public void testGetSystemRoles() throws Exception {
     RoleListWrapper mockWrapper = mock( RoleListWrapper.class );
-    doReturn( mockWrapper ).when( userRoleListResource.userRoleListService ).getSystemRoles();
+    doReturn( mockWrapper ).when( userRoleListServiceMock ).getSystemRoles();
 
     RoleListWrapper testWrapper = userRoleListResource.getSystemRoles();
     assertEquals( mockWrapper, testWrapper );
 
-    verify( userRoleListResource.userRoleListService, times( 1 ) ).getSystemRoles();
+    verify( userRoleListServiceMock, times( 1 ) ).getSystemRoles();
   }
 
   @Test
   public void testGetExtraRoles() throws Exception {
     RoleListWrapper mockWrapper = mock( RoleListWrapper.class );
-    doReturn( mockWrapper ).when( userRoleListResource.userRoleListService ).getExtraRolesList();
+    doReturn( mockWrapper ).when( userRoleListServiceMock ).getExtraRolesList();
 
     RoleListWrapper testWrapper = userRoleListResource.getExtraRoles();
     assertEquals( mockWrapper, testWrapper );
 
-    verify( userRoleListResource.userRoleListService, times( 1 ) ).getExtraRolesList();
+    verify( userRoleListServiceMock, times( 1 ) ).getExtraRolesList();
   }
 
   @Test
   public void testGetPermissionRoles() throws Exception {
     String adminRole = "adminRole";
-    userRoleListResource.adminRole = adminRole;
+    doReturn( adminRole ).when( userRoleListServiceMock ).getAdminRole();
 
     RoleListWrapper mockWrapper = mock( RoleListWrapper.class );
-    doReturn( mockWrapper ).when( userRoleListResource.userRoleListService ).getPermissionRoles( adminRole );
+    doReturn( mockWrapper ).when( userRoleListServiceMock ).getPermissionRoles();
 
     RoleListWrapper testWrapper = userRoleListResource.getPermissionRoles();
     assertEquals( mockWrapper, testWrapper );
+  }
 
-    verify( userRoleListResource.userRoleListService, times( 1 ) ).getPermissionRoles( adminRole );
+  @Test
+  public void testGetAdminRole() {
+    String adminRole = "adminRole";
+    doReturn( adminRole ).when( userRoleListServiceMock ).getAdminRole();
+
+    String result = userRoleListResource.getAdminRole();
+    assertEquals( adminRole, result );
   }
 }

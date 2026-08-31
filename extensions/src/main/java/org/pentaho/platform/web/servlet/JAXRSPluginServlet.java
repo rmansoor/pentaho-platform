@@ -1,30 +1,20 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2023 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.servlet;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.sun.jersey.api.core.ResourceConfig;
-import com.sun.jersey.spi.container.WebApplication;
-import com.sun.jersey.spi.container.servlet.WebConfig;
-import com.sun.jersey.spi.spring.container.servlet.SpringServlet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.engine.IPentahoSession;
@@ -35,17 +25,18 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ConfigurableApplicationContext;
 
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.glassfish.jersey.servlet.ServletContainer;
 
 /**
  * This should only be used by a plugin in the plugin.spring.xml file to initialize a Jersey. The presence of this
@@ -53,7 +44,7 @@ import java.util.regex.Pattern;
  *
  * @author Aaron Phillips
  */
-public class JAXRSPluginServlet extends SpringServlet implements ApplicationContextAware {
+public class JAXRSPluginServlet extends ServletContainer implements ApplicationContextAware {
 
   private static final long serialVersionUID = 457538570048660945L;
   private static final String APPLICATION_WADL = "application.wadl";
@@ -75,9 +66,8 @@ public class JAXRSPluginServlet extends SpringServlet implements ApplicationCont
     this.applicationContext = applicationContext;
   }
 
-  @Override
   protected ConfigurableApplicationContext getContext() {
-    return (ConfigurableApplicationContext) applicationContext;
+    return ( ConfigurableApplicationContext ) applicationContext;
   }
 
   @Override
@@ -150,19 +140,5 @@ public class JAXRSPluginServlet extends SpringServlet implements ApplicationCont
   @Override
   public void service( ServletRequest req, ServletResponse res ) throws ServletException, IOException {
     super.service( req, res );
-  }
-
-  @Override
-  protected void initiate( ResourceConfig rc, WebApplication wa ) {
-    if ( logger.isDebugEnabled() ) {
-      rc.getFeatures().put( ResourceConfig.FEATURE_TRACE, true );
-      rc.getFeatures().put( ResourceConfig.FEATURE_TRACE_PER_REQUEST, true );
-    }
-    super.initiate( rc, wa );
-  }
-
-  protected ResourceConfig getDefaultResourceConfig( Map<String, Object> props, WebConfig webConfig ) throws ServletException {
-    props.put( "com.sun.jersey.config.property.WadlGeneratorConfig", "org.pentaho.platform.web.servlet.PentahoWadlGeneratorConfig" );
-    return super.getDefaultResourceConfig( props, webConfig );
   }
 }

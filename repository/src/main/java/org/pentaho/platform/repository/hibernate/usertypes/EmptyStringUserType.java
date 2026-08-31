@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2023 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository.hibernate.usertypes;
 
@@ -24,7 +18,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hibernate.HibernateException;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.type.StandardBasicTypes;
+import org.hibernate.type.descriptor.java.StringJavaType;
+import org.hibernate.type.descriptor.jdbc.VarcharJdbcType;
+import org.hibernate.type.internal.NamedBasicTypeImpl;
 import org.hibernate.usertype.UserType;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.repository.messages.Messages;
@@ -43,15 +39,16 @@ public class EmptyStringUserType implements UserType {
   private static final String PENTAHOEMPTY = Messages.getInstance()
       .getString( "EMPTYSTRTYPE.CODE_PENTAHO_EMPTY_STRING" ); //$NON-NLS-1$
 
-  private static final int[] SQLTYPE = { Types.VARCHAR };
+  private static final int SQLTYPE = Types.VARCHAR ;
 
   /*
    * (non-Javadoc)
    * 
-   * @see org.hibernate.usertype.UserType#sqlTypes()
+   * @see org.hibernate.usertype.UserType#getSqlType()
    */
-  public int[] sqlTypes() {
-    return EmptyStringUserType.SQLTYPE;
+  @Override
+  public int getSqlType() {
+    return SQLTYPE;
   }
 
   /*
@@ -82,9 +79,8 @@ public class EmptyStringUserType implements UserType {
   }
 
   @Override
-  public Object nullSafeGet( ResultSet rs, String[] names, SharedSessionContractImplementor session, Object owner )
-    throws HibernateException, SQLException {
-    return null;
+  public Object nullSafeGet( ResultSet resultSet, int i, SharedSessionContractImplementor sharedSessionContractImplementor, Object o ) throws SQLException {
+   return null;
   }
 
   @Override
@@ -104,7 +100,7 @@ public class EmptyStringUserType implements UserType {
       EmptyStringUserType.log.debug( Messages.getInstance().getString( "EMPTYSTRTYPE.DEBUG_NULL_SAFE_GET" ) ); //$NON-NLS-1$
     }
 
-    String colValue = (String) StandardBasicTypes.STRING.nullSafeGet( arg0, arg1[0] , null);
+    String colValue = arg0.getString( arg1[ 0 ] );
     // _PENTAHOEMPTY_ shouldn't appear in the wild. So, check the string in
     // the DB for this flag,
     // and if it's there, then this must be an empty string.
@@ -123,7 +119,7 @@ public class EmptyStringUserType implements UserType {
       EmptyStringUserType.log.debug( Messages.getInstance().getString( "EMPTYSTRTYPE.DEBUG_NULL_SAFE_SET" ) ); //$NON-NLS-1$
     }
 
-    StandardBasicTypes.STRING.nullSafeSet( arg0, ( arg1 != null ) ? ( ( ( (String) arg1 ).length() > 0 ) ? arg1
+     new NamedBasicTypeImpl( StringJavaType.INSTANCE, VarcharJdbcType.INSTANCE, "String" ).nullSafeSet( arg0, ( arg1 != null ) ? ( ( ( (String) arg1 ).length() > 0 ) ? arg1
         : EmptyStringUserType.PENTAHOEMPTY ) : arg1, arg2, null );
   }
 

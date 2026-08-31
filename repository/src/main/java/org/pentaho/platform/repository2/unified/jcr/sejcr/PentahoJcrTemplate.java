@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2020 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.jcr.sejcr;
 
@@ -85,16 +79,65 @@ public class PentahoJcrTemplate extends JcrTemplate {
       // Callback code threw application exception...
       throw pentahoConvertJcrAccessException( ex );
     } finally {
-      releaseSession( session );
+      // Guard against a null session (e.g. getSession() threw): releaseSession() delegates to
+      // getUsageCount() which requires a non-null session and would otherwise throw here,
+      // masking the original exception from getSession()/doInJcr().
+      if ( session != null ) {
+        releaseSession( session );
+        decrementFactoryProtection( session );
+      }
     }
   }
 
   private void useSession( Session session ) {
-    getUsageCount( session ).incrementAndGet();
+    int newCount = getUsageCount( session ).incrementAndGet();
+    if ( LOG.isDebugEnabled() ) {
+      LOG.debug( "[JCR-TEMPLATE-USE] Thread=" + Thread.currentThread().getName()
+        + " SessionId=" + System.identityHashCode( session )
+        + " RefCount=" + newCount
+        + " (template acquisition)" );
+    }
   }
 
   private void releaseSession( Session session ) {
-    getUsageCount( session ).decrementAndGet();
+    int newCount = getUsageCount( session ).decrementAndGet();
+    if ( LOG.isDebugEnabled() ) {
+      LOG.debug( "[JCR-TEMPLATE-RELEASE] Thread=" + Thread.currentThread().getName()
+        + " SessionId=" + System.identityHashCode( session )
+        + " RefCount=" + newCount
+        + " (template release)" );
+    }
+  }
+
+  /**
+   * Decrement the factory's protection increment that was applied during session retrieval.
+   * The factory increments the usage count to protect the session from eviction while it's
+   * being transferred; this method releases that protection once the session is returned to cache.
+   */
+  private void decrementFactoryProtection( Session session ) {
+    try {
+      Object usageCount = session.getAttribute( USAGE_COUNT );
+      if ( usageCount instanceof AtomicInteger ) {
+        int count = ( (AtomicInteger) usageCount ).decrementAndGet();
+        if ( LOG.isDebugEnabled() ) {
+          LOG.debug( "[JCR-FACTORY-RELEASE] Thread=" + Thread.currentThread().getName()
+            + " SessionId=" + System.identityHashCode( session )
+            + " RefCount=" + count
+            + " (factory protection release" + ( count == 0 ? " - SESSION SAFE FOR EVICTION" : "" ) + ")" );
+        }
+        if ( count < 0 ) {
+          LOG.warn( "[JCR-REFCOUNT-ERROR] Usage count went negative; factory protection decrement imbalance:"
+            + " SessionId=" + System.identityHashCode( session )
+            + " RefCount=" + count
+            + " Session=" + session );
+        }
+      }
+    } catch ( Exception e ) {
+      // Do not throw from the finally block (that would mask the original exception), but log at WARN
+      // with the full exception: failing to release factory protection can leave a cached session
+      // permanently non-evictable, and the stack trace helps diagnose intermittent refcount issues.
+      LOG.warn( "Could not decrement factory protection for sessionId=" + System.identityHashCode( session ), e );
+    }
   }
 
   /**

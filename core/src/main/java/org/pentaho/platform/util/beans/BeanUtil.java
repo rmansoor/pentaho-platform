@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.util.beans;
 
@@ -33,11 +27,11 @@ import java.text.MessageFormat;
 import java.util.Map;
 
 /**
- * Utility methods for processing Java Beans in a consistent manner across all Hitachi Vantara projects. This is not an
+ * Utility methods for processing Java Beans in a consistent manner across all Pentaho projects. This is not an
  * attempt to duplicate the behavior of commons-beanutils, rather, a central spot for common operations on beans so
  * we can ensure that same bean property binding functionality and logic anytime we need to work with Java Beans.
  * <p>
- * This utility is especially important in dealing with Hitachi Vantara Action beans {@link IAction}s. See
+ * This utility is especially important in dealing with Pentaho Action beans {@link IAction}s. See
  * {@link ActionHarness} for an IAction-specific flavor of this utility.
  * 
  * @author aphillips

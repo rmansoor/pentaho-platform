@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.test.platform.security.userroledao.jackrabbit;
 
@@ -26,7 +20,6 @@ import org.apache.jackrabbit.api.security.authorization.PrivilegeManager;
 import org.apache.jackrabbit.spi.Name;
 import org.apache.jackrabbit.spi.NameFactory;
 import org.apache.jackrabbit.spi.commons.name.NameFactoryImpl;
-
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -35,6 +28,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.pentaho.platform.api.engine.IAuthorizationPolicy;
 import org.pentaho.platform.api.engine.IPentahoSession;
+import org.pentaho.platform.api.engine.IPluginManager;
 import org.pentaho.platform.api.engine.security.userroledao.AlreadyExistsException;
 import org.pentaho.platform.api.engine.security.userroledao.IPentahoRole;
 import org.pentaho.platform.api.engine.security.userroledao.IPentahoUser;
@@ -45,6 +39,7 @@ import org.pentaho.platform.api.mt.ITenantManager;
 import org.pentaho.platform.api.mt.ITenantedPrincipleNameResolver;
 import org.pentaho.platform.api.repository2.unified.IBackingRepositoryLifecycleManager;
 import org.pentaho.platform.core.mt.Tenant;
+import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.StandaloneSession;
 import org.pentaho.platform.repository2.unified.IRepositoryFileDao;
@@ -64,11 +59,12 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.extensions.jcr.JcrCallback;
 import org.springframework.extensions.jcr.JcrTemplate;
 import org.springframework.extensions.jcr.SessionFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.context.ContextConfiguration;
@@ -79,14 +75,17 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.Workspace;
 import javax.jcr.security.AccessControlException;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Unit test for {@link UserRoleDao}.
@@ -213,6 +212,7 @@ public class UserRoleDaoEncodeIT implements ApplicationContextAware {
   private IBackingRepositoryLifecycleManager manager;
   private IRoleAuthorizationPolicyRoleBindingDao roleBindingDaoTarget;
   private IAuthorizationPolicy authorizationPolicy;
+  private IPluginManager pluginManager;
   private MicroPlatform mp;
   private IRepositoryFileDao repositoryFileDao;
   private ITenantedPrincipleNameResolver tenantedRoleNameUtils;
@@ -234,6 +234,7 @@ public class UserRoleDaoEncodeIT implements ApplicationContextAware {
   private ITenant subTenant2_1_2;
   private ITenant subTenant2_2_1;
   private ITenant subTenant2_2_2;
+  private static SecurityContextHolderStrategy previousSecurityContextHolderStrategy;
 
   @BeforeClass
   public static void setUpClass() throws Exception {
@@ -241,10 +242,14 @@ public class UserRoleDaoEncodeIT implements ApplicationContextAware {
     // parent folder must match jcrRepository.homeDir bean property in repository-test-override.spring.xml
     FileUtils.deleteDirectory( new File( "/tmp/jackrabbit-test-TRUNK" ) );
     PentahoSessionHolder.setStrategyName( PentahoSessionHolder.MODE_GLOBAL );
+    previousSecurityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
+    SecurityContextHolder.setStrategyName( SecurityContextHolder.MODE_GLOBAL );
   }
 
   @AfterClass
   public static void tearDownClass() throws Exception {
+    SecurityContextHolder.clearContext();
+    SecurityContextHolder.setContextHolderStrategy( previousSecurityContextHolderStrategy );
     PentahoSessionHolder.setStrategyName( PentahoSessionHolder.MODE_INHERITABLETHREADLOCAL );
   }
 
@@ -253,6 +258,7 @@ public class UserRoleDaoEncodeIT implements ApplicationContextAware {
     mp = new MicroPlatform();
     // used by DefaultPentahoJackrabbitAccessControlHelper
     mp.defineInstance( IAuthorizationPolicy.class, authorizationPolicy );
+    mp.defineInstance( IPluginManager.class, pluginManager );
     mp.defineInstance( ITenantManager.class, tenantManager );
     mp.define( ITenant.class, Tenant.class );
     mp.defineInstance( "tenantedUserNameUtils", tenantedUserNameUtils );
@@ -263,68 +269,90 @@ public class UserRoleDaoEncodeIT implements ApplicationContextAware {
     mp.defineInstance( "useMultiByteEncoding", new Boolean( false ) );
     // Start the micro-platform
     mp.start();
+    SecurityContextHolder.setStrategyName( SecurityContextHolder.MODE_GLOBAL );
+    startupCalled = true;
     loginAsRepositoryAdmin();
     setAclManagement();
     logout();
-    startupCalled = true;
   }
 
   @After
   public void tearDown() throws Exception {
-    cleanupTenant( subTenant2_2_2 );
-    cleanupTenant( subTenant2_2_1 );
-    cleanupTenant( subTenant2_2 );
-    cleanupTenant( subTenant2_1_2 );
-    cleanupTenant( subTenant2_1_1 );
-    cleanupTenant( subTenant2_1 );
-    cleanupTenant( subTenant1_2_2 );
-    cleanupTenant( subTenant1_2_1 );
-    cleanupTenant( subTenant1_2 );
-    cleanupTenant( subTenant1_1_2 );
-    cleanupTenant( subTenant1_1_1 );
-    cleanupTenant( subTenant1_1 );
-    cleanupTenant( mainTenant_2 );
-    cleanupTenant( mainTenant_1 );
-    cleanupTenant( systemTenant );
+    try {
+      cleanupTenant( subTenant2_2_2 );
+      cleanupTenant( subTenant2_2_1 );
+      cleanupTenant( subTenant2_2 );
+      cleanupTenant( subTenant2_1_2 );
+      cleanupTenant( subTenant2_1_1 );
+      cleanupTenant( subTenant2_1 );
+      cleanupTenant( subTenant1_2_2 );
+      cleanupTenant( subTenant1_2_1 );
+      cleanupTenant( subTenant1_2 );
+      cleanupTenant( subTenant1_1_2 );
+      cleanupTenant( subTenant1_1_1 );
+      cleanupTenant( subTenant1_1 );
+      cleanupTenant( mainTenant_2 );
+      cleanupTenant( mainTenant_1 );
+      cleanupTenant( systemTenant );
 
-    // null out fields to get back memory
-    authorizationPolicy = null;
-    loginAsRepositoryAdmin();
-    logout();
+      // null out fields to get back memory
+      pluginManager = null;
+      authorizationPolicy = null;
+      loginAsRepositoryAdmin();
+      logout();
 
-    pPrincipalName = null;
-    userRoleDaoProxy = null;
-    userRoleDaoTestProxy = null;
-    tenantManager = null;
-    repositoryAdminUsername = null;
-    adminRoleName = null;
-    authenticatedRoleName = null;
-    sysAdminRoleName = null;
-    sysAdminUserName = null;
-    testJcrTemplate = null;
-    roleBindingDaoTarget = null;
-    authorizationPolicy = null;
-    mp = null;
-    repositoryFileDao = null;
-    tenantedRoleNameUtils = null;
-    tenantedUserNameUtils = null;
-    systemTenant = null;
-    mainTenant_1 = null;
-    mainTenant_2 = null;
-    subTenant1_1 = null;
-    subTenant1_2 = null;
-    subTenant1_1_1 = null;
-    subTenant1_1_2 = null;
-    subTenant1_2_1 = null;
-    subTenant1_2_2 = null;
-    subTenant2_1 = null;
-    subTenant2_2 = null;
-    subTenant2_1_1 = null;
-    subTenant2_1_2 = null;
-    subTenant2_2_1 = null;
-    subTenant2_2_2 = null;
-    if ( startupCalled ) {
-      manager.shutdown();
+      pPrincipalName = null;
+      userRoleDaoProxy = null;
+      userRoleDaoTestProxy = null;
+      tenantManager = null;
+      repositoryAdminUsername = null;
+      adminRoleName = null;
+      authenticatedRoleName = null;
+      sysAdminRoleName = null;
+      sysAdminUserName = null;
+      testJcrTemplate = null;
+      roleBindingDaoTarget = null;
+      authorizationPolicy = null;
+      repositoryFileDao = null;
+      tenantedRoleNameUtils = null;
+      tenantedUserNameUtils = null;
+      systemTenant = null;
+      mainTenant_1 = null;
+      mainTenant_2 = null;
+      subTenant1_1 = null;
+      subTenant1_2 = null;
+      subTenant1_1_1 = null;
+      subTenant1_1_2 = null;
+      subTenant1_2_1 = null;
+      subTenant1_2_2 = null;
+      subTenant2_1 = null;
+      subTenant2_2 = null;
+      subTenant2_1_1 = null;
+      subTenant2_1_2 = null;
+      subTenant2_2_1 = null;
+      subTenant2_2_2 = null;
+    } finally {
+      try {
+        if ( startupCalled && manager != null ) {
+          manager.shutdown();
+        }
+      } finally {
+        try {
+          if ( mp != null ) {
+            mp.stop();
+          }
+        } finally {
+          try {
+            if ( startupCalled ) {
+              PentahoSystem.shutdown();
+            }
+          } finally {
+            PentahoSessionHolder.removeSession();
+            SecurityContextHolder.clearContext();
+            mp = null;
+          }
+        }
+      }
     }
     tenantManager = null;
   }
@@ -399,6 +427,7 @@ public class UserRoleDaoEncodeIT implements ApplicationContextAware {
     sysAdminRoleName = (String) applicationContext.getBean( "superAdminAuthorityName" );
     sysAdminUserName = (String) applicationContext.getBean( "superAdminUserName" );
     authorizationPolicy = (IAuthorizationPolicy) applicationContext.getBean( "authorizationPolicy" );
+    pluginManager = (IPluginManager) applicationContext.getBean( "IPluginManager" );
     tenantManager = (ITenantManager) applicationContext.getBean( "tenantMgrProxy" );
     repositoryFileDao = (IRepositoryFileDao) applicationContext.getBean( "repositoryFileDao" );
     userRoleDaoProxy = (IUserRoleDao) applicationContext.getBean( "userRoleDaoTxn" );

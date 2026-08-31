@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU General Public License, version 2 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/gpl-2.0.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.repository2.unified.lifecycle;
 
@@ -40,7 +34,7 @@ import org.springframework.util.Assert;
 import java.io.Serializable;
 
 /**
- * Initializes folders used by Hitachi Vantara Mondrian.
+ * Initializes folders used by Pentaho Mondrian.
  * 
  * @author Ezequiel Cuellar
  */
@@ -73,10 +67,10 @@ public class MondrianBackingRepositoryLifecycleManager extends AbstractBackingRe
       final ITenantedPrincipleNameResolver userNameUtils, final JcrTemplate adminJcrTemplate,
       final IPathConversionHelper pathConversionHelper ) {
     super( txnTemplate, adminJcrTemplate, pathConversionHelper );
-    Assert.notNull( contentDao );
-    Assert.notNull( repositoryFileAclDao );
-    Assert.hasText( repositoryAdminUsername );
-    Assert.hasText( tenantAuthenticatedAuthorityNamePattern );
+    Assert.notNull( contentDao, "The content DAO must not be null. Ensure a valid content DAO is provided." );
+    Assert.notNull( repositoryFileAclDao, "The repository file ACL DAO must not be null. Ensure a valid ACL DAO is provided." );
+    Assert.hasText( repositoryAdminUsername, "The repository admin username must not be null or empty. Ensure a valid username is provided." );
+    Assert.hasText( tenantAuthenticatedAuthorityNamePattern, "The tenant authenticated authority name pattern must not be null or empty. Ensure a valid pattern is provided." );
     this.repositoryFileDao = contentDao;
     this.repositoryFileAclDao = repositoryFileAclDao;
     this.repositoryAdminUsername = repositoryAdminUsername;
@@ -95,7 +89,7 @@ public class MondrianBackingRepositoryLifecycleManager extends AbstractBackingRe
             new RepositoryFileSid( userNameUtils.getPrincipleId( tenant, repositoryAdminUsername ) );
         RepositoryFile tenantEtcFolder =
             repositoryFileDao.getFileByAbsolutePath( ServerRepositoryPaths.getTenantEtcFolderPath( tenant ) );
-        Assert.notNull( tenantEtcFolder );
+        Assert.notNull( tenantEtcFolder, "The tenant etc folder must not be null. Ensure the tenant's etc folder exists in the repository." );
 
         if ( repositoryFileDao.getFileByAbsolutePath( ServerRepositoryPaths.getTenantEtcFolderPath( tenant )
             + RepositoryFile.SEPARATOR + FOLDER_MONDRIAN ) == null ) {
@@ -148,7 +142,7 @@ public class MondrianBackingRepositoryLifecycleManager extends AbstractBackingRe
 
   protected RepositoryFile internalCreateFolder( final Serializable parentFolderId, final RepositoryFile file,
       final boolean inheritAces, final RepositoryFileSid ownerSid, final String versionMessage ) {
-    Assert.notNull( file );
+    Assert.notNull( file, "The file must not be null. Ensure a valid RepositoryFile object is provided." );
 
     return repositoryFileDao.createFolder( parentFolderId, file, makeAcl( inheritAces, ownerSid ), versionMessage );
   }

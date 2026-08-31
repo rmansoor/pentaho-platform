@@ -1,10 +1,15 @@
-/*
- * ******************************************************************************
- * Hitachi Vantara
+/*! ******************************************************************************
  *
- * Copyright (C) 2002-2017 by Hitachi Vantara : http://www.pentaho.com
- * ******************************************************************************
- */
+ * Pentaho
+ *
+ * Copyright (C) 2002 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
 
 #fileBrowser {
   -webkit-touch-callout: none;
@@ -13,6 +18,21 @@
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+#fileBrowser .fileBrowserFiles > .body > .file {
+  display: flex;
+}
+
+#fileBrowser .fileBrowserColumn .body .file .icon {
+  flex: none;
+}
+
+#fileBrowser .fileBrowserColumn .body .file .title {
+  flex: auto;
+  text-overflow: ellipsis;
+  width: 100%;
+  overflow: hidden;
 }
 
 .main-container {
@@ -133,6 +153,12 @@
 
 .fileBrowserColumn .body div.folder.open > div.element > div.icon {
   background: url("../resources/images/folder.png") no-repeat -16px 3px;
+}
+
+/* Hide folder icons for all rootFolders: e.g. "Repository" and "VFS Connections" */
+#fileBrowserFolders.fileBrowserColumn .body div.first.folder.providerRootFolder > div.element > div.icon {
+  background: none;
+  width: 0px;
 }
 
 .fileBrowserColumn .body .file .icon {

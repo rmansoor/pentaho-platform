@@ -1,32 +1,24 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.importer;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.di.core.exception.KettleException;
-import org.pentaho.metadata.repository.DomainAlreadyExistsException;
-import org.pentaho.metadata.repository.DomainIdNullException;
-import org.pentaho.metadata.repository.DomainStorageException;
 import org.pentaho.metastore.api.IMetaStore;
 import org.pentaho.metastore.api.exceptions.MetaStoreException;
 import org.pentaho.metastore.stores.xml.XmlMetaStore;
@@ -51,7 +43,6 @@ public class MetaStoreImportHandler implements IPlatformImportHandler {
   private static final String METASTORE = "metastore";
   private List<IMimeType> mimeTypes;
   private IMetaStore metastore;
-  protected XmlMetaStore tmpXmlMetaStore;
 
   public MetaStoreImportHandler() {
   }
@@ -61,61 +52,61 @@ public class MetaStoreImportHandler implements IPlatformImportHandler {
   }
 
   @Override
-  public void importFile( IPlatformImportBundle bundle )
-    throws PlatformImportException, DomainIdNullException, DomainAlreadyExistsException, DomainStorageException,
-    IOException {
+  public void importFile( IPlatformImportBundle bundle ) throws IOException {
+    Path tempMetastorePath = Files.createTempDirectory( METASTORE );
+    try {
+      extractBundleToDir( bundle, tempMetastorePath );
 
-    InputStream inputStream = bundle.getInputStream();
-    Path path = Files.createTempDirectory( METASTORE );
-    path.toFile().deleteOnExit();
+      // get a hold of the metastore to import into
+      IMetaStore metastore = getRepoMetaStore();
+      if ( metastore != null ) {
+        // copy the exported metastore to where it needs to go
+        importToMetaStore( bundle, tempMetastorePath, metastore );
+      }
+    } finally {
+      FileUtils.deleteDirectory( tempMetastorePath.toFile() );
+    }
+  }
 
-    // get the zipped metastore from the export bundle
-    ZipInputStream zis = new ZipInputStream( inputStream );
-    ZipEntry entry;
-    while ( ( entry = zis.getNextEntry() ) != null ) {
-      try {
-        String filePath = path.toString() + File.separator + entry.getName();
-        if ( entry.isDirectory() ) {
-          File dir = new File( filePath );
-          dir.mkdir();
-        } else {
-          File file = new File( filePath );
-          file.getParentFile().mkdirs();
-          FileOutputStream fos = new FileOutputStream( filePath );
-          IOUtils.copy( zis, fos );
-          IOUtils.closeQuietly( fos );
+  private static void importToMetaStore( IPlatformImportBundle bundle, Path tempMetastorePath, IMetaStore metastore ) {
+    try {
+      XmlMetaStore tmpXmlMetaStore = new XmlMetaStore( tempMetastorePath.toString() );
+      tmpXmlMetaStore.setName( bundle.getName() );
+
+      var desc = bundle.getProperty( "description" );
+      tmpXmlMetaStore.setDescription( desc == null ? null : desc.toString() );
+
+      MetaStoreUtil.copy( tmpXmlMetaStore, metastore, bundle.overwriteInRepository() );
+
+    } catch ( MetaStoreException e ) {
+      log.error( "Could not restore the MetaStore" );
+      log.debug( "Error restoring the MetaStore", e );
+    }
+  }
+
+  private static void extractBundleToDir( IPlatformImportBundle bundle, Path tempMetastorePath ) throws IOException {
+    try ( InputStream inputStream = bundle.getInputStream();
+          ZipInputStream zis = new ZipInputStream( inputStream ) ) {
+      // get the zipped metastore from the export bundle
+      ZipEntry entry;
+      while ( ( entry = zis.getNextEntry() ) != null ) {
+        try {
+          String filePath = tempMetastorePath.toString() + File.separator + entry.getName();
+          if ( entry.isDirectory() ) {
+            File dir = new File( filePath );
+            dir.mkdir();
+          } else {
+            File file = new File( filePath );
+            file.getParentFile().mkdirs();
+            FileOutputStream fos = new FileOutputStream( filePath );
+            IOUtils.copy( zis, fos );
+            IOUtils.closeQuietly( fos );
+          }
+        } finally {
+          zis.closeEntry();
         }
-      } finally {
-        zis.closeEntry();
       }
     }
-    IOUtils.closeQuietly( zis );
-
-    // get a hold of the metastore to import into
-    IMetaStore metastore = getRepoMetaStore();
-    if ( metastore != null ) {
-      // copy the exported metastore to where it needs to go
-      try {
-        if ( tmpXmlMetaStore == null ) {
-          tmpXmlMetaStore = new XmlMetaStore( path.toString() );
-        } else {
-          // we are re-using an existing object, make sure the root folder is pointed at the new location on disk
-          tmpXmlMetaStore.setRootFolder( path.toString() + File.separator + METASTORE );
-        }
-        tmpXmlMetaStore.setName( bundle.getName() );
-
-        String desc = bundle.getProperty( "description" ) == null ? null : bundle.getProperty( "description" ).toString();
-
-        tmpXmlMetaStore.setDescription( desc );
-
-        MetaStoreUtil.copy( tmpXmlMetaStore, metastore, bundle.overwriteInRepository() );
-
-      } catch ( MetaStoreException e ) {
-        log.error( "Could not restore the MetaStore" );
-        log.debug( "Error restoring the MetaStore", e );
-      }
-    }
-
   }
 
   public void setMimeTypes( List<IMimeType> mimeTypes ) {
@@ -132,7 +123,6 @@ public class MetaStoreImportHandler implements IPlatformImportHandler {
       try {
         metastore = MetaStoreExportUtil.connectToRepository( null ).getRepositoryMetaStore();
       } catch ( KettleException e ) {
-        // can't get the metastore to import into
         log.debug( "Can't get the metastore to import into" );
       }
     }

@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.http.api.resources;
 
@@ -26,16 +20,14 @@ import org.codehaus.enunciate.Facet;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.util.VersionHelper;
 import org.pentaho.platform.util.VersionInfo;
-import org.pentaho.platform.util.versionchecker.PentahoVersionCheckReflectHelper;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.util.List;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static jakarta.ws.rs.core.MediaType.TEXT_PLAIN;
 
 /**
  * This resource manages version checking capability of the platform
@@ -61,23 +53,4 @@ public class VersionResource extends AbstractJaxRSResource {
     VersionInfo versionInfo = VersionHelper.getVersionInfo( PentahoSystem.class );
     return Response.ok( versionInfo.getVersionNumber() ).type( MediaType.TEXT_PLAIN ).build();
   }
-
-  /**
-   * Return software update document to the user
-   * 
-   * @return software update document
-   */
-  @GET
-  @Path( "/softwareUpdates" )
-  @Facet ( name = "Unsupported" )
-  @Produces( TEXT_PLAIN )
-  public String getSoftwareUpdatesDocument() {
-    if ( PentahoVersionCheckReflectHelper.isVersionCheckerAvailable() ) {
-      @SuppressWarnings( "rawtypes" )
-      List results = PentahoVersionCheckReflectHelper.performVersionCheck( false, -1 );
-      return PentahoVersionCheckReflectHelper.logVersionCheck( results, logger );
-    }
-    return "<vercheck><error><[!CDATA[Version Checker is disabled]]></error></vercheck>"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-  }
-
 }

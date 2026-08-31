@@ -1,3 +1,14 @@
+/*! ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
 .pentaho-admin-panel {
   background: transparent;
 }
@@ -855,6 +866,14 @@ a:active, a:hover {
   background: none;
   border: 0;
   margin-bottom: 5px;
+}
+
+.schedulesPanel .toolbar-button-focus-panel {
+  margin-right: 5px;
+}
+
+.schedulesPanel .toolbar-button {
+  margin-left: 0 !important;
 }
 
 .schedulesPanel .pentaho-table th {

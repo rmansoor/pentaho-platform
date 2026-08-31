@@ -1,22 +1,16 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2023 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.mantle.client.ui.tabs;
 
@@ -807,6 +801,10 @@ public class MantleTabPanel extends org.pentaho.gwt.widgets.client.tabs.PentahoT
   }
 
   public void selectTab( final PentahoTab selectedTab ) {
+    selectTab( selectedTab, false );
+  }
+
+  public void selectTab( final PentahoTab selectedTab, boolean setFocus ) {
 
     // Save previous tab's solution browser panel navigator state
     PentahoTab prevTab = getSelectedTab();
@@ -817,7 +815,7 @@ public class MantleTabPanel extends org.pentaho.gwt.widgets.client.tabs.PentahoT
         mantlePrevTab.setSolutionBrowserShowing( prevState );
       }
     }
-    super.selectTab( selectedTab );
+    super.selectTab( selectedTab, setFocus );
 
     if ( selectedTab == null ) {
       return;

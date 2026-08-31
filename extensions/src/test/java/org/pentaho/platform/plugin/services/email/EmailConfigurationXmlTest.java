@@ -1,33 +1,28 @@
-/*!
+/*! ******************************************************************************
  *
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+ * Pentaho
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
  *
- *
- * Copyright (c) 2002-2023 Hitachi Vantara. All rights reserved.
- *
- */
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.plugin.services.email;
-
-import junit.framework.TestCase;
-import org.dom4j.Document;
-import org.pentaho.di.core.KettleEnvironment;
 
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+
+import org.dom4j.Document;
+import org.pentaho.di.core.KettleEnvironment;
+
+import junit.framework.TestCase;
 
 /**
  * Test class for the {@link }EmailConfigurationXml} class
@@ -72,6 +67,7 @@ public class EmailConfigurationXmlTest extends TestCase {
     assertEquals( true, emailConfiguration.isUseSsl() );
     assertEquals( true, emailConfiguration.isDebug() );
     assertEquals( true, emailConfiguration.isSmtpQuitWait() );
+    assertEquals( true, emailConfiguration.isSmtpSendPartial() );
     assertEquals( "sampleuser@sampleserver.com", emailConfiguration.getDefaultFrom() );
     assertEquals( "sampleuser", emailConfiguration.getUserId() );
     assertEquals( "samplepassword", emailConfiguration.getPassword() );
@@ -99,6 +95,7 @@ public class EmailConfigurationXmlTest extends TestCase {
     assertEquals( true, emailConfiguration.isUseSsl() );
     assertEquals( true, emailConfiguration.isDebug() );
     assertEquals( true, emailConfiguration.isSmtpQuitWait() );
+    assertEquals( true, emailConfiguration.isSmtpSendPartial() );
     assertEquals( "sampleuser@sampleserver.com", emailConfiguration.getDefaultFrom() );
     assertEquals( "sampleuser", emailConfiguration.getUserId() );
     assertEquals( "samplepassword", emailConfiguration.getPassword() );
@@ -129,6 +126,7 @@ public class EmailConfigurationXmlTest extends TestCase {
     assertEquals( false, emailConfiguration.isUseSsl() );
     assertEquals( false, emailConfiguration.isDebug() );
     assertEquals( false, emailConfiguration.isSmtpQuitWait() );
+    assertEquals( false, emailConfiguration.isSmtpSendPartial() );
     assertEquals( "", emailConfiguration.getDefaultFrom() );
     assertEquals( "", emailConfiguration.getUserId() );
     assertEquals( "", emailConfiguration.getPassword() );
@@ -157,6 +155,7 @@ public class EmailConfigurationXmlTest extends TestCase {
     assertEquals( false, emailConfiguration.isUseSsl() );
     assertEquals( false, emailConfiguration.isDebug() );
     assertEquals( false, emailConfiguration.isSmtpQuitWait() );
+    assertEquals( false, emailConfiguration.isSmtpSendPartial() );
     assertEquals( "", emailConfiguration.getDefaultFrom() );
     assertEquals( "sampleuser", emailConfiguration.getUserId() );
     assertEquals( "", emailConfiguration.getPassword() );

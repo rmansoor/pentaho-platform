@@ -1,26 +1,23 @@
-/*!
- * This program is free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
- * Foundation.
+/*! ******************************************************************************
  *
- * You should have received a copy of the GNU Lesser General Public License along with this
- * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
- * or from the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * Pentaho
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
+ * Copyright (C) 2024 - 2026 by Pentaho Canada Inc. : http://www.pentaho.com
  *
- * Copyright (c) 2002-2021 Hitachi Vantara. All rights reserved.
- */
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************/
+
+
 
 package org.pentaho.platform.web.servlet;
 
 import com.ice.tar.TarEntry;
 import com.ice.tar.TarInputStream;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload2.core.FileItem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.pentaho.di.core.util.StringUtil;
@@ -29,7 +26,7 @@ import org.pentaho.platform.api.util.ITempFileDeleter;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.web.servlet.messages.Messages;
 
-import javax.servlet.http.Part;
+import jakarta.servlet.http.Part;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -377,23 +374,31 @@ public class UploadFileUtils {
 
             String extension = FilenameUtils.getExtension( entry.getName() );
             if ( checkExtension( extension, false ) ) {
+              boolean isDestinationValid = true;
+
               if ( isTemporary() ) {
                 entryFile =
                   PentahoSystem.getApplicationContext()
                     .createTempFile( session, StringUtil.EMPTY_STRING, DOT + extension + DOT_TMP, true );
               } else {
-                entryFile = new File( getPath() + File.separatorChar + entry.getName() );
+                File destination = new File( getPath() + File.separatorChar );
+                entryFile = new File( destination, entry.getName() );
+                isDestinationValid = validateZipSlip( entryFile, destination );
               }
 
-              if ( sb.length() > 0 ) {
-                sb.append( '\n' );
-              }
-              sb.append( entryFile.getName() );
-              FileOutputStream entryOutputStream = new FileOutputStream( entryFile );
-              try {
-                IOUtils.copy( zipStream, entryOutputStream );
-              } finally {
-                IOUtils.closeQuietly( entryOutputStream );
+              if ( isDestinationValid ) {
+                if ( sb.length() > 0 ) {
+                  sb.append( '\n' );
+                }
+
+                sb.append( entryFile.getName() );
+                FileOutputStream entryOutputStream = new FileOutputStream( entryFile );
+
+                try {
+                  IOUtils.copy( zipStream, entryOutputStream );
+                } finally {
+                  IOUtils.closeQuietly( entryOutputStream );
+                }
               }
             }
           }
@@ -493,23 +498,31 @@ public class UploadFileUtils {
 
             String extension = FilenameUtils.getExtension( entry.getName() );
             if ( checkExtension( extension, false ) ) {
+              boolean isDestinationValid = true;
+
               if ( isTemporary() ) {
                 entryFile =
                   PentahoSystem.getApplicationContext()
                     .createTempFile( session, StringUtil.EMPTY_STRING, DOT + extension + DOT_TMP, true );
               } else {
-                entryFile = new File( getPath() + File.separatorChar + entry.getName() );
+                File destination = new File( getPath() + File.separatorChar );
+                entryFile = new File( destination, entry.getName() );
+                isDestinationValid = validateZipSlip( entryFile, destination );
               }
 
-              if ( sb.length() > 0 ) {
-                sb.append( '\n' );
-              }
-              sb.append( entryFile.getName() );
-              FileOutputStream entryOutputStream = new FileOutputStream( entryFile );
-              try {
-                IOUtils.copy( zipStream, entryOutputStream );
-              } finally {
-                IOUtils.closeQuietly( entryOutputStream );
+              if ( isDestinationValid ) {
+                if ( sb.length() > 0 ) {
+                  sb.append( '\n' );
+                }
+
+                sb.append( entryFile.getName() );
+                FileOutputStream entryOutputStream = new FileOutputStream( entryFile );
+
+                try {
+                  IOUtils.copy( zipStream, entryOutputStream );
+                } finally {
+                  IOUtils.closeQuietly( entryOutputStream );
+                }
               }
             }
           }
@@ -528,6 +541,10 @@ public class UploadFileUtils {
       // no valid entries in the zip - nothing unzipped
       return Messages.getInstance().getErrorString( "UploadFileServlet.ERROR_0012_ILLEGAL_CONTENTS" );
     }
+  }
+
+  private boolean validateZipSlip( File destinationFile, File destinationDir ) throws IOException {
+    return destinationFile.getCanonicalPath().startsWith( destinationDir.getCanonicalPath() + File.separator );
   }
 
   protected String handleTarGZ( File file ) throws IOException {
