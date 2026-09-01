@@ -170,6 +170,86 @@ smoke) supersedes `baseline/full/` as the Helix reference config;
 `baseline/trimmed/` (first metaverse-removal pass, partial smoke) is kept for
 provenance.
 
+## Addendum 2 — Karaf-removal spike (branch `helix-nokaraf`, 2026-09-01)
+
+**Result: the Helix CE server boots and runs with Karaf completely gone.** Five
+mechanical changes, no code changes:
+
+| # | Change | File |
+|---|---|---|
+| 1 | Remove `<bean id="osgiListener" class="…OSGIBoot"/>` | `pentaho-solutions/system/systemListeners.xml` |
+| 2 | Empty the `KarafFeatureWatcherBarrier=jcrRepository` line | `pentaho-solutions/system/barrierbean.properties` |
+| 3 | Remove the `PdiOsgiBridge` `<registry-extension>` block | `pentaho-war/WEB-INF/classes/kettle-registry-extensions.xml` |
+| 4 | Remove the Felix `ProxyServlet` + `/osgi/*` mapping + `ProxyListener` | `pentaho-war/WEB-INF/web.xml` |
+| 5 | Serve a static `require-init.js` at `/osgi/requirejs-manager/js/require-init.js` (interim — captured empty-`paths` version; Phase K3 replaces it with a build-time generator) | `pentaho-war/webapp/osgi/…` |
+
+Plus, for a real build: stop unpacking `org.hitachivantara.karaf.assemblies` into
+`system/karaf` and drop the `org.apache.karaf.*` / `org.apache.felix.*` deps from
+`assemblies/pentaho-war/pom.xml` (not done in the spike — the deployed `system/karaf`
+was just moved aside).
+
+### What the spike found (the reason it's not zero-effort)
+
+**`pdi-osgi-bridge-core`'s `OSGIPluginRegistryExtension` hard-hangs boot.** With
+only #1 + #2 done, the main thread stuck **forever** in
+`OSGIPluginRegistryExtension.init()` (`pdi-osgi-bridge-core`, line ~115) — an
+**unbounded** `while (!OSGIPluginTracker.registerPluginClass(...)) { sleep(1000); }`
+loop, no timeout, no disable flag. It also calls `KarafBoot.startup()` directly.
+It is registered as a Kettle plugin-registry extension via
+`kettle-registry-extensions.xml`, so #3 (removing that entry) is **mandatory**, not
+optional. `KarafLifecycleListener` (same jar) did not need separate handling once
+#3 was done.
+
+### Smoke test — no-Karaf server, all green
+
+Boots in **~23 s** (vs ~26–28 s with Karaf). `baseline/no-karaf/`.
+
+| check | result |
+|---|---|
+| login, `isAuthenticated`, version | 200 |
+| 15 plugins registered | reporting, cda, cdf, **cdf-dd (CDE)**, data-access, scheduler-plugin, common-ui, xaction, url, cgg, monitoring-eventbus, pur-repository, pdi-platform, … |
+| `/public` repo tree | 200 |
+| **Inventory report** render (table/html) | 200, `<table>` + data |
+| **`SampleTransformation.xaction`** (real Kettle run) | 200 |
+| **CDF sample dashboard** render | 200 |
+| **CDE editor** (`renderer/edit?path=…`) | 200 — component palette renders |
+| scheduler `state` | RUNNING |
+| PUC `/Home`, `mantle.nocache.js`, `webcontext.js`, `common-ui require-cfg` | 200 |
+| static `require-init.js` | 200 (after #4 — the `/osgi/*` proxy mapping was shadowing it) |
+| Users / Roles (admin) | 200 |
+| `/osgi/cxf`, `/osgi/cxf/i18n` | 404 (gone — acceptable, see the metaverse coupling above) |
+| **OSGi resolution trace** | **0 bytes** — the object bridge did nothing all session |
+| startup log mentions of `karaf` / `OSGIBoot` / `felix` / `blueprint` | **0** |
+| `pentaho.log` ERRORs | only pre-existing noise (HSQLDB port, DI_HOME warning, missing EE `pentaho-interactive-reporting`, probe 404s) |
+
+### Not verified
+
+- **Visual PUC pass** — Claude-in-Chrome extension wouldn't connect this session.
+  HTTP + rendered-output checks are strong (report data, CDF/CDE render), but a
+  human should click through PUC once: message strings render as words not
+  `[keys]`, CDE drag-drop works, Analyzer is N/A on CE.
+- A **full clean build** of `helix-nokaraf` (the spike patched a deployed server;
+  the source edits are committed but not yet built into an assembly).
+- `pentaho-war` pom cleanup (drop karaf/felix jars) and the `system/karaf` unpack
+  removal — deferred to the real Phase K5.
+
+### Revised Phase K estimate — even lower
+
+The spike collapsed most of the risk. Remaining work to a shippable Karaf-free
+Helix CE:
+
+| task | est. |
+|---|---|
+| Land #1–#5 on a branch + full clean build + assembly | ~3–5 days |
+| Build-time `require-init.js` generator (Phase K3) | ~1 wk |
+| `pentaho-war` pom: drop `org.apache.karaf.*` / `org.apache.felix.*` deps; stop unpacking `system/karaf` | ~2–3 days |
+| Add `IAuthorizationRule` to `ClassicResolutionList`; delete `OSGIBoot`/`KarafBoot`/`KarafInstance*`/`PentahoOSGIActivator`/`OSGI*ObjectFactory`/`pdi-osgi-bridge` dep | ~1 wk |
+| Regression: full IT suite + the smoke matrix + one manual PUC pass | ~1 wk |
+| **Total** | **~4–5 weeks, one engineer** |
+
+The old "8–12 weeks" was conservative; the "5–6 quarters" from the fat-install
+analysis does not apply to Helix CE at all.
+
 ## Environment notes
 
 - JDK **17** — the `helix-deosgi` objfac unit tests (19, incl. `org.osgi.framework.Bundle`

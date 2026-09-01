@@ -1,0 +1,86 @@
+com.hitachivantara.security.web            csrf-token-service-client-java-jax-rs-v3      (managed)
+com.hitachivantara.security.web            security-web-server-api                       (managed)
+com.hitachivantara.security.web            security-web-server-model-impl                (managed)
+com.hitachivantara.security.web            security-web-server-service-impl              (managed)
+org.pentaho                                actionsequence-dom                            11.1.0.0-SNAPSHOT
+org.pentaho                                commons-database-model                        11.1.0.0-SNAPSHOT
+org.pentaho                                commons-gwt-widgets                           11.1.0.0-SNAPSHOT
+org.pentaho                                commons-xul-core                              11.1.0.0-SNAPSHOT
+org.pentaho                                commons-xul-gwt-impl                          11.1.0.0-SNAPSHOT
+org.pentaho                                commons-xul-html                              11.1.0.0-SNAPSHOT
+org.pentaho                                json                                          11.1.0.0-SNAPSHOT
+org.pentaho                                pdi-engine-api                                ${project.version}
+org.pentaho                                pentaho-chartbeans                            11.1.0.0-SNAPSHOT
+org.pentaho                                pentaho-metadata                              ${project.version}, 11.1.0.0-SNAPSHOT
+org.pentaho                                pentaho-registry                              ${project.version}
+org.pentaho                                pentaho-report-wizard-core                    11.1.0.0-SNAPSHOT
+org.pentaho                                pentaho-vfs                                   1.0
+org.pentaho                                shim-api                                      11.1.0.0-SNAPSHOT
+org.pentaho                                shim-api-core                                 11.1.0.0-SNAPSHOT
+org.pentaho.di.plugins                     pdi-engine-configuration-api                  ${project.version}
+org.pentaho.di.plugins                     pentaho-kettle-repository-locator-api         ${project.version}
+org.pentaho.di.plugins                     pentaho-metastore-locator-api                 ${project.version}
+org.pentaho.reporting.engine               classic-core                                  ${project.version}, 11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions                            ${project.version}, 11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-cda                        11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-drill-down                 11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-kettle                     11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-mondrian                   11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-olap4j                     11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-pmd                        11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-reportdesigner-parser      11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-sampledata                 11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-scripting                  11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-toc                        11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               classic-extensions-xpath                      11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               legacy-charts                                 11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               legacy-functions                              11.1.0.0-SNAPSHOT
+org.pentaho.reporting.engine               wizard-core                                   11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              flute                                         11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              libbase                                       11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              libdocbundle                                  11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              libfonts                                      11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              libformat                                     11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              libformula                                    11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              libloader                                     11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              libpixie                                      ${project.version}
+org.pentaho.reporting.library              librepository                                 11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              libserializer                                 ${project.version}, 11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              libsparkline                                  ${project.version}
+org.pentaho.reporting.library              libswing                                      11.1.0.0-SNAPSHOT
+org.pentaho.reporting.library              libxml                                        11.1.0.0-SNAPSHOT
+org.pentaho.reporting.plugin               classic-core-platform-plugin                  ${project.version}
+pentaho                                    common-ui                                     11.1.0.0-SNAPSHOT
+pentaho                                    mondrian                                      11.1.0.0-SNAPSHOT
+pentaho                                    pdi-osgi-bridge-core                          ${project.version}
+pentaho                                    pentaho-capability-manager                    ${project.version}
+pentaho                                    pentaho-concurrent                            1.0.0
+pentaho                                    pentaho-connections                           ${project.version}, 11.1.0.0-SNAPSHOT
+pentaho                                    pentaho-cwm                                   1.5.4
+pentaho                                    pentaho-data                                  ${project.version}
+pentaho                                    pentaho-generic-file-system-api               (managed), 11.1.0.0-SNAPSHOT
+pentaho                                    pentaho-generic-file-system-impl              (managed), 11.1.0.0-SNAPSHOT
+pentaho                                    pentaho-metaverse-api                         ${project.version}
+pentaho                                    pentaho-mongo-utils                           ${project.version}
+pentaho                                    pentaho-mongodb-plugin                        ${project.version}
+pentaho                                    pentaho-osgi-utils-api                        ${project.version}
+pentaho                                    pentaho-platform-api                          ${project.version}
+pentaho                                    pentaho-platform-core                         ${project.version}
+pentaho                                    pentaho-platform-extensions                   ${project.version}
+pentaho                                    pentaho-platform-repository                   ${project.version}
+pentaho                                    pentaho-plugin-samples                        ${project.version}
+pentaho                                    pentaho-proxy-factory                         ${project.version}
+pentaho                                    pentaho-samples                               ${project.version}
+pentaho                                    pentaho-service-coordinator                   11.1.0.0-SNAPSHOT
+pentaho                                    pentaho-solutions                             ${project.version}
+pentaho                                    pentaho-style                                 ${project.version}
+pentaho                                    pentaho-tomcat-logs                           ${project.version}
+pentaho                                    pentaho-user-console                          ${project.version}
+pentaho                                    pentaho-versionchecker                        11.1.0.0-SNAPSHOT
+pentaho                                    pentaho-war                                   ${project.version}
+pentaho                                    simple-jndi                                   ${simple-jndi.version}
+pentaho-kettle                             kettle-core                                   ${project.version}, 11.1.0.0-SNAPSHOT
+pentaho-kettle                             kettle-engine                                 11.1.0.0-SNAPSHOT
+pentaho-kettle                             kettle-ui-swt                                 11.1.0.0-SNAPSHOT
+
+TOTAL distinct Pentaho-family coordinates: 84

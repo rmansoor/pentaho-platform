@@ -1,0 +1,614 @@
+d28c1ec4f4 2026-08-27 Bruno Cavaleiro  test[BACKLOG-50636]: remove unused XQuery test exception
+4deda2e33a 2026-08-27 Bruno Cavaleiro  test[BACKLOG-50636]: isolate integration security strategies
+a4fcf1115d 2026-08-27 Bruno Cavaleiro  test[BACKLOG-50636]: cover XQuery and Saxon compatibility fixes
+36a07807ae 2026-08-27 Bruno Cavaleiro  test[BACKLOG-50636]: provide system config for web integration tests
+15c2c07b0e 2026-08-27 Bruno Cavaleiro  test[BACKLOG-50636]: cover locale metadata updates
+32540a015a 2026-08-27 Bruno Cavaleiro  test[BACKLOG-50636]: add metadata fixture to integration resources
+ec8668b4f4 2026-08-27 Bruno Cavaleiro  fix[BACKLOG-50636]: skip XMI parsing for locale metadata files
+bf438b6252 2026-08-27 Bruno Cavaleiro  test[BACKLOG-50636]: make proxy locale assertion environment-aware
+dbf5296eb5 2026-08-26 miguelappleton   test[BACKLOG-50636]: complete integration teardown isolation
+04a36db0f4 2026-08-26 miguelappleton   test[BACKLOG-50636]: guarantee teardown cleanup
+bcb3d0feee 2026-08-26 miguelappleton   test[BACKLOG-50636]: restore integration test runtime state
+1db27dffed 2026-08-26 miguelappleton   test[BACKLOG-50636]: isolate HSQL fixture databases
+2f29c50fb3 2026-08-26 miguelappleton   fix[BACKLOG-50636]: support legacy Saxon message namespace
+65188bc435 2026-08-26 Peter Rinehart   fix:[BACKLOG-50640] Giving pentaho_user schema ownership to preserve the behavior from hsqldb 2.3.2 allowing pentaho_user to see all schemas. (#6338)
+28d7ad8161 2026-08-24 miguelappleton   test[BACKLOG-50636]: align repository authorization expectations
+cdcb65748d 2026-08-24 miguelappleton   test[BACKLOG-50636]: clean up integration test runtime state
+1f962d3c07 2026-08-24 miguelappleton   test[BACKLOG-50636]: complete service integration test mocks
+d6edaf4db5 2026-08-24 miguelappleton   test[BACKLOG-50636]: update web integration test fixtures
+be152fae66 2026-08-24 miguelappleton   test[BACKLOG-50636]: make HSQL integration fixtures self-contained
+b191bbff25 2026-08-24 miguelappleton   test[BACKLOG-50636]: add Saxon compatibility for legacy XSL message functions
+727e5c86b9 2026-08-21 Bruno Cavaleiro  fix[BISERVER-14405]: prevent JCR session cache log growth (#6329)
+6fe6ccb5cb 2026-08-19 miguelappleton   test[BACKLOG-50636]: align default role authorization expectations
+d264c7ce02 2026-08-19 miguelappleton   test[BACKLOG-50636]: fix file download authorization scenario
+33ec9ff1f6 2026-08-03 Duarte Cunha Leão fix: change _CN suffix to _cn in permissions resource bundles [BISERVER-15663]
+9f0a7c14f0 2026-08-07 Hélder Freitas   chore: remove Tutorials section in classic PUC [PPUC-852] (#6320)
+a2cba7043e 2026-08-05 André Jorge      feat: add feature flag for the ServiceAction chart component "query" parameter [PPP-6784]
+a2058021aa 2026-07-19 Ramaiz Mansoor   [PPP-5872] - Upgrade hsqldb to 2.7.4
+9588ffd1ee 2026-07-31 automation       chore: replace one.hitachivantara.com with repo.pentaho.com
+d801258c17 2026-07-30 Alan Bryant      [PPP-5790] - remove jackcess. Not needed here.
+8f570adfde 2026-07-29 Duarte Cunha Leão fix: add missing permissions translations [BISERVER-15663]
+0f56ee819c 2026-07-29 Alan Bryant      [PPP-5790] - update jsendnsca library
+fa57bc8ab8 2026-07-24 joana-fb         fix[PPP-6575]: upgrade commons-jxpath to 1.4.0 (#6301)
+12a9de2a4f 2026-07-23 Duarte Cunha Leão fix: admin role permissions should be disabled [BISERVER-15595]
+4db23343d8 2026-07-21 Duarte Cunha Leão fix: import response is invalid html [BISERVER-15566]
+a8d3ad4819 2026-07-18 Joao Franca      DEVO-14154: updated license and copyright headers
+902e4da2bc 2026-07-17 mbrasil          chore: remove HV brand [PPUC-772] (#6294)
+57bf83e9e9 2026-07-16 Nelson Antunes   feat: scoped logger levels for execution appenders [PDI-20391]
+0a5d5ed3b2 2026-07-15 Duarte Cunha Leão feat: ability to configure web browser user navigation headers [BISERVER-15660]
+2ad92284ab 2026-07-08 Ramaiz Mansoor   PPP-6613 - Harden gremlin-shaded strip against wars with no gremlin jar
+6e8f7ab7f9 2026-07-08 joana-fb         fix[PPP-6756]: add parsson exclusion to jersey-media-json-processing and explicitily declare 1.1.8 version (#6286)
+eab497f72f 2026-07-08 miguelappleton   fix[PPP-6766]: bump commons-configuration2 to parent pom version 2.15.1
+75be0859e7 2026-07-04 Ramaiz Mansoor   [PPP-6613] - Extracting the vulnerable classes from gremlin out of the jar
+e7aa3b24de 2026-07-02 Ramaiz Mansoor   [BISERVER-15667] - Address JCR intermittent session closed issue
+9ac7588592 2026-07-02 Ramaiz Mansoor   [PPP-6613] - Extracting the vulnerable classes from gremlin out of the jar
+c20d74c828 2026-07-02 Ramaiz Mansoor   [PPP-6613] - Extracting the vulnerable classes from gremlin out of the jar
+b0a06eed66 2026-07-01 Ramaiz Mansoor   [PPP-6613] - Extracting the vulnerable classes from gremlin out of the jar
+a5dd3c1adc 2026-06-22 Ramaiz Mansoor   Revert "[PPP-5969] - Adding dependency of commons-configuration 1.X (1.9) for  project profile changes to work in platform"
+889cacfb3c 2026-06-14 Ramaiz Mansoor   [PPP=6540] - Upgrade commons-configuration2 to a non-vulnerable version
+56d08334c5 2026-06-21 Ramaiz Mansoor   [PPP-6529] - Adding dependency of jface ui library to have pdi component functioning properly on the server
+2221cc8b84 2026-06-20 Ramaiz Mansoor   [PPP-6529] - Adding dependency of jface ui library to have pdi component functioning properly on the server
+b916fbabd8 2026-06-20 Ramaiz Mansoor   [PPP-5969] - Adding dependency of commons-configuration 1.X (1.9) for project profile changes to work in platform
+bebee5654e 2026-06-18 cardosov         [CLEANUP] - Fixing property name
+ddb803b24b 2026-06-18 Ramaiz Mansoor   Revert "Revert "[PPP-5970] - Upgrade commons lang library to a non-vulnerable version""
+392ebbdcc8 2026-06-18 Vitor Cardoso    Revert "[PPP-5970] - Upgrade commons lang library to a non-vulnerable version"
+6ae5b0e77a 2026-06-15 Ramaiz Mansoor   [PPP-5970] - Upgrade commons lang library to a non-vulnerable version
+c270f4633e 2026-06-15 vrajidi          fix[PPP-6449][PPP-6447][PPP-6448] Remove Apache Neethi
+0f23512198 2026-06-15 Ramaiz Mansoor   Revert "[PPP-6529] - Remove JFace and other desktop UI dependency from platform"
+fe4e98dd50 2026-06-12 Ramaiz Mansoor   [PPP-6529] - Remove JFace and other desktop UI dependency from platform
+27e78a8545 2026-06-11 Denys Kondratiuk [FUSE-562] Integrate CMS with pentaho-server's connection repository
+7f08efd26d 2026-06-03 vrajidi          [BISERVER-15673][BISERVER-15672][BISERVER-15671] - OOM errors while executing reports and 404 error accessing PUC
+386fff9a77 2026-06-03 Duarte Cunha Leão fix: remove additional languages menu [BISERVER-14508]
+441aa2de5f 2026-05-28 Peter Rinehart   fix:[BISERVER-15486] Add logging messages for schedule imports.
+54fc4ac212 2026-05-20 Alan Bryant      [BISERVER-15647] - explicitly clear bowl caches for user operations
+e95364b7d1 2026-05-28 joana-fb         fix[BISERVER-15545]: enhance doSetMetadata to handle invalid or unparseable XML payloads (#6251)
+91db6b1d9f 2026-05-25 joana-fb         fix[BACKLOG-50150]: fix testDoIsParameterizableError unit test (#6248)
+75325438ad 2026-05-22 Bruno Cavaleiro  build[BACKLOG-50098]: Bump version of org.aspectj dependencies to 1.9.25.1 (#6247)
+327171813f 2026-05-17 Sergio Ribeiro   Fix some Sonar suggestions
+484eb5b8b8 2026-05-17 Sergio Ribeiro   Fix access to possible undeclared variables
+0b64741892 2026-05-17 Sergio Ribeiro   Remove duplicate dependencies
+a26a84798c 2026-05-15 Sergio Ribeiro   Make this functionality configurable
+c35c55e586 2026-04-24 Sergio Ribeiro   feat(BISERVER-15586): enable XSL transformations for Xactions
+53b878f711 2026-05-14 miguelappleton   fix[BISERVER-15398]: always set email body even if message is empty
+2dd5dd0ca4 2026-05-06 Alan Bryant      [BACKLOG-49331] - allow move/copy of folders
+725765bf10 2026-04-06 Alan Bryant      [BACKLOG-49331] - Filter filenames on repository API
+adf0f1112f 2026-04-29 Bruno Cavaleiro  build[PPP-6390][PPP-6391]: use maven-parent-pom bouncycastle managed version (#6222)
+0dd6fa01da 2026-04-22 mbrasil          feat: add get file acl with forced inheriting [PPUC-23] (#6199)
+469e14fd53 2026-04-01 miguelappleton   tes[BISERVER-15398]: fix action util tests
+d40a461de3 2026-03-31 miguelappleton   fix[BISERVER-15398]: address several comments
+6cc7849fc2 2026-03-31 joana-fb         build[PPP-6248]: update Hibernate groupId (#6204)
+c92cc7336a 2026-03-24 Peter Rinehart   [BACKLOG-49227] CacheManager needs finer-grained locking than synchronized blocks to avoid deadlocks. Switched to concurrenthashmap to provide read/write locking on data structures and further synchronization around object creation in getOrCreate to prevent duplicate object creation.
+a2de9448b8 2026-03-26 miguelappleton   fix[BISERVER-15398]: address several comments
+d782d53fe1 2026-03-26 joana-fb         fix[BISERVER-15545]: update doSetMetadata endpoint to accept XML (#6201)
+31a077f706 2026-03-25 miguelappleton   test[BISERVER-15398]: add unit tests for BISERVER-15398
+afc149abff 2026-03-25 miguelappleton   feat[BISERVER-15398]: receive an email when a schedule fails
+d5af7c6b12 2026-03-12 Sergio Ribeiro   chore(BISERVER-14985): some optimizations and improvements
+2cc4a35c14 2026-02-20 Keith Meadows    feat(BISERVER-14985): new features for brute force administration
+318b8c1cc1 2026-03-11 Peter Rinehart   [BISERVER-15569] Fix race condition in HvCacheRegionFactory.createCache() by catching CacheException for already-existing caches.
+e9d4f25398 2026-03-13 Ramaiz Mansoor   [PPP-6305] - Remove weka plugins and its dependencies from pentaho product
+29ce12c08d 2026-03-13 srallapa         [PPN-19] Scheduler pause/resume status update event log
+ebfa706af1 2026-03-10 Sergio Ribeiro   fix[BISERVER-15538]: fix regression introduced by BACKLOG-45029 (#6193)
+9a6e47f613 2026-03-07 vbist23          Open [BACKLOG-48378] Provide a means for PDI to locate PDC API
+44e2f2edcd 2026-03-05 Bruno Cavaleiro  fix: fix properties in message files (#6181)
+45a680a036 2026-03-03 Peter Rinehart   [chore] fix line terminators
+6578265939 2026-03-02 Peter Rinehart   [PPN-366] Support scheduling ktr and kjb files located in a vfs folder. Specifically made changes to enable ktr and kjb files to use the parameter API in a vfs location; additional work needed for analyzer and reports.
+4d0e31808b 2026-03-02 Ramaiz Mansoor   [BISERVER-15534] [BISERVER-15533] - Update command line processer to properly import and export datasource
+5be2524de8 2026-03-02 Bruno Cavaleiro  fix[BISERVER-15535]: Update CLI help messages to use placeholder values (#6179)
+ce1ef2aa80 2026-03-02 Bruno Cavaleiro  fix[BISERVER-15538]: Fix datasource import error message placeholder replacement (#6174)
+cc6e74f475 2026-02-27 Duarte Cunha Leão fix(auth): authorization decision locking analyzer fails on denied alternatives with reference and granted terms [PPUC-183]
+d8e627dcc9 2026-02-27 William Hartman  Revert "[PPN-366] Changes to enable the parameter API to work for files in a VFS"
+b959820de1 2026-02-27 Peter Rinehart   [PPN-367] Support for scheduling reports on VFS.
+ed3cd00fc7 2026-02-27 miguelappleton   fix[BISERVER-15346]: support defaulting to the generated content name on email attachments
+a96550b446 2026-02-26 Bruno Cavaleiro  fix[BISERVER-15240]: Add `LastExecutionTime` Scheduler reserved map key (#6173)
+dd269db20c 2026-02-25 Alan Bryant      Revert "[BACKLOG-48282] - update MockUnifiedRepository to preserve titles"
+b11921f437 2026-02-25 Duarte Cunha Leão fix(auth): authorization decision locking analyzer fails to ignore opposite status granted terms [PPUC-183]
+276c5d8cd8 2026-01-09 Peter Rinehart   [PPN-366] Changes to enable the parameter API to work for files in a VFS location. Specifically made changes to enable ktr and kjb files to use the parameter API in a vfs location; additional work needed for analyzer and reports.
+32b01b3652 2026-02-23 miguelappleton   fix[BISERVER-15489]: stop system jobs from failing on parameter request
+531608bc14 2026-02-20 vrajidi          [PPP-6173] - Vulnerable org.eclipse.angus:jakarta.mail upgrade
+351632a909 2026-02-17 Alan Bryant      [BACKLOG-48282] - update MockUnifiedRepository to preserve titles
+8a93fb3db2 2026-02-17 mmujahiduddin    [PDI-20769] Adding pentaho-registry Jar in server
+b720ced294 2026-02-12 André Jorge      fix: repository download endpoint returns 403 when file not found [BISERVER-15515]
+4eb7f075b1 2026-02-05 Duarte Cunha Leão feat(auth): simulation action role binding rule [PPUC-183]
+bd1ce91bcc 2026-02-04 Duarte Cunha Leão feat(auth): authorization service rules overriding [PPUC-183]
+f226e66475 2026-02-02 Duarte Cunha Leão feat(auth): decision justification simple markdown [PPUC-183]
+7e34a4a967 2026-02-02 Duarte Cunha Leão feat(auth): authorization granted and denied justifications [PPUC-183]
+b374ceb0b5 2026-01-30 Duarte Cunha Leão feat(auth): add authorization decision locking analyzer [PPUC-183]
+77db5416a3 2026-01-27 Duarte Cunha Leão feat(auth): strict DNF normalization for authorization decisions [PPUC-183]
+e9fee92974 2026-02-11 loonatic         fix: use consistent 2-space indentation [PPUC-525]
+cfb0473330 2026-02-03 loonatic         fix: remove extra encoding on recents VFS paths [PPUC-525]
+ba603d9f34 2026-02-03 Sergio Ribeiro   Revert "fix[BISERVER-15098]: change lastModified field to a date string in the export manifest"
+4c57dda8ac 2026-02-03 Sergio Ribeiro   Revert "fix[BISERVER-15098]: overwriting a folder tried to modify and unmodifiable map"
+ca54494c67 2026-02-03 Sergio Ribeiro   Revert "feat[BISERVER-15098]: update last modified date for folders"
+057aa3e748 2026-01-28 joana-fb         fix[BISERVER-15475]: correctly update files with unknown extensions after rename (#6141)
+f4c185533c 2026-01-22 joana-fb         refactor[PPP-6114]: update SearchIndex parameters in repository.xml for improved configuration (#6139)
+e024a7862b 2026-01-21 miguelappleton   fix[BISERVER-15376]: avoid encoded filenames from showing up in the upload dialog
+b835085682 2026-01-15 miguelappleton   fix[BISERVER-15376]: encode the filenames added in filename list to avoid issues with commas when uploading multiple files
+ee5771e94a 2026-01-13 Duarte Cunha Leão test: switch IT tests to use new authorization service [PPUC-318]
+395f7f8e39 2026-01-13 vrajidi          [PPP-6173] - Vulnerable org.eclipse.angus:jakarta.mail upgrade
+8260f7e36a 2026-01-08 Duarte Cunha Leão test: unit tests authorization service cache [PPUC-318]
+3b031739a2 2026-01-09 miguelappleton   docs[PPP-5729]: document --logLevel option for the restore and backup examples
+f866609eb5 2026-01-08 joana-fb         Revert "refactor[PPP-6114]: remove unused SearchIndex configuration from repo…" (#6128)
+e486bb2286 2026-01-08 lsaikrishna      [PPP-5690] - Vulnerable Component: Apache POI 5.2.5
+48b2a206f8 2026-01-07 joana-fb         refactor[PPP-6114]: remove unused SearchIndex configuration from repository.xml (#6122)
+ed5ad2bd8e 2026-01-07 miguelappleton   fix[BISERVER-15098]: fix unmodifiable map access for folder overwrite
+7a0ed8fe1f 2026-01-06 Tiago Ferreira   [BACKLOG-47190] Concurrent execution in import handlers
+e64f0f77d2 2026-01-05 miguelappleton   fix[BISERVER-15098]: change lastModified field to a date string in the export manifest
+a67ccc7380 2025-12-19 srallapa         [BISERVER-15479] updating yaml to take any extra parameter to override
+243c8af459 2025-12-11 Peter Rinehart   [PDI-20652] Provide a logout method for repository jax-ws services in order to fix issues with disconnecting and reconnecting from spoon.
+7aed37d85d 2025-12-16 Tiago Ferreira   [TEST] Fix failures in CommandLineProcessorPasswordTest
+18fd389d66 2025-12-12 Tiago Ferreira   [BACKLOG-47190] Isolate execution state in ImportHandlers used as singletons
+cc0125b412 2025-12-17 srallapa         [BISERVER-15479] uses catalina opts from dockercompose or use the default values
+536ae13af3 2025-12-15 Duarte Cunha Leão feat: add default modern puc display permissions [PPUC-462]
+ac17c8f345 2025-12-15 Sergio Ribeiro   [PPP-6121] Force tika version
+162e374ffa 2025-12-11 miguelappleton   fix[BACKLOG-47946]: fix wrong label and fix tooltip inconsistencies
+2507576c38 2025-12-02 André Jorge      fix: nested self-copy into subfolder infinite loop [PPUC-198]
+89b6faf770 2025-12-05 Duarte Cunha Leão fix: invalid connection returns 404 [PPUC-437]
+18ff412c1b 2025-12-09 miguelappleton   fix[BACKLOG-47946]: fix tooltips for folders
+3dfc48a5a3 2025-12-09 miguelappleton   fix[BACKLOG-47946]: fix rename dialog title and tooltips for folders
+bde95e4f52 2025-12-05 miguelappleton   feat[BACKLOG-47946]: display name and filename renaming dialog & tooltip
+9f03bcd199 2025-12-05 vrajidi          [BACKLOG-47794] - OutOfMemoryError running longevity test on SharedObjects
+48cb8b4648 2025-12-05 vrajidi          [BACKLOG-47794] - OutOfMemoryError running longevity test on SharedObjects
+0ea7fc126e 2025-12-04 vrajidi          [BACKLOG-47794] - OutOfMemoryError running longevity test on SharedObjects
+f4f521cd95 2025-08-03 Dean DiRoma      [BACKLOG-46407] Update and validate in-product links in Pentaho Data Integration and Analytics 11.0
+b0b3d93852 2025-11-28 miguelappleton   fix[BISERVER-15257]: avoid double decoding of repository filenames
+273708ba91 2025-11-25 Duarte Cunha Leão feat(plugin-manager): new plugin manager lifecycle hook - onAfterPluginsLoaded [PPUC-393]
+253c194c5d 2025-11-25 miguelappleton   feat[BISERVER-15098]: update last modified date for folders
+cddf965d6d 2025-11-24 Bruno Cavaleiro  fix[BISERVER-15414]: Update CATALINA_OPTS in startup scripts for proper variable quoting (#6080)
+d2072de78f 2025-11-19 Bruno Cavaleiro  refactor: improvements in handling paths (#6079)
+be73cd9437 2025-11-17 André Jorge      chore: sonar and checkstyle
+b01a9631d1 2025-11-17 André Jorge      fix: nested self-copy infinite loop [PPUC-198]
+866b54796b 2025-11-18 Bruno Cavaleiro  fix:[BISERVER-15414] Refactor shell scripts for improved variable handling and quoting (#6074)
+82de7adfb6 2025-11-16 Ramaiz Mansoor   [BACKLOG-47361] - Update logging for big data Create new loggers and appenders if they don't exist in the log4j2.xml
+04c236f7c7 2025-11-14 Tiago Ferreira   [BACKLOG-47275] Log not found tree listings as debug with more info
+8466dc57f4 2025-11-10 Peter Rinehart   [BACKLOG-47059] Adding javax.activation jar back to the war file because karaf will not start without it.
+55a949b934 2025-11-10 Tiago Ferreira   [BACKLOG-46564] Add download permission to all users by default
+367a8d4264 2025-11-07 André Jorge      fix: puc administration - operation permission revert fails [BISERVER-15406]
+79466df34b 2025-11-06 wilseyler        [BACKLOG-47186] - Removed driver folder from .../pentaho-server/pentaho-solutions/
+020d04d254 2025-10-31 buildguy         [CLEANUP] updated versions via release version merger
+229ed22719 2025-10-31 Duarte Cunha Leão feat: improve logging for Pentaho and HTTP session management [PPUC-318]
+145bddaf73 2025-10-31 Duarte Cunha Leão fix: NPE on PentahoJcrTemplate [PPUC-318]
+406361f979 2025-10-31 Duarte Cunha Leão fix(auth): do not cache decisions resulting from exceptions [PPUC-318]
+867d86df80 2025-10-30 buildguy         [CLEANUP] updated versions via release version merger
+adcffd1646 2025-10-30 buildguy         [CLEANUP] updated versions via release version merger
+f9002a2b36 2025-10-30 Sergio Ribeiro   chore[BACKLOG-47029]: clear error messages
+d6b2da2a88 2025-10-30 Sergio Ribeiro   fix[BACKLOG-47029]: set the proper Accept HTTP header
+77b580a6f5 2025-10-29 buildguy         [CLEANUP] updated versions via release version merger
+268ace7132 2025-10-29 vbist23          [PPN-156] Handle Calls to the Original Scheduler APIs
+265106dfba 2025-10-28 mbrasil          fix: schedule permission [PPUC-363]
+2a1597589f 2025-10-28 Ramaiz Mansoor   [BACKLOG-46635] - Move kafka plugin to pentaho kettle as a plugin
+e0461b4d6e 2025-10-28 hv-vamsi         [BACKLOG-46159] OAuth read username with activeUserDetailsService
+48c31a310c 2025-10-27 vrajidi          [BACKLOG-46769]-Opening job or transformation results on downloading it to tomcat/temp directory
+58c23c4cbd 2025-10-27 vrajidi          Revert "[BACKLOG-46769]-Opening job or transformation results on downloading it to tomcat/temp directory"
+036122463f 2025-10-27 vrajidi          [BACKLOG-46769]-Opening job or transformation results on downloading it to tomcat/temp directory
+b2316353e0 2025-10-21 Duarte Cunha Leão chore(auth): logging improvements and some linting [PPUC-318]
+9ee70f3b0f 2025-10-17 Duarte Cunha Leão feat(auth): define AuthorizationService#setRootRule(.) to allow cycles [PPUC-318]
+b84e40e888 2025-10-10 Duarte Cunha Leão feat(auth): endpoint and old PUC menu item to invalidate authorization cache [PPUC-318]
+75dbc53704 2025-10-10 Duarte Cunha Leão chore(auth): performance of authorization related hash code and equals impls [PPUC-318]
+99c050e6d2 2025-10-10 Duarte Cunha Leão chore(auth): performance of default authorization options [PPUC-318]
+1cb48deb48 2025-10-10 Duarte Cunha Leão feat(auth): invalidate authorization cache from JcrUserRoleDao [PPUC-318]
+8b4f8c11ca 2025-10-10 Duarte Cunha Leão feat(auth): invalidate authorization cache from JcrRoleAuthorizationPolicyRoleBindingDao [PPUC-318]
+1a27971d33 2025-10-10 Duarte Cunha Leão feat(auth): caching support for PentahoSystemAuthorizationActionService [PPUC-318]
+dafc52e65b 2025-10-10 Duarte Cunha Leão feat(auth): add default log configuration for authorization classes [PPUC-318]
+bb126ef89c 2025-10-10 Duarte Cunha Leão fix: CacheManager onLogout not properly clearing the session cache [PPUC-318]
+3ccd4e5d73 2025-10-10 Duarte Cunha Leão fix(auth): SecurityHelper.runAsAnonymous not destroying StandaloneSession [PPUC-318]
+b4d6ce4dbb 2025-10-10 Duarte Cunha Leão feat(auth): caching support for AuthorizationService [PPUC-318]
+91f7a941eb 2025-09-23 Duarte Cunha Leão feat(auth): switch legacy IAuthorizationPolicy to IAuthorizationService impl [PPUC-318]
+09f1802e54 2025-10-22 Sergio Ribeiro   [PPP-5777] RCE Vulnerability on H2 Data sources
+ec29008099 2025-10-16 Ramaiz Mansoor   [BACKLOG-46636] - Change groupId for pentaho-s3-vfs-plugin
+b7436229d8 2025-10-14 André Jorge      feat: allow disabling upload folder existence and ACL checks [BACKLOG-46586]
+95c8f9d8f4 2025-10-15 Bruno Cavaleiro  build[PDI-20311]: remove declaration of unused dependency trilead-ssh2 (#6016)
+898a697b68 2025-10-15 Ramaiz Mansoor   [BACKLOG-46636] - Adding the s3-vfs plugin after moving to pentaho-kettle
+37e22e9c64 2025-10-14 Alan Bryant      [BISERVER-15275] - kjb, ktr not hidden by default on import
+5a96d028c7 2025-10-14 Sergio Ribeiro   [PPP-5777] Remove h2 from the solution
+7efd459f29 2025-10-14 Sergio Ribeiro   [PPP-5777] No longer start the h2 DB
+4fb8bdc28c 2025-10-14 Sergio Ribeiro   [PPP-5777] Make jackrabbit to use HSQLDB for persistence
+b0bd438ed3 2025-10-14 Sergio Ribeiro   [BISERVER-15219] Default HyperSQL (hsqldb) in Memory DB start script with error
+3c734c9c9f 2025-10-13 Peter Rinehart   [BACKLOG-46631] Ensured that the list of plugin directories is sorted before processing to ensure consistent behavior and that plugin folders with datestamps in the name (new plugin installs/updates) will be processed after those without (previous installs to be deleted). Also added an extra check after processing the plugin folder to ensure a plugin with the same ID hasn't already been processed. The second check should not be necessary after sorting the folder names, but this will prevent duplicate plugins from loading.
+5b880d6036 2025-10-09 aramos           [BACKLOG-45832] - Removed mapreduce library from pentaho platform
+76d1cdcf07 2025-10-09 aramos           [BACKLOG-45832] - Commented s3 vfs and kafka plugins from pdi and server assemblies
+1a37d335cd 2025-10-09 aramos           [BACKLOG-45832] - Commented big-data-legacy core from pdi and server assemblies
+3025300e12 2025-10-07 Ramaiz Mansoor   [BACKLOG-46513] - Remove the lifecycle listener for osgi kettle startup
+150bff6108 2025-10-03 rsleem           [BACKLOG-45833] removing default pentaho-big-data-plugin from pentaho server
+24adf1c75d 2025-09-23 Ramaiz Mansoor   [BACKLOG-45831] - Remove DriverManager and the logic to install hadoop driver in osgi
+71cb114321 2025-09-22 Ezequiel Cuellar [BACKLOG-44452] As a user I would like to create/edit/delete hadoop cluster from PDI while connect to the Pentaho Server
+26e8d13ade 2025-06-03 aramos           [BACKLOG-43807] - Added shim-api lib to pentaho-server
+8b0e501c4a 2025-10-03 André Jorge      feat: authorization request set role by name [PPUC-89]
+0a873e1d88 2025-10-01 joana-fb         fix[PPP-5982]: add proper initialization to XML parser
+fb598b77d5 2025-09-23 André Jorge      chore: review null arguments
+2716962482 2025-09-23 André Jorge      chore: code style
+63826faad6 2025-09-23 André Jorge      feat: principal-based authorization request builder [PPUC-89]
+d4cfacb1dc 2025-09-23 Duarte Cunha Leão fix: many broken integration tests due to systemic issues [BACKLOG-45385]
+7f443bda81 2025-09-30 joana-fb         chore[PPP-5981]: add monitorInterval to log4j2 configuration (#6033)
+3d820b56d5 2025-09-25 Duarte Cunha Leão feat: Generic File Service consume published Decorators [PPUC-124]
+5053213c23 2025-09-24 Alan Bryant      [BACKLOG-43889] - reset partialUpload with each upload
+eddd7f4873 2025-05-05 SahithiKommagani6 [BACKLOG-43935]-Fix JDK21 test pipeline(test1) test case failures
+76eb4b23d6 2025-04-25 SahithiKommagani6 [BACKLOG-43874]-Fix JDK21 test pipeline(test1) build failures
+5a2da2ed81 2025-09-22 Duarte Cunha Leão fix: get all Generic File Service Provider beans [PPUC-124]
+bae0cef761 2025-09-19 Duarte Cunha Leão fix: session scope for spring beans from root app context beans without http request [PPUC-277]
+d09af83e5b 2025-09-19 Duarte Cunha Leão fix: incorrect GFS snapshot version number [PPUC-124]
+877202931c 2025-09-19 Duarte Cunha Leão fix: session scope for spring beans from plugins [PPUC-124]
+b92b7c04ba 2025-09-19 miguelappleton   fix[BISERVER-15302]: correctly update descriptions in Browse Files tooltips
+ce38d3edb8 2025-09-18 Duarte Cunha Leão fix: change bean scope of GFS providers to session [PPUC-124]
+c7c607a02d 2025-09-17 Ramaiz Mansoor   [BACKLOG-45998] - Adding pdi-engine-configuration-api to WEB-INF/lib
+84e27411d0 2025-09-17 Duarte Cunha Leão feat: move generic-file-service to pentaho-platform [PPUC-124]
+cefdde9111 2025-09-12 mbrasil          fix: invalid folder names [PPUC-230]
+37dcbd3707 2025-08-28 SahithiKommagani6 [BACKLOG-45596]-Upgrade JDK properties from 11 to 17
+3a889194ef 2025-09-04 Sergio Ribeiro   feat[PPP-5739]: replace ini4j with commons-configuration2
+25e5b2e8a1 2025-09-03 joana-fb         fix: add proper initialization to XML parser [PPP-5719] (#5937) (#5972)
+96d86f61a7 2025-09-02 Bruno Cavaleiro  build[PPP-5751]: Update GWT dependencies to use org.gwtproject groupId and fix gwt-maven-plugin version reference (#5988)
+95c843554d 2025-09-01 cardosov         [DEVO-12893] - Changing dep GAV
+ee6dc39265 2025-08-29 joana-fb         chore[PPP-5719]: upgrade Saxon dependency (#5997)
+04d861ab8a 2025-08-29 joana-fb         fix[BISERVER-15341]: revert username char validation, add "-" to allowed password chars and fix error message (#5994)
+a2e66b5c25 2025-08-29 vrajidi          [BACKLOG-45664] - Fix failing integration test cases due to tomcat upgrade
+2ffee58a47 2025-08-27 Dean DiRoma      [BISERVER-15291] Wrong table used on migrate_old_quartz_data scripts
+2575d6e476 2025-07-18 André Jorge      fix: validate access to home folder [PPP-5780]
+12ce1b74b2 2025-08-25 vrajidi          [BACKLOG-45531] - Unable to create data source via Database Table(s) in PUC
+154a2720f9 2025-08-01 Alan Bryant      [BACKLOG-43889] - partial upload message
+607f9e7c3c 2025-08-19 vrajidi          [BACKLOG-45477] - PUC - Import/Export tool - Trying to run the backup feature with admin credentials gives an error
+ce92afa43c 2025-08-19 vrajidi          [BACKLOG-45029] - Missing ( "SampleData", JDBC ) Data Source in Manage Data Sources.
+eb381ffd23 2025-08-06 Duarte Cunha Leão feat(authorization): multiple fixes, improvements/features [PPUC-122]
+08cc8d5a91 2025-08-10 lsaikrishna      [BISERVER-15271] - NoClassDefFoundError: com/zaxxer/sparsebits/SparseBitSet error when executing a transformation with Microsoft Excel Writer step using .xls format and "shift existing cells down" setting on Pentaho Server.
+f059c3e868 2025-08-08 Hélder Freitas   refactor: align session variable handling with HttpSession semantics [PPUC-21] (#5982)
+82f2a1a4b6 2025-07-09 Ramaiz Mansoor   [BACKLOG-40276] - Remove the pdi-dataservice dependencies
+d01ee3b92c 2025-07-30 vrajidi          [BACKLOG-44191] - Rebasing Tomcat-10.X branch to master and fix the issues
+f70120701d 2025-07-18 SahithiKommagani6 [BACKLOG-44915]-Resolving Review Comments for Pr's related to tomcat
+78bd7293aa 2025-07-17 SahithiKommagani6 [BACKLOG-44915]-Resolving Review Comments for Pr's related to tomcat
+207e7bac6d 2025-07-15 SahithiKommagani6 [BACKLOG-43757]-Upgrading Tomcat and its Related Software's to latest version
+a1c69585dd 2025-07-08 SahithiKommagani6 [BACKLOG-44609] - Migrate app-shell, semantic-model-editor to support upgraded platform
+5811322cb5 2025-07-02 vrajidi          [BACKLOG-44609] - Migrate app-shell, semantic-model-editor to support upgraded platform
+097e7e838a 2025-07-01 vrajidi          [PPUC-108][BISERVER-14841]: Rebasing the changes to Tomcat-10.X
+eda68004c7 2025-06-30 vrajidi          [BACKLOG-44609] - Migrate app-shell, semantic-model-editor to support upgraded platform
+4dbb986ab1 2025-06-11 SahithiKommagani6 [BACKLOG-44195]-Fixing Integration tests as part of Tomcat Upgradation in Pentaho-platform
+ad02c35188 2025-06-04 vrajidi          [BACKLOG-44191] - Rebasing Tomcat-10.X branch to master and fix the issues
+a1781da825 2025-06-03 vrajidi          [BACKLOG-44191] - Rebasing Tomcat-10.X branch to master and fix the issues
+992cc5760d 2025-06-03 vrajidi          [BACKLOG-42168] - Upgrade sun jersey from 1.x to glassfish jersey 3.x
+9fbfd2f909 2025-05-30 SahithiKommagani6 [BACKLOG-44147]-Schedule Job API fails schema validation due to missing @type and incorrect field types
+80bcfdbb37 2025-05-29 vrajidi          [BACKLOG-42168] - Upgrade sun jersey from 1.x to glassfish jersey 3.x
+2d65610052 2025-05-27 vrajidi          [BACKLOG-42168] - Upgrade sun jersey from 1.x to glassfish jersey 3.x
+adfcd6b86b 2025-05-26 vrajidi          [BACKLOG-44206] - Write equivalent exception mapper for the code removed in JAXRSServlet InternalWebComponent
+c1614006e8 2025-05-23 vrajidi          [BACKLOG-42168] - Upgrade sun jersey from 1.x to glassfish jersey 3.x
+96bb65d0a5 2025-05-23 vrajidi          [BACKLOG-44206] - Write equivalent exception mapper for the code removed in JAXRSServlet InternalWebComponent
+0da8e90e5f 2025-05-14 SahithiKommagani6 [BACKLOG-44113]-400 Bad Request Due to Unrecognized Field in ACL DTO Payload
+50f7925e8c 2025-05-12 vrajidi          [BACKLOG-44093] - Identifying Hibernate Sequence generator failed
+21473c5d2d 2025-05-12 SahithiKommagani6 [BACKLOG-44092]-Resolve Issues as part of Practitest Results
+b709dbf1ed 2025-05-16 SahithiKommagani6 [BACKLOG-44133]-API Response Does Not Match Expected Permissions Format
+66d46b4869 2025-04-23 vrajidi          [BACKLOG-43858] - Jersey require mediatype x-www-form-urlencoded when FormData is used
+c344671dc6 2025-04-16 SahithiKommagani6 [BACKLOG-41287]-Upgrading Pentaho platform from Java EE to Jakarta EE
+9a6e4229a7 2025-04-04 SahithiKommagani6 [BACKLOG-43757]-Upgrading Tomcat and its Related Software's to latest version
+e0ac5248c4 2025-03-26 SahithiKommagani6 [BACKLOG-41693]-Fix all the broken testcases in pentaho platform
+c9e07b8186 2025-03-25 SahithiKommagani6 [BACKLOG-43209]-OSGi Assembly Issues
+146f2f14c0 2025-03-21 SahithiKommagani6 [BACKLOG-41287]-Upgrading Pentaho platform from Java EE to Jakarta EE
+54c1dcd8f8 2025-03-17 SahithiKommagani6 [BACKLOG-43612]-Upgrading Webservices to Support Jakarta EE Migration
+bd8da01e67 2025-02-26 vrajidi          [BACKLOG-42817]-Upgrading fasterxml jaxrs to fasterxml jakarta rs to support with jersey 3.x and jakarta 3.x
+808e71d10e 2025-02-20 Vamshi Rajidi    [BACKLOG-42817]-Upgrading fasterxml jaxrs to fasterxml jakarta rs to support with jersey 3.x and jakarta 3.x
+06038258cf 2025-02-19 SahithiKommagani6 [BACKLOG-41596]-Upgrading EhCache 2 to JCache and EhCache 3
+d6ffaa31c5 2025-02-19 SahithiKommagani6 [BACKLOG-41596]-Upgrading EhCache 2 to JCache and EhCache 3
+cd3ede8b61 2025-02-14 SahithiKommagani6 [BACKLOG-43209]-OSGi Assembly Issues
+912b1c033f 2025-02-04 SahithiKommagani6 [BACKLOG-41596]-Upgrading EhCache 2 to JCache and EhCache 3
+efa3f24313 2025-01-28 Vamshi Rajidi    [BACKLOG-41601]-Upgrade sun jersey from 1.x to glassfish jersey 2.x
+417311e184 2025-01-07 SahithiKommagani6 [BACKLOG-41596] - Upgrading EhCache 2 to JCache and EhCache 3
+7cd1de2e0b 2024-12-30 Vamshi Rajidi    [BACKLOG-41596] - Upgrading EhCache 2 to JCache and EhCache 3
+e11da075c4 2024-12-26 Vamshi Rajidi    [BACKLOG-41596] - Upgrading EhCache 2 to JCache and EhCache 3
+ae1cab0a0d 2024-11-20 SahithiKommagani6 [BACKLOG-42885]-Upgrading Jetty version from 11.0.14 to 12.0.15 to support Jakarta EE 10
+f4e4903945 2024-11-20 SahithiKommagani6 [BACKLOG-41287]-Upgrading pentaho-platform from Java-EE to Jakarta-EE to support with Tomcat-10.X
+37eb404885 2024-11-14 SahithiKommagani6 [BACKLOG-42817]-Upgrading fasterxml jaxrs to fasterxml jakarta rs to support with jersey 3.x and jakarta 3.x
+3b066b41ad 2024-10-27 sahithiKommagani6 [BACKLOG-41287]-Upgrading pentaho-platform from Java-EE to Jakarta-EE to support with Tomcat-10.X
+3e4ae347cf 2024-09-30 sahithiKommagani6 [BACKLOG-41601]-Upgrade sun jersey from 1.x to glassfish jersey 2.x
+e355e4fae2 2024-09-23 SahithiKommagani6 [BACKLOG-41601]-Upgrade sun jersey from 1.x to glassfish jersey 2.x
+635a93920b 2025-07-29 joana-fb         Revert "chore[PPP-5719]: upgrade Saxon dependency (#5966)" (#5973)
+0484106057 2025-07-28 Hélder Freitas   feat: move whitelist logic to service class, publish the bean and improve unit tests [PPUC-21] (#5971)
+342f0d684f 2025-07-24 Alan Bryant      [BACKLOG-43889] - add repo-vfs plugin to pentaho server assembly
+0c10246b32 2025-07-24 Duarte Cunha Leão fix: bean publish declaration [PPUC-122]
+57aa61fb78 2025-07-22 Duarte Cunha Leão feat: permission dependencies [PPUC-122]
+e6ab7458a5 2025-07-24 joana-fb         chore[PPP-5719]: upgrade Saxon dependency (#5966)
+61fbf8df02 2025-07-11 Duarte Cunha Leão feat: permission dependencies [PPUC-122]
+36fa791042 2025-07-16 Peter Rinehart   [BACKLOG-44424] Need to update the main platform code to handle plugin management. We need to be able to delete plugins that were marked for deletion by the plugin manager before trying to load any plugins.
+e0de6c01cb 2025-07-16 mbrasil          feat: add methods for content permission [PPUC-25] (#5960)
+0922d5b969 2025-07-04 joana-fb         chore[PPP-5719]: move saxon version to pentaho parent pom (#5953)
+be0a54c2ec 2025-07-04 pponugupati      [PPP-5759] Orc libraries Incompatibility due to protobuf-java-3.25.6 library
+e73a22cf3d 2025-07-04 Silvia Fernandes test: Fix MondrianCatalogHelperIT tests [SME-1164]  (#5950)
+79b3cd547e 2025-07-04 Silvia Fernandes test: move creation of MondrianCatalogHelper after defining IUnifiedRepository in platform (#5951)
+f293099ad8 2025-07-03 Prerana Desai    [BACKLOG-41543] Added mimetype "backup" to the ImportHandlerMimeTypeDefinitions.xml file. The backup file gets added whenever the configType that are defined in shared.xml changes, it creates a .backup file before updating the shared.xml. As the projects can be added to repository, this backup file will be added to the project folder. now
+0531f43886 2025-06-30 buildguy         [CLEANUP] updated versions via release version merger
+a63e1932df 2025-06-23 Duarte Cunha Leão feat(authorization): self and resource actions: action extensions and actions service [PPUC-116]
+4725d83cf0 2025-06-24 Duarte Cunha Leão fix: server setups where browsers withhold Sec-Fetch headers [PPUC-108][BISERVER-14841]
+564ffa74da 2025-06-23 Hugo Jose        fix: fix integration tests that were failing (#5947)
+8ec7d7e393 2025-05-23 Duarte Cunha Leão feat: select User or API auth entry point based on Sec-Fetch-User request header [PPUC-108][BISERVER-14841]
+a0fd857d5f 2025-06-20 Sergio Ribeiro   Revert "fix: add proper initialization to XML parser [PPP-5719] (#5937)" (#5946)
+53dc8f82df 2025-06-17 joana-fb         fix: add proper initialization to XML parser [PPP-5719] (#5937)
+58f3ee467c 2025-06-13 Peter Rinehart   [BACKLOG-44424] Provide a means to ignore platform plugins in order to allow them to be deleted by the plugin manager.
+6a93d69025 2025-06-11 Hugo Jose        feat: encrypt connection information for mondrian catalogs [SME-815] (#5920)
+1a542e492f 2025-06-06 Dean DiRoma      [BACKLOG-44362] Azure Docker Image - Old oracle jar is causing issues to allow connection to the Oracle databases (jackrabbit, hibernate, quartz, pentaho_dilogs, pentaho_operations_mart) -- quartz-oracle is no longer needed since upgrading quartz to 2.3.2. Also, quartz.version 1.7.2 was never used AND we've upgraded quartz to 2.3.2
+3835fe1850 2025-06-05 Sergio Ribeiro   feat[PPP-5649]: add httpclient5 and httpcore5 dependencies
+6607e0fec4 2025-06-04 Hugo Jose        chore: remove lint issues (#5936)
+a4c06020f0 2025-06-04 Hugo Jose        chore: remove lint issues (#5931) (#5934)
+d17fe49ffc 2025-06-04 Silvia Fernandes fix: fix method name (#5933)
+8e4ad1067a 2025-06-03 Hugo Jose        chore: remove lint issues (#5931)
+60cb763c7c 2025-06-03 Hugo Jose        chore: remove lint issues (#5930)
+b5f0250cb6 2025-06-02 Duarte Cunha Leão fix(UserRoleListService): list corruption and sorting [PPUC-123]
+ae3fa3cb3a 2025-06-02 Hugo Jose        chore: remove methods from constructors code section (#5927)
+499e009751 2025-05-29 André Jorge      chore: remove unused localization keys
+bda987bad1 2025-06-02 Silvia Fernandes feat: add new methods to get differents versions of mondrian catalogs [SME-851] (#5908)
+b1517273bb 2025-05-30 miguelappleton   chore[PPP-5717]: add servlet error message for request-processing errors
+399694a63c 2025-05-30 Duarte Cunha Leão fix: make GenericServlet#isStaticResource return false if resource does not exist [PPP-5722]
+edddd26a35 2025-05-30 Duarte Cunha Leão fix: make RepositoryResource#isStaticResource return false, not throw, for anonymous context file access [PPP-5722]
+d81872e99b 2025-05-29 André Jorge      feat: add descriptions for authorization actions [PPUC-64]
+bf8a3bcdbc 2025-05-26 Duarte Cunha Leão fix: logging in after session timeout redirects to Require JS Config file [PPP-5722]
+487a17d6ff 2025-05-23 André Jorge      chore: lint
+516476f06d 2025-05-26 André Jorge      test: add description property to authorization actions [PPUC-64]
+89d3f9989a 2025-05-19 André Jorge      feat: add description property to authorization actions [PPUC-64]
+703826b9ab 2025-05-23 André Jorge      chore: lint
+035d2143a5 2025-05-27 André Jorge      test: add title and description properties to plugins [PPUC-64]
+eaaa75696d 2025-05-19 André Jorge      feat: add title and description properties to plugins [PPUC-64]
+cf41cc00e7 2025-05-20 Hugo Jose        test: revise MondrianCatalogHelper integration tests (#5910)
+1a286d2cdc 2025-05-20 miguelappleton   fix: add start time to RESERVEDMAPKEY [PPP-5648]
+19290073e9 2025-05-12 Duarte Cunha Leão fix(plugin-manager): broken IT test [PPUC-64]
+d34f588d9a 2025-05-08 Hugo Jose        fix: fix behavior that prevents that a catalog already load to the cache to be updated when used override as true [SME-849] (#5900)
+69bf981613 2025-04-16 Duarte Cunha Leão feat(plugin-manager): add publisher-plugin-id attribute to published beans [PPUC-64]
+a21409de46 2025-04-14 Duarte Cunha Leão chore: linting several object factory and plugin manager types [PPUC-64]
+36c0a2a72c 2025-05-02 Duarte Cunha Leão chore: fixed & linted some IT test files [BACKLOG-43942]
+b367b79ae0 2025-05-02 Duarte Cunha Leão chore: disabled IT tests causing excessive disk usage [BACKLOG-43942][BISERVER-14405]
+a14c10395c 2025-05-02 Duarte Cunha Leão chore: removed SolutionImportHandlerIT [BACKLOG-43942][BACKLOG-43046]
+54d4582dea 2025-04-11 André Jorge      fix: NPE when tree has no children [BISERVER-15190]
+cb1f79023a 2024-12-17 André Jorge      fix: NPE when tree is null [BISERVER-15190]
+bba2bc88e6 2025-04-08 Luc Boudreau     [TEST] Remove merge compliance action
+b0c5f496ab 2025-04-07 Luc Boudreau     Remove all mysqsl deps (#5880)
+313423ef47 2025-04-04 Rangashivani     [PPP-5604]-XSS Findings For Pentaho-platform
+2fc6eafebb 2025-03-24 William Hartman  [PPP-5594] Add "*" to allowed characters for XPath
+ae6766ac0e 2025-03-24 Eddie Martinez   [CLEANUP] Fix Server-side request forgery
+59b1dfb154 2025-03-21 William Hartman  [PPP-5594] handle potentially unsafe XPath queries
+f0291d267d 2025-03-21 Duarte Cunha Leão chore(puc-home): removed local underscore and switched to common-ui/underscore [PPP-5515]
+b921dcbbff 2025-03-21 Eddie Martinez   [PPP-5595] Fix Server-side request forgery
+69afc05072 2025-03-21 Peter Rinehart   Revert "[BACKLOG-43025] Update startup scripts to include add-opens for"
+de8ff52404 2025-03-19 Peter Rinehart   [BACKLOG-43025] Update startup scripts to include add-opens for java.time. Needed for Gson to handle java.time.LocalDate fields in the marketplace code.
+ae22fb0f0f 2025-03-12 joana-fb         Revert "chore: use underscore webjar instead of hardcoded file [PPP-5515] (#5…"
+ce92640f07 2025-03-12 joana-fb         chore: use underscore webjar instead of hardcoded file [PPP-5515] (#5863)
+0f00b3bba2 2025-03-11 Rangashivani     [PPP-5604]-XSS Findings For Pentaho-platform
+bcd00835d8 2025-03-07 Luc Boudreau     [CLEANUP] Remove PR compliance workflow for now
+9a9fb86b6f 2025-03-06 Rangashivani     [PPP-5604]-XSS Findings For Pentaho-platform
+a037a6f240 2025-03-05 Luc Boudreau     [TEST] Fix scpId parameter
+dc0b1461bc 2025-03-05 Luc Boudreau     [TEST] Add default compliance workflows
+74290a663f 2025-02-24 joana-fb         fix: add character restrictions to password in createUser and changePassword dialogs [BISERVER-15243]
+df22753f69 2025-02-20 devuser          [PPP-5604]-XSS Findings For Pentaho-platform
+26ae3731a0 2025-02-19 joana-fb         fix: add character restrictions to password in createUser and changePassword dialogs [BISERVER-15243]
+e92daf0128 2025-02-18 joana-fb         fix: add character restrictions to password in createUser and changePassword dialogs [BISERVER-15243]
+cb2d34a373 2025-02-18 joana-fb         fix: add character restrictions to password in createUser and changePassword dialogs [BISERVER-15243]
+e4cd44a459 2025-02-18 joana-fb         fix: add character restrictions to password in createUser and changePassword dialogs [BISERVER-15243]
+aad432a6ba 2025-02-18 joana-fb         fix: add character restrictions to password in createUser and changePassword dialogs [BISERVER-15243]
+c26a25ee9d 2025-02-17 joana-fb         fix: add character restrictions to password in createUser and changePassword dialogs [BISERVER-15243]
+efbbf909c9 2025-02-17 joana-fb         fix: add character restrictions to password in createUser and changePassword dialogs [BISERVER-15243]
+507b620600 2025-01-30 HDS\rammansoor   [BISERVER-15169] Adding debug logging to backup and restore process
+6b3099a2d7 2025-01-26 wilseyler        [BACKLOG-43046] - Moved "Import Schedules" logic from pentaho-platform to pentaho-scheduler-plugin
+2cb4f2c76d 2025-01-17 joana-fb         [BISERVER-15139] - "Files" text box displays an elypsis (...) when the file name is very long
+1cfac2dd21 2025-01-16 HDS\rammansoor   [BISERVER-15169] - Correcting some of the externalized messages
+e47e4a28ab 2024-12-22 HDS\rammansoor    [BISERVER-15169] Adding debug logging to backup and restore process
+1ce98bc50c 2024-12-20 joana-fb         [BISERVER-15135] - Username with prefix or suffix blank spaces on Login page triggers UsernameNotFound Exception, but session is created
+830196a6f3 2024-12-20 joana-fb         [BISERVER-15135] - Username with prefix or suffix blank spaces on Login page triggers UsernameNotFound Exception, but session is created (#5819)
+d3bf8e2608 2024-12-17 SreejaSridhar    [BACKLOG-42356] Check if the file already exists before saving
+6081808d7d 2024-12-13 srallapa         [BISERVER-15176] removing method to have it in server instead of reading from kettle.props file
+d5200bb96b 2024-12-16 srallapa         Revert "Revert "[BISERVER-15051] hide internal variables PUC side""
+de967f8bdc 2024-12-11 joana-fb         [BISERVER-15145] - Prevent the Creation of Usernames with Leading/Trailing Whitespaces
+04a97eac62 2024-12-09 Tim Kafalas      [BACKLOG-15174] Fix migrations script
+5cd171eec0 2024-12-09 srallapa         Revert "[BISERVER-15051] hide internal variables PUC side"
+2b48ee9e9a 2024-12-09 joana-fb         [PDI-20262] - Uploaded PDI Job/Transformation in PDI and save in Repository has file size of 0 on the Properties screen
+15c4bd5935 2024-12-06 sVarma1992       [BACKLOG-42169] - Changes for enabling plugin to register new file type extensions
+d2a73e280c 2024-11-29 Bruno Cavaleiro  fix: fix failing unit test
+a37ddc4733 2024-11-27 Bruno Cavaleiro  chore: checkstyle
+d4c623bb35 2024-11-27 Bruno Cavaleiro  fix: fix issue in the code
+bbd202af5e 2024-11-27 Bruno Cavaleiro  chore: address checkstyle issues in edited files
+cd6555e815 2024-11-27 Bruno Cavaleiro  fix: Invalid database connection is saved AND used despite "CANCEL"
+4e8d5948e0 2024-11-26 Bruno Cavaleiro  chore: light improvements on readability
+b7ab326156 2024-11-26 joana-fb         [BISERVER-15155] - File size in KB is calculated through division by 1000 instead of 1024 (#5795)
+fe377d977a 2024-11-20 singletonc       [PPP-5411] [PPP-5420] Update Pentaho User Console community release help about page to display enterprise license text and perform limited smoke test - Limit to one LICENSE.TXT file at the root of the project - Copy license text file to root of product artifact as well as GWT accessible location - No additional error handling, if license text is missing in @Source annotation, the project will not compile, it will tell you the file is missing - AboutCommand now gets the license text from HTTP request to the server instead of compiling it into GWT, this way it can be easily overridden in EE - Chained version and license request callbacks while caching the results to prevent additional calls
+679617a0b5 2024-11-20 aramos           [PPP-4893][PPP-5077][PPP-5128][PPP-4407][PPP-4660][PPP-4760][PPP-5043][PPP-4967][BACKLOG-42834] Fixed the log of extra DEBUG messages and missing log service
+39f5de1b80 2024-11-18 Ramaiz Mansoor   Revert "[BISERVER-15124] - Moving repository cleaner to scheduler plugin"
+05bdf3299e 2024-11-18 HDS\rammansoor   [BISERVER-15124] - Moving repository cleaner to scheduler plugin
+22f74fa7af 2024-11-14 aramos           [PPP-4893][PPP-5077][PPP-5128][PPP-4407][PPP-4660][PPP-4760][PPP-5043][PPP-4967] Fixed unit test dependent on slf4j package name
+5423054f53 2024-10-11 Steve Maring     [PPP-5411] License Notice in EE Splash Screen Cherry Picks: Remove oss license html attachments
+2ccfe4b9d6 2024-11-13 aramos           [PPP-4893][PPP-5077][PPP-5128][PPP-4407][PPP-4660][PPP-4760][PPP-5043][PPP-4967] Added SLF4J 2.0.x implementation dependency
+ae809cdf93 2024-11-11 aramos           [PPP-4893][PPP-5077][PPP-5128][PPP-4407][PPP-4660][PPP-4760][PPP-5043][PPP-4967] Moved log4j-slf4j2-impl declaration to Pentaho parent pom
+082b3c01ba 2024-11-11 lgrill-pentaho   DEVO-11194: updated license and copyright headers
+3b662a534e 2024-11-07 aramos           [PPP-4893][PPP-5077][PPP-5128][PPP-4407][PPP-4660][PPP-4760][PPP-5043][PPP-4967] Karaf upgrade to 4.4.6 and vulnerability fixes
+17518e4cb9 2024-11-04 Peter Rinehart   [PPP-4776] Ensure tablespace does not exist before trying to create it.
+dbe7866568 2024-10-31 Dean DiRoma      [PPP-4776] update to mysql create quartz script to handle if user already exists
+74d719affd 2024-10-30 HDS\rammansoor   [PPP-4776] - Adding a end and start markers to split the script into two for installer's consumption
+a882285e08 2024-10-30 Hélder Freitas   feat: add children with same depth to expanded path [BACKLOG-41878] (#5755)
+35b987fc5e 2024-10-30 Peter Rinehart   [PPP-4776] Do not drop quartz user if it exists, but create it if it does not.
+4f507327f2 2024-10-29 Vitor Cardoso    [CLEANUP] - Updating caching
+f8a95db7b0 2024-10-28 Vitor Cardoso    [DEVO-11106] - Fixing cache hosted tools cache location
+117a4c4963 2024-10-28 Vitor Cardoso    [DEVO-11106] - Adding container image and CodeQL caching
+358c3925fa 2024-10-25 Vitor Cardoso    [DEVO-11106] - Fix the CodeQL GHA build for pentaho-platform
+642c095e4d 2024-10-17 Dean DiRoma      Revert "Revert "[BISERVER-15051] hide internal variables PUC side""
+908a6972f8 2024-10-16 Dean DiRoma      Revert "[BISERVER-15051] hide internal variables PUC side"
+2b4f6a76dd 2024-10-16 Dean DiRoma      Revert "Revert "[BISERVER-14374] Add the ability for users to select a time zone for a""
+3dc38baec2 2024-10-15 Dean DiRoma      Revert "[BISERVER-14374] Add the ability for users to select a time zone for a"
+1d1b0aaca5 2024-09-05 Peter Rinehart   [BISERVER-14374] Add the ability for users to select a time zone for a job other than the server's time zone.
+adbc4ad416 2024-10-11 srallapa         [BISERVER-15051] hide internal variables PUC side
+6219e636d8 2024-10-03 Sergio Ribeiro   [PDI-20206] Revert "[BISERVER-14644] - Users with password having certain special characters, or strings of characters, are not allowed to login to PUC"
+104d87e2fd 2024-10-03 Sergio Ribeiro   [PDI-20206] Revert "[BISERVER-14644] - Users with password having certain special characters, or strings of characters, are not allowed to login to PUC"
+84c97ed44a 2024-10-03 Sergio Ribeiro   [PDI-20206] Revert "[BISERVER-14644] - Users with password having certain special characters, or strings of characters, are not allowed to login to PUC"
+1012110f6e 2024-09-27 Bruno Cavaleiro  Revert "[PDI-20206] Add base64/url decoding for passwords in ldap authenticator"
+e0ceb881f8 2024-09-27 Bruno Cavaleiro  Revert "[PDI-20206] Address failing unit tests and PR comments"
+9503fc1d86 2024-09-25 Bruno Cavaleiro  [PDI-20206] Address failing unit tests and PR comments
+e09dd38e92 2024-09-24 Bruno Cavaleiro  [PDI-20206] Add base64/url decoding for passwords in ldap authenticator
+98288a2053 2024-09-24 lgrill-pentaho   HNC-766: updated license and copyright headers
+f5784ae3fc 2024-09-24 wilseyler        [PPP-4825] - Upgrade to drools 8.44.0.Final
+87ea949c1b 2024-09-23 Tim Kafalas      [PPP-4776] Finalize Quartz Migrations Scripts
+7ab63fddfb 2024-09-20 Nicholas Jordan  [PPP-5163] Vulnerable Component: snakeyaml - part 2 ( Non OSGi upgrade) - replace 'org.hitachivantatar:safeyaml' with 'org.yaml:snakeyaml:[2.0,)'
+156fb63fdd 2024-09-19 Luc Boudreau     [TEST] Configure dependabot
+e0eb0bd46f 2024-09-19 Luc Boudreau     [TEST] Configure dependabot
+6ff9d92f65 2024-09-19 Luc Boudreau     [TEST] Configure dependabot
+a41f6ec521 2024-09-19 Luc Boudreau     [TEST] Configure dependabot
+183758fed9 2024-09-19 Luc Boudreau     [TEST] Configure dependabot
+8686a673b3 2024-09-19 Luc Boudreau     [TEST] Confire dependabot
+bb470ff0bb 2024-09-19 Luc Boudreau     [TEST] Configure dependabot
+37230e9dbf 2024-09-19 Luc Boudreau     [TEST] Configure dependabot
+17948cbfd3 2024-09-19 Luc Boudreau     [TEST] Configure Dependabot for one repo
+a43d6c0b3d 2024-09-19 Luc Boudreau     [TEST] Fix dependabot
+7f30141413 2024-09-19 Luc Boudreau     [TEST] Configure dependabot for daily scans
+14978a8bfb 2024-08-29 soagarwal1       [PPP-5166] - Use of Vulnerable Component: Components/jackson-databind 2.14.2 (Non OSGi upgrade)
+79a6aad68c 2024-09-12 wilseyler        [PPP-4825] - Upgrade to drools 8.44.0.Final
+e00dc1d02a 2024-08-26 Johnny K. Nieh   [PPP-4895] Update jettison version to 1.5.4
+b3c731a5c5 2024-09-09 devuser          [REVERT]-BACKLOG-36134-Consolidate Redundant Secure XML Parsing code
+f0051cc548 2024-09-03 lgrill-pentaho   HNC-766: updated license
+8e738b9866 2024-09-03 lgrill-pentaho   HNC-766: updated license
+b533808c8b 2024-08-30 Bruno Cavaleiro  [PRD-6138] Add reporting info logging in log4j2.xml
+511929d331 2024-08-28 Tim Kafalas      [PPP-4776] Modify scripts to not detete the Quartz database
+38ec99f1c0 2024-08-28 devuser          [BACKLOG-36134]-Consolidate Redundant Secure XML Parsing code
+20c0245dd2 2024-08-27 Peter Rinehart   [PDI-20086] Fix file locking errors on windows.
+8ea0998abc 2024-05-23 HDS\rammansoor   [PPP-4174] Migrate axis2 web services to jax-rs and remove axis2 libraries.
+0c23ca7ab1 2024-08-23 wilseyler        [PPP-4825] - Upgrade to drools 8.44.0.Final
+fa5ce4ce94 2024-08-22 Nicholas Jordan  [CLEANUP] fixing failing test KarafBootTest#verifyStaleLockBehavior - changing the pid for a stale process to -1, instead of 0 to work with all systems
+73fd368d21 2024-08-22 Nicholas Jordan  [CLEAUP] update git ignore file list, add .DS_Store to .gitignore
+465caaab2d 2024-08-21 Tim Kafalas      [PPP-4776] Yet another mistake in the HQSQL quartz script
+44fcfb2aba 2024-08-13 André Jorge      fix: get dispatch key from path with forward slash [BACKLOG-41364]
+24f6633549 2024-08-20 Tim Kafalas      [PPP-4776] Typo in quartz script
+92f2350318 2024-08-19 srallapa         [PPP-4874] removing soap library
+57d1357c08 2024-08-16 Peter Rinehart   [PPP-4391] Remove c3p0 dependency; was never really used except as a connection pool for hibernate, and tomcat handles that.
+e1d6e64b01 2024-08-16 Tim Kafalas      [PPP-4776] CE fix for quartz upgrade.
+acea0fd3f7 2024-08-15 Peter Rinehart   [PPP-4391] Upgrade the c3p0 library to version 0.9.5.4
+b20d665b32 2024-08-14 miguelappleton   [PIR-1523] - SQL queries for the prompts In Interactive reports are executed twice
+f472eab232 2024-08-13 Bruno Cavaleiro  [PPP-4994] Remove Derby DB data source (#5675)
+aa325fdf69 2024-08-09 Peter Rinehart   [PDI-20086] Add a kettle parameter to control whether we wait for a lock file before starting karaf.
+1e664c88ee 2024-08-01 Peter Rinehart   [PDI-20086] Implement a file lock to prevent multiple karaf instances from booting at the same time, which may lead to config file corruption or instances starting without a proper karaf environment.
+caa64b7c6d 2024-08-07 singletonc       [PPP-4784] Vulnerable Component: groovy - upgrade to secure minor version 2.4.21
+4f08e90ae5 2024-08-06 devuser          [REVERT] PPP-5077-Vulnerable Component: mina-core
+922a1d2a06 2024-08-05 Tim Kafalas      [BACKLOG-41266] Fix and add quartz creation scripts
+1cab268cda 2024-08-02 singletonc       [PPP-4582] Use of Vulnerable Component: Components/oauth_client_library_for_java Remove unused plugins with vulnerabilities from assembly:     - pentaho-googledrive-vfs     - pdi-google-analytics-plugin
+1688c8ec94 2024-07-31 Duarte Cunha Leão [PPP-4772] RCE injection via connection's JNDI database name
+a2f8bef2df 2024-07-26 mbrasil          tests: add unit test [PPP-4773]
+6ecbda990d 2024-07-26 mbrasil          chore: clean and lint code
+7367f14292 2024-06-28 mbrasil          fix: Path Traversal through UploadService [PPP-4773]
+79842d99e7 2024-07-26 devuser          [PPP-5077]-Vulnerable Component: mina-core
+2de841b045 2024-07-25 SaiPrasannaL     [PPP-4968] - Vulnerable Component: xmlbeans
+273df9886d 2024-07-24 Eddie Martinez   [PPP-4864] Vulnerable Component: JDom
+a52275cf5e 2024-07-23 Bruno Cavaleiro  Revert "[PPP-4305] Upgrade boostsrap.js to 3.4.1"
+b67f24d4fb 2024-07-15 Tim Kafalas tkafalas [BACKLOG-41266] Upgrade Quartz scheduler to 2.3.2
+d30a701983 2024-07-04 Bruno Cavaleiro  [PPP-4305] Upgrade boostsrap.js to 3.4.1
+dbdbd0f58d 2024-07-12 Dean DiRoma      Revert "[BACKLOG-41266] Upgrade Quartz scheduler to 2.3.2"
+4d12875c57 2024-07-12 Tim Kafalas tkafalas [BACKLOG-41266] Upgrade Quartz scheduler to 2.3.2
+00aa4e9178 2024-07-09 Duarte Cunha Leão [BACKLOG-41349] Improve logging for schedule output location fallback
+9c205b89bc 2024-07-08 buildguy         [CLEANUP] updated versions via release version merger
+6400d272bd 2024-07-05 Duarte Cunha Leão [BACKLOG-41394][BACKLOG-41395] Trash folder is always empty
+86202de366 2024-07-05 soagarwal1       [BACKLOG-41348] - Output Location in the schedule automatically changes when the user does not have access to the specified location and end up with failed schedule execution.
+d630604d82 2024-07-04 soagarwal1       [BACKLOG-41237] - Error when double-click valid VFS files
+25fb890950 2024-07-03 HDS\rammansoor   [BISERVER-15009] - Remove version checker from the product
+eb36e0da85 2024-07-01 HDS\rammansoor   [BISERVER-15009] - Remove the version checker from the product
+dd472acf5d 2024-07-01 HDS\rammansoor   [BISERVER-15009] - Remove the version checker from the product
+f1d3dc903c 2024-07-01 Duarte Cunha Leão [BACKLOG-41091] Start using IGenericFile#getNameDecoded() for purposes of UI display
+aa80edd2b0 2024-06-27 soagarwal1       [BACKLOG-41237] - Local VFS connection shows all files contained within the local folder
+96f59310da 2024-06-26 Sergio Ribeiro   [PPP-5118] Revert "[PPP-5053] - Intercepting few Get request with Burp Suite allows un-athorised user to access data (#5559)" (#5644)
+2334556afa 2024-06-25 Dean DiRoma      [BACKLOG-41071] 10.2: Error registering nodetypes encountered during server startup
+ca659e45ad 2024-06-25 soagarwal1       [BISERVER-15088] - 10.2: Scheduling reports without attachment name the file name gets appended with eg: .pdf.pdf
+b2359c1fe6 2024-06-21 soagarwal1       [BISERVER-15086] - Fix scrollbar showing when burger menubar popup open
+63031de7d6 2024-06-18 nawaz34-hitachivantara [BACKLOG-41048] Added code changes for excluding anonymous role from ba roles in a VFS connection create/edit page.
+81da430b78 2024-06-19 Bruno Cavaleiro  [BISERVER-15067] Add toggle property to enable/disable admin access to other users trash (#5636)
+3f538de099 2024-06-18 singletonc       [BACKLOG-41134] [BACKLOG-40475] Disable Folder Actions under Repository - Disable all Folder Actions for root folders "Repository" and "VFS Connections" - Hide icons for root folders, to communicate to users that they shouldn't be considered standard folders - Move reformatResponse out of fileModel so that it can be more easily used by other areas of the file - Reformat the treeRoot response so that we are applying the reformat logic when first loading/updating the tree - Fix title == null conditional. This should have originally been handled in browser.js reformatResponse and not done in the template
+466c32dedc 2024-06-18 lsaikrishna      [BACKLOG-40997] - upgrading the apache poi , commons-compression and commons-io jars to improve extracting the excel sheet
+220bdb0e3e 2024-06-17 Peter Rinehart   [TEST] Ignore version checker tests; URL to receive version data no longer exists.
+79bf383131 2024-06-11 singletonc       [BACKLOG-40475] Browse Perspective and Schedules: Enable "Open" action for select VFS Connection file types `SolutionBrowserPanel`: - added spotbugs dependency so that we can use GenericFileNameUtils - in this effort we will be supporting the following extensions for PVFS file "Open" actions -- `supportedGenericFileExtensions = Arrays.asList( "html", "pdf", "txt", "rtf", "xlsx" );` -- helper function to check if a fileName has an acceptable extension - created general error dialog function to support existing plugin missing error along with new unsupported file type/extension error -- made these functions accessible to other js files, along with isRepositoryPath - introduced logical fork to separate Repository vs PVFS file opening for now - introduced new `generic-files/<path>/content` endpoint for both Repository and PVFS files - fixed recents encoding to match the current front/backend encoding/decoding
+3733498959 2024-06-11 Dean DiRoma      [BACKLOG-41018] Oracle repository scripts in 10.2 still refer to Oracle versions 10g and 12c
+93cb886f25 2024-06-11 soagarwal1       [BACKLOG-40443] - Closing a folder's "Properties..." dialog via "OK" in Browse Perspective returns focus to the folder's parent
+3b90117eb2 2024-06-10 SaiPrasannaL     [BACKLOG-41059] Error in PIR when trying to change the name of a report
+dca19ac22a 2024-06-10 SaiPrasannaL     [BACKLOG-41059] Error in PIR when trying to change the name of a report
+e4c528b19f 2024-06-10 SaiPrasannaL     [BACKLOG-41059] Error in PIR when trying to change the name of a report
+e459c28e4c 2024-06-07 William Hartman  [BACKLOG-41002] remove --add-opens for java.lang.Object
+414f0214b0 2024-06-07 joana-fb         [ANALYZER-4102] - PUC - "Save" "Save as" buttons not present when user navigates between the PAZ tabs
+a1ba4fcd41 2024-06-06 Duarte Cunha Leão [BACKLOG-41033] PUC - Browse Files - VFS connection root folders appear in random order
+dc9cfe7841 2024-06-05 Peter Rinehart   [BACKLOG-41003] Additional add-opens for kerberos auth in big data, syntax cleanup
+ddd8356fd7 2024-06-05 Bruno Cavaleiro  [PPP-5105] Denial Of Service when changing file ACLs
+1170dd6f2f 2024-06-05 André Jorge      fix: race condition loading GWT JS [BACKLOG-40418]
+23caf9bf63 2024-06-04 SaiPrasannaL     [PPP-5078] Insecure deserialization in Pentaho Interactive Reporting.
+90e8229b4a 2024-06-05 renato-s         [BISERVER-14644] - Users with password having certain special characters, or strings of characters, are not allowed to login to PUC
+e53190c02b 2024-06-04 SahithiKommagani6 [PPP-5004]-Tomcat Configuration vulnerable to Server-Side Request Forgery
+7b355e47be 2024-06-04 vtangirala       [BACKLOG-40910] Restore functionality issue: Clicking the "Restore" button initiates indefinite loading , failing to restore the file.
+ac193d6496 2024-06-03 André Jorge      fix: race condition loading GWT JS [BACKLOG-40418]
+e92a8c75e9 2024-05-31 miguelappleton   [PDB-2096] - View Mode wrong tooltip text
+ce1b8fe1c1 2024-05-31 Rangashivani     ["Revert Log Changes"][BISERVER-15027]MySQL8 database repository for pentaho server does not work properly with mysql8 jar
+823aa851bd 2024-05-30 Eddie Martinez   [BACKLOG-40894] start-pentaho-debug.bat and start-pentaho-debug.sh missing JDK17 JDK_JAVA_OPTIONS --add-opens
+38d928f1d0 2024-05-28 Ezequiel Cuellar [BACKLOG-40785] Refactor existing Pentaho Server code with New endpoint with reduced License Server call
+edbfa9dbd0 2024-05-28 Rangashivani     [BISERVER-15027] MySQL8 database repository for pentaho server does not work properly with mysql8 jar
+2f17680f7e 2024-05-23 vtangirala       [BACKLOG-40444] Browse Perspective: Improve folder tree model depth variable and related API call
+d767fbca6b 2024-05-21 renato-s         [BISERVER-14644] - Users with password having certain special characters, or strings of characters, are not allowed to login to PUC
+370804f49b 2024-05-20 Eddie Martinez   [BACKLOG-40738] JDK17 - Fix all unit tests that aren't related to pentaho-kettle
+6b91b1ae63 2024-05-06 André Jorge      feat: add support for DMV queries [BACKLOG-40289]
+cb7d8fea17 2024-05-15 André Jorge      chore: clean and lint
+a677aa703c 2024-05-13 mbrasil          feat: validate enableXmla property [BACKLOG-40539]
+c296e28b16 2024-05-13 mbrasil          chore: clean and lint
+cfeeb32de6 2024-05-15 singletonc       [BACKLOG-40489] Error when accessing browse files with a user with special characters - Fix unnecessary "scheduler_folder" session-variable URI decoding that was causing a problem with folders with special characters. -- The value is not URI encoded in the response in the first place, so it was not decoding anything, just breaking on special characters.
+51726e8180 2024-05-14 André Ramos      [BISERVER-14948] - Using LDAP authentication, Admin user is not able to view, identify and hence empty the non-admin user’s trash.
+59ab5b54ba 2024-05-10 renato-s         [BISERVER-14644] - Users with password having certain special characters, or strings of characters, are not allowed to login to PUC
+263fa62a98 2024-05-13 singletonc       [BACKLOG-40086] [BACKLOG-40639] Fix Shift+Click
+5e72249baf 2024-05-07 singletonc       [BACKLOG-40489] Error when accessing browse files with a user with special characters - Encoded `expandedPath` query param - Escape special characters (in paths) in jquery css selectors
+de1232051c 2024-05-09 Duarte Cunha Leão feat: Added the /api/userrolelist/adminRole endpoint [BACKLOG-40063]
+962f33bd65 2024-05-06 Duarte Cunha Leão chore: Refactoring, linting [BACKLOG-40063]
+819624a08e 2024-05-09 Dean DiRoma      [BACKLOG-40660] 10.2 - JDK17 - All startup scripts to add '--add-opens' Java options
+fa027e0010 2024-05-08 Dean DiRoma      [BACKLOG-40660] 10.2 - JDK17 - All startup scripts to add '--add-opens' Java options
+0d583186e4 2024-05-02 SahithiKommagani6 [PPP-5004]-Tomcat Configuration vulnerable to Server-Side Request Forgery
+f2bcf2030b 2024-05-03 SaiPrasannaL     [BISERVER-11359] Code changes to provide functionality to upload multiple files at once
+6b2f5ee515 2024-04-24 singletonc       [BACKLOG-40489] Error when accessing browse files with a user with special characteres (that used to work before) - Use new Encoder encode function for generic file paths to address handling of "~" in file paths
+5888c48f16 2024-04-23 William Hartman  Revert "[BACKLOG-40370] Add new actions for hiding plugins from UI (backend changes only)"
+d8d1b51413 2024-04-23 singletonc       [BACKLOG-40086] Schedule Output Perspective : Allow user to browse Scheduled contents from a VFS location folder Follow up sub-task: [BACKLOG-40485] Disable file action buttons for multi-select, and disable double-click to "open" for VFS Connections - These blocks/code will be modified in BACKLOG-40475 wherein we investigate enabling "open" for VFS Connection files [BACKLOG-40486] Investigate ctrl+click in VFS Connection Files (cannot ctrl+click to add >1 to selection, only remove) - Add `id` to file elements in cases wher `objectId` is missing in response object, use `path` instead + Ensure full URL encoding for tree requests
+8dd1b57e6a 2024-04-11 Ezequiel Cuellar [BACKLOG-39964] PENTAHO SERVER - enhance the import-export utility to include the new tables created by Email Groups functionality
+f4522edee4 2024-04-17 André Jorge      feat: add POST support to ProxyServlet [BACKLOG-402904]
+ece7315b13 2024-04-17 André Jorge      chore: lint and clean [BACKLOG-402904]
+f6d572da59 2024-04-17 André Ramos      [PDI-20078] - Metadata generated from "Automatic Documentation Output" step for a transformation/job will contain all the unwanted connections available in the repository
+a5a8fd41e8 2024-04-24 singletonc       [BACKLOG-40489] Error when accessing browse files with a user with special characteres (that used to work before) - Use new Encoder encode function for generic file paths to address handling of "~" in file paths
+d27787a7b0 2024-04-23 William Hartman  Revert "[BACKLOG-40370] Add new actions for hiding plugins from UI (backend changes only)"
+d043aeff73 2024-04-23 singletonc       [BACKLOG-40086] Schedule Output Perspective : Allow user to browse Scheduled contents from a VFS location folder Follow up sub-task: [BACKLOG-40485] Disable file action buttons for multi-select, and disable double-click to "open" for VFS Connections - These blocks/code will be modified in BACKLOG-40475 wherein we investigate enabling "open" for VFS Connection files [BACKLOG-40486] Investigate ctrl+click in VFS Connection Files (cannot ctrl+click to add >1 to selection, only remove) - Add `id` to file elements in cases wher `objectId` is missing in response object, use `path` instead + Ensure full URL encoding for tree requests
+9e53cdf739 2024-04-11 Ezequiel Cuellar [BACKLOG-39964] PENTAHO SERVER - enhance the import-export utility to include the new tables created by Email Groups functionality
+7d2b2e53a6 2024-04-17 André Jorge      feat: add POST support to ProxyServlet [BACKLOG-402904]
+05d3924e34 2024-04-17 André Jorge      chore: lint and clean [BACKLOG-402904]
+8d154ca0f2 2024-04-17 André Ramos      [PDI-20078] - Metadata generated from "Automatic Documentation Output" step for a transformation/job will contain all the unwanted connections available in the repository
+9e58d7fe41 2024-04-09 Peter Rinehart   [BACKLOG-40255] Sub in patched axis2-kernel jar to resolve byte code error messages.
+031e21a9dc 2024-04-05 William Hartman  [BACKLOG-40370] Add new actions for hiding plugins from UI (backend changes only)
+5d8ae4f66b 2024-04-05 singletonc       [BACKLOG-40086] Cont. - Add depth parameter into folder tree call to prevent regression -- Include comment that this is expensive and we ought to improve it
+7948c0a922 2024-04-05 singletonc       [BACKLOG-40086] Cont. - simplify cache clearing logic: -- always clear folder cache -- clear file cache conditionally, as is already done, simplify by moving to existing beforeSend block
+23b9d9fad2 2024-04-05 singletonc       [BACKLOG-40086] Cont. - refactor repository path and add repository root path function with constant - check flag before clearing cache up in the folders
+e98a7b2c51 2024-04-04 singletonc       [BACKLOG-40086] Cont. - move repository folder children logic into its own function - slighty refactor TODO regarding creating an error dialog. we have a browser.dialog.js but I don't know it well enough to just add a new dialog in the scope of this ticket.
+b0da9cf8a8 2024-04-04 singletonc       [BACKLOG-40086] Cont. - move clearTreeCache call into fetchTreeRootData - slightly refactor logic for fetchData url encoding - remove null check for path in url in expandFolder as we cannot expand a null folder
+299ade7544 2024-04-04 singletonc       [BACKLOG-40086] Cont. - make clear cache synchronous to prevent tree access race conditions - added logic to disable buttons when the passed path is null - commented out else blocks for TODOs regarding future work on VFS folder/file permissions - let -> const - ' -> "
+4b1de7a2d2 2024-04-03 singletonc       [BACKLOG-40086] Cont. - Refactor helper methods and variables that are using them (do not need underscore)
+cc98448b04 2024-04-03 singletonc       [BACKLOG-40086] Cont. - Rename isVfsConnection button functions to "enableButtons" to remove VFS specific language - Make clearTreeCache generally available in browser.js as we need to call it in multiple contexts -- This accounts for the tree not refreshing upon rename - Refactor trash folder adding logic to account for CE wherein there will be no "Repository" folder with path "/", so just add it to the end like was done before - Fix trashFolder and its templates -- the id wasn't being set and this broke multiple file actions - Exclude trash folder as "startFolder" from getFolderTreeRootRequest expandedPathParam - Account for passing hiddenFiles value through to API calls instead of hard-coding -- The trash folder does not exist in generic-files API - Add logic to account for a response with no VFS Connections - Add _encodeGenericPath helper function - Refactored _isRepositoryPath helper function to only accept unencoded path "/" and moved related calls to before encoding
+f646de2522 2024-03-22 singletonc       [BACKLOG-40086] Cont. - refactored "generic-files/files/" endpoints to just "generic-files/"
+a240e0bc26 2024-03-21 singletonc       - refactored buttons isVfsConnection functions to use existing buttons variable - changed some lets to const for jquery selected elements
+82e86d3dee 2024-03-21 singletonc       [BACKLOG-40086] Cont. - As part of my original approach to mimic the loading functionality in scheduler Select Folder Dialog, I refactored how we are constructing the expanded folders -- to keep the overall implementation consistent, we are now constructing these folders/treeItems using handlebars and browser.templates.js like we do when first rendering the tree -- I also noticed that the values we see when we hover over folders (title attribute) are inconsistent, so I introduced consistency.
+adb9d73f1a 2024-03-21 singletonc       [BACKLOG-40086] Cont. - Add _isRepositoryPath helper function - Add loading indicator for files so that the user will see that something is happening when they click on a folder that cannot be retrieved -- It will turn into a loading indicator every time the user clicks on it to retry the operation -- If it fails, a warning icon is shown - Move trash folder under Repository, as we do not have trash for VFS Connection folders -- In testing this I realized that I broke trash functionality... I have to fix this!
+b70419945b 2024-03-20 singletonc       [BACKLOG-40086] Cont. - Fix scrollIntoView implementation for both folders and files views - Added cache clearing to updateData which is called when the page is first loaded (login) and when the refresh button is clicked to trigger 'RefreshBrowsePerspectiveEvent'
+6845b6e281 2024-03-19 singletonc       [BACKLOG-40086] Schedule Output Perspective : Allow user to browse Scheduled contents from a VFS location folder - Maintain repository folder/file actions and disable all for VFS Connections for now - Utilize scheduler-plugin api for REST calls - Refactor FileBrowserFolderTreeModel.fetchData to fetchTreeRootData as it is only ever used for fetching the root tree and associated scheduler-plugin/api endpoint - Refactor FileBrowserFileListModel.reformatResponse, customSort, the trash folder, and browser.templates to match the response objects returned by scheduler-plugin/api endpoints - Ensure hyperlinked folder from Schedules -> Browse Perspective is scrolled into view
+3e09713294 2024-03-26 mbrasil          feat: add predefined schedule execute user [BACKLOG-40292]
+c6c44b6282 2024-03-19 mbrasil          feat: endpoint execute schedule permission [BACKLOG-40051]
+fbc489818c 2024-03-19 mbrasil          chore: lint, warnings and cleanup [BACKLOG-40051]
+6312662698 2024-03-29 Eddie Martinez   [BACKLOG-39559] JDK17 - Build issue for https://github.com/pentaho/pentaho-cassandra-plugin.git
+9c4ee216f7 2024-03-26 mbrasil          feat: add predefined schedule execute user [BACKLOG-40292]
+cd70c77744 2024-03-26 William Hartman  [BACKLOG-39557] Add opens needed by Analyzer for commons-lang reflectionEquals
+dd3b5df512 2024-03-19 mbrasil          feat: endpoint execute schedule permission [BACKLOG-40051]
+e5ad2c311a 2024-03-19 mbrasil          chore: lint, warnings and cleanup [BACKLOG-40051]
+a8b5619d61 2024-03-22 Eddie Martinez   [BACKLOG-40034] Provide an ability to configure different modes available as part of AES encryption
+0e3803b948 2024-03-20 mbrasil          feat: new schedule execution permission [BACKLOG-40066] (#5560)
+0685b032e0 2024-03-19 Peter Rinehart   [BACKLOG-40255] Startup script fixes.
+b27effe4fd 2024-03-19 Renato Santos    [PPP-5053] - Intercepting few Get request with Burp Suite allows un-athorised user to access data (#5559)
+1c6dacd07b 2024-03-04 André Ramos      [PPP-4865] - Vulnerable Component: snakeyaml
+e93e8a4c54 2024-02-27 Ezequiel Cuellar [BACKLOG-39778] EMAIL GROUPS - remove the "Email Groups" section completely from view if license does not have BI-SERVER feature
+c472117c4e 2024-03-08 renato-s         [BISERVER-14864] - Empty file when downloading PIR to Excel 97-2003 format once data is past Excel limitations
+86bf155b0b 2024-03-07 David Santos     fix: Blockout table records have shrunk in size [BACKLOG-40143]
+1aa2bba1cc 2024-03-06 Dean DiRoma      [BACKLOG-40130] Import/Export utility - user creds are not being suppressed in the correct way - reverting https://github.com/pentaho/pentaho-platform/pull/5499/commits/247e2b82609e97eb161e7a80ef136fadf7d61daa
+2ce0dce763 2024-02-27 Peter Rinehart   [BACKLOG-39584] JDK17 changes: java.security.acl package was removed, needed to replace the old Group interface with our implementation Unit test updates to remove old test frameworks and replace with latest mockito. Additional add-opens arguments when launching the server to work around stronger package encapsulation.
+28ee9734ec 2024-02-28 David Santos     feat: rearrange schedule table toolbar icons [BACKLOG-39963]
+591a95b380 2024-02-27 André Ramos      [BISERVER-15031] - Limit the PIR Export via REST API to the allowed types - null protection missing
+3f809b59de 2024-02-23 André Ramos      [BISERVER-15031] - Limit the PIR Export via REST API to the allowed types
+f214afa977 2024-02-16 Luc Boudreau     [PPP-5021] Use a secure SAX parser which forbids external entities and DTDs to prevent XXE attacks oon FileResource endpoint. The better solution would involve configuring secure XML parsing across the entire application, but our framework does not allow that easily and it would require more rework and testing than currently feasible.
+32b6baac09 2024-02-16 mbrasil          fix: zoom after 400% hides content [BACKLOG-39950] (#5540)
+afb045d794 2024-02-16 Tiago Ferreira   [BACKLOG-39632] Remove cassandra plugin from assemblies
+105611e04b 2024-02-13 Ezequiel Cuellar [BACKLOG-39622] Pentaho Server (PUC) - Settings under the Administration perspective in PUC does not show anything
+ee8fc79cc4 2024-02-13 Tim Kafalas tkafalas [BACKLOG-39451] - Adding ehcache-core back
+45b1706158 2024-02-13 vtangirala       [BACKLOG-37991] WCAG - Manage Data souces dialog on Safari - bad ui format
+df54a29fe8 2024-02-12 Tim Kafalas tkafalas [BACKLOG-39451] - Adding ehcache-core back
+fd81ea43d8 2024-02-11 HDS\rammansoor   [BACKLOG-39451] - Adding ehcache-core back
+23765faede 2024-02-07 wilseyler        [BACKLOG-39783] - Implemented a PentahoSystemPublisher that allows arbitrary events to be published to concerned subscribers
+1ff9ec222c 2024-02-02 Ezequiel Cuellar [BACKLOG-39531] RunInBackground functionality still existing in the Platform
+61a9f06f7b 2024-02-07 wilseyler        [BACKLOG-39783] - Implemented a PentahoSystemPublisher that allows arbitrary events to be published to concerned subscribers
+12c41ea2ae 2024-02-07 William E. Seyler Revert "[BACKLOG-39783] - Implemented a PentahoSystemPublisher that allows ar…"
+97bd20243a 2024-02-06 buildguy         [CLEANUP] updated versions via release version merger
+558c2a7787 2024-02-05 wilseyler        [BACKLOG-39783] - Implemented a PentahoSystemPublisher that allows arbitrary events to be published to concerned subscribers
+b976514f28 2023-10-17 wilseyler        [BACKLOG-38038] - Allow plugin to initialize multiple lifecycle listeners.  These files were missed in the original PR: https://github.com/pentaho/pentaho-platform/pull/5356

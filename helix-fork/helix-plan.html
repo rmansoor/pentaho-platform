@@ -1,0 +1,761 @@
+<title>Helix Platform Fork Plan</title>
+<meta name="description" content="Commit delta from 10.1, Pentaho dependency analysis, and a phased plan to fork pentaho-platform into a private, air-gapped, rebranded Helix repository.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+
+<style>
+  :root {
+    --ground: #f6f7f8;
+    --surface: #ffffff;
+    --surface-2: #eef1f2;
+    --ink: #1b2229;
+    --ink-soft: #47535e;
+    --muted: #74828d;
+    --line: #dde2e5;
+    --line-strong: #c6ced3;
+    --accent: #0c7c7c;
+    --accent-ink: #095e5e;
+    --accent-soft: #e0efee;
+    --warn: #9a5b00;
+    --warn-soft: #f6ecdb;
+    --crit: #a52b1f;
+    --crit-soft: #f6e2df;
+    --ok: #2f6b3c;
+
+    --maxw: 74ch;
+    --wide: 1180px;
+    --step--1: 0.86rem;
+    --step-0: 1rem;
+    --step-1: 1.19rem;
+    --step-2: 1.52rem;
+    --step-3: 2.1rem;
+    --step-4: 2.9rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #10151a;
+      --surface: #171d23;
+      --surface-2: #1f272e;
+      --ink: #e6eaed;
+      --ink-soft: #b3bfc8;
+      --muted: #8695a0;
+      --line: #2b343c;
+      --line-strong: #3a454e;
+      --accent: #46c4c0;
+      --accent-ink: #7ad6d2;
+      --accent-soft: #16302f;
+      --warn: #d99a4e;
+      --warn-soft: #2e2413;
+      --crit: #e07a6c;
+      --crit-soft: #33201d;
+      --ok: #7fc08c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #10151a;
+    --surface: #171d23;
+    --surface-2: #1f272e;
+    --ink: #e6eaed;
+    --ink-soft: #b3bfc8;
+    --muted: #8695a0;
+    --line: #2b343c;
+    --line-strong: #3a454e;
+    --accent: #46c4c0;
+    --accent-ink: #7ad6d2;
+    --accent-soft: #16302f;
+    --warn: #d99a4e;
+    --warn-soft: #2e2413;
+    --crit: #e07a6c;
+    --crit-soft: #33201d;
+    --ok: #7fc08c;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: var(--step-0);
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: var(--wide);
+    margin: 0 auto;
+    padding: 0 clamp(1.1rem, 4vw, 3rem);
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+  @media (min-width: 1000px) {
+    .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 3.5rem; align-items: start; }
+    .toc-col { position: sticky; top: 0; align-self: start; height: 100dvh; overflow-y: auto; padding: 2.4rem 0; }
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "Bricolage Grotesque", "IBM Plex Sans", sans-serif;
+    font-weight: 700;
+    line-height: 1.12;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .prose { max-width: var(--maxw); }
+  .prose > * + * { margin-top: 1.05rem; }
+  .prose h2 + *, .prose h3 + * { margin-top: 0.7rem; }
+  p { margin: 0; }
+  a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+  code, kbd, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.88em;
+  }
+  p code, li code, td code {
+    background: var(--surface-2);
+    padding: 0.08em 0.36em;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+  }
+
+  .masthead { padding: clamp(3rem, 8vw, 6rem) 0 2.4rem; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--step--1);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0 0 1.1rem;
+  }
+  .masthead h1 { font-size: clamp(2.2rem, 6vw, var(--step-4)); font-weight: 700; letter-spacing: -0.02em; }
+  .masthead .lede {
+    max-width: 60ch;
+    margin-top: 1.3rem;
+    font-size: var(--step-1);
+    color: var(--ink-soft);
+  }
+  .meta-line {
+    margin-top: 1.6rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--step--1);
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.3rem;
+  }
+
+  .stats {
+    list-style: none;
+    margin: 2.4rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (min-width: 720px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+  .stats li { background: var(--surface); padding: 1.15rem 1.2rem; }
+  .stats .n {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 700;
+    font-size: var(--step-2);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .stats .k { font-size: var(--step--1); color: var(--muted); margin-top: 0.15rem; }
+
+  .toc-col nav { font-size: var(--step--1); }
+  .toc-col .toc-title {
+    font-family: "IBM Plex Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    font-size: 0.72rem;
+    margin-bottom: 0.9rem;
+  }
+  .toc-col ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc-col li { counter-increment: toc; margin: 0.15rem 0; }
+  .toc-col a {
+    display: block;
+    padding: 0.32rem 0.5rem 0.32rem 2rem;
+    position: relative;
+    color: var(--ink-soft);
+    text-decoration: none;
+    border-radius: 6px;
+    line-height: 1.35;
+  }
+  .toc-col a::before {
+    content: counter(toc, decimal-leading-zero);
+    position: absolute;
+    left: 0.5rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--accent-ink);
+  }
+  .toc-col a:hover { background: var(--surface-2); color: var(--ink); }
+
+  section { padding: 3.2rem 0; border-bottom: 1px solid var(--line); scroll-margin-top: 1.5rem; }
+  section > .prose > h2 { font-size: var(--step-3); letter-spacing: -0.015em; }
+  .sec-num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--step--1);
+    color: var(--accent-ink);
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 0.6rem;
+  }
+  h3 { font-size: var(--step-1); margin-top: 2.4rem; }
+  h4 { font-size: var(--step-0); margin-top: 1.6rem; color: var(--ink-soft); }
+
+  ul, ol { margin: 0; padding-left: 1.3rem; }
+  li { margin: 0.3rem 0; }
+  li::marker { color: var(--muted); }
+
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-top: 1.2rem;
+    max-width: 100%;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+  th, td { text-align: left; padding: 0.62rem 0.85rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    background: var(--surface-2);
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr { background: var(--surface); }
+  td .mono { color: var(--ink-soft); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .yes { color: var(--crit); font-weight: 600; }
+  .no { color: var(--ok); font-weight: 600; }
+
+  .note {
+    border: 1px solid var(--line-strong);
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 1rem 1.15rem;
+    margin-top: 1.3rem;
+    font-size: var(--step--1);
+  }
+  .note.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note.crit { border-left-color: var(--crit); background: var(--crit-soft); }
+  .note .tag {
+    font-family: "IBM Plex Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.68rem;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+  .note.warn .tag { color: var(--warn); }
+  .note.crit .tag { color: var(--crit); }
+  .note:not(.warn):not(.crit) .tag { color: var(--accent-ink); }
+
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    margin-top: 1.2rem;
+    font-size: 0.84rem;
+    line-height: 1.6;
+  }
+  pre code { background: none; border: 0; padding: 0; }
+  .cmt { color: var(--muted); }
+
+  .phases { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: 1rem; }
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1.3rem 1.4rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.4rem 1.1rem;
+  }
+  .phase .p-id {
+    grid-row: 1 / 3;
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 700;
+    font-size: var(--step-2);
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    padding-top: 0.1rem;
+  }
+  .phase h4 { margin: 0; font-size: var(--step-1); color: var(--ink); font-family: "Bricolage Grotesque", sans-serif; }
+  .phase .p-body { font-size: var(--step--1); color: var(--ink-soft); }
+  .phase .p-body > * + * { margin-top: 0.5rem; }
+  .phase ul { padding-left: 1.15rem; }
+  .pill {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    color: var(--muted);
+    margin: 0.15rem 0.3rem 0 0;
+  }
+
+  .barrow { display: flex; align-items: center; gap: 0.6rem; margin: 0.35rem 0; font-size: var(--step--1); }
+  .barrow .lbl { width: 8.5rem; flex: none; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; font-size: 0.76rem; }
+  .barrow .track { flex: 1; height: 0.62rem; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .barrow .fill { height: 100%; background: var(--accent); border-radius: 999px; }
+  .barrow .val { width: 2.5rem; flex: none; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+  .decisions { list-style: none; margin: 1.4rem 0 0; padding: 0; display: grid; gap: 0.7rem; }
+  .decisions li {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 0.85rem 1.05rem;
+    font-size: var(--step--1);
+    margin: 0;
+  }
+  .decisions b { font-family: "Bricolage Grotesque", sans-serif; }
+
+  footer { padding: 3rem 0 5rem; color: var(--muted); font-size: var(--step--1); max-width: var(--maxw); }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">Fork &amp; Rebrand Plan · Draft v2 · decisions locked</p>
+    <h1>Helix Platform Fork Plan</h1>
+    <p class="lede">Take <code>pentaho-platform</code> from the <strong>10.1</strong> baseline, carry forward the work on <strong>master-0718</strong>, rename Pentaho&nbsp;&rarr;&nbsp;Helix, and land it in a <strong>private, fully air-gapped</strong> repository that existing Pentaho content repositories can upgrade into in place.</p>
+    <div class="meta-line">
+      <span>baseline: 10.1 (2024-06-28)</span>
+      <span>head: master-0718 (2026-08-27)</span>
+      <span>merge-base: 1e189265</span>
+    </div>
+    <ul class="stats">
+      <li><div class="n">954</div><div class="k">commits after 10.1 (614 non-merge)</div></li>
+      <li><div class="n">340</div><div class="k">merged pull requests</div></li>
+      <li><div class="n">4,224</div><div class="k">files changed · +147k / &minus;108k</div></li>
+      <li><div class="n">~20</div><div class="k">upstream repos to fork for air-gap</div></li>
+    </ul>
+  </header>
+
+  <div class="layout">
+    <div class="toc-col">
+      <nav aria-label="Contents">
+        <div class="toc-title">Contents</div>
+        <ol>
+          <li><a href="#decisions">Locked decisions</a></li>
+          <li><a href="#branches">The two branches</a></li>
+          <li><a href="#delta">Commit delta since 10.1</a></li>
+          <li><a href="#deps">Pentaho dependency analysis</a></li>
+          <li><a href="#airgap">The air-gap fork program</a></li>
+          <li><a href="#rename">Rename surface: Pentaho &rarr; Helix</a></li>
+          <li><a href="#plan">Execution plan</a></li>
+          <li><a href="#risks">Risks &amp; open items</a></li>
+        </ol>
+      </nav>
+    </div>
+
+    <main>
+      <section id="decisions">
+        <div class="prose">
+          <span class="sec-num">01</span>
+          <h2>Locked decisions</h2>
+          <p>These are settled and drive everything below.</p>
+        </div>
+        <ol class="decisions">
+          <li><b>1 &middot; Fully air-gapped / self-contained.</b> No build-time dependency on any Hitachi-hosted artifact. Every upstream Pentaho library (mondrian, reporting, kettle, common-ui, commons-*, osgi-bundles, metadata &hellip;) must be forked, built on JDK&nbsp;17, and hosted in your own Nexus. A multi-repo program &mdash; &sect;5.</li>
+          <li><b>2 &middot; Do not rename Java packages.</b> <span class="mono">org.pentaho.*</span> stays. Keeps reflection, Spring XML <span class="mono">class=</span>, GWT modules, <span class="mono">ServiceLoader</span> descriptors and plugin APIs intact; keeps future upstream merges tractable.</li>
+          <li><b>3 &middot; Existing content repositories upgrade in place.</b> Not greenfield. Constrains JCR namespaces, Spring bean ids, and the solution-tree layout to stay compatible. Upgrade must be drop-in.</li>
+          <li><b>4 &middot; Namespace different from Pentaho</b> &mdash; for Maven coordinates, distribution names, product branding. <em>Not</em> Java packages (decision&nbsp;2), <em>not</em> JCR namespaces (decision&nbsp;5). Reactor &rarr; <span class="mono">com.helix.platform</span> / <span class="mono">helix-platform-*</span>; <span class="mono">pentaho-solutions</span> &rarr; <span class="mono">helix-solutions</span>; product name &rarr; &ldquo;Helix&rdquo;.</li>
+          <li><b>5 &middot; Keep JCR namespaces <span class="mono">pho</span> / <span class="mono">pho_nt</span> / <span class="mono">pho_mix</span> as-is</b> (<span class="mono">http://www.pentaho.org/jcr/2.0</span>). Internal, invisible to users; no Jackrabbit migration; in-place upgrade just works.</li>
+          <li><b>6 &middot; Squash git history.</b> Orphan base commit (10.1 tree) + one squashed commit for the 10.1&rarr;master-0718 delta, then rebrand commits on top. No 954-commit replay.</li>
+        </ol>
+        <div class="prose">
+          <div class="note">
+            <span class="tag">Consequence</span>
+            The forked upstream libraries are <strong>vendored, not rebranded</strong>. Only <code>pentaho-platform</code> itself becomes Helix. The ~20 dependency repos keep their <span class="mono">org.pentaho*</span> coordinates and packages &mdash; you just build and host them. That keeps the dependency program to &ldquo;build&nbsp;&amp;&nbsp;host&rdquo; rather than &ldquo;build&nbsp;&amp;&nbsp;rebrand&nbsp;&amp;&nbsp;host&rdquo;.
+          </div>
+        </div>
+      </section>
+
+      <section id="branches">
+        <div class="prose">
+          <span class="sec-num">02</span>
+          <h2>The two branches</h2>
+          <p>Both branches are local; neither is a plain checkout of an upstream tag. <code>10.1</code> tracks the 10.1 release line; <code>master-0718</code> is a recent snapshot of trunk toward 11.1.</p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>&nbsp;</th><th>10.1</th><th>master-0718</th></tr></thead>
+              <tbody>
+                <tr><td>Reactor version</td><td><span class="mono">10.1.0.0-SNAPSHOT</span></td><td><span class="mono">11.1.0.0-SNAPSHOT</span></td></tr>
+                <tr><td>Parent POM</td><td><span class="mono">org.pentaho:pentaho-ce-jar-parent-pom:10.1.0.0-SNAPSHOT</span></td><td><span class="mono">…:11.1.0.0-SNAPSHOT</span></td></tr>
+                <tr><td>JDK</td><td>11</td><td>17 / 21 (<span class="mono">JDK17</span>, <span class="mono">Upgrade-JDK</span>, <span class="mono">JDK-21</span>)</td></tr>
+                <tr><td>Servlet API</td><td><span class="mono">javax.servlet</span> (0 Jakarta files)</td><td><span class="mono">jakarta.servlet</span> (156 files migrated)</td></tr>
+                <tr><td>Servlet container</td><td>Tomcat 9</td><td>Tomcat 10.x (<span class="mono">Tomcat-10.X</span>)</td></tr>
+                <tr><td>OSGi runtime</td><td>Karaf 4.x</td><td>Karaf 4.4.6 (<span class="mono">karaf-upgrade-4.4.6</span>)</td></tr>
+                <tr><td>Java files w/ <span class="mono">org.pentaho</span> package</td><td class="num">2,375</td><td class="num">2,545</td></tr>
+                <tr><td>Modules</td><td colspan="2">identical: <span class="mono">api core repository extensions user-console tomcat-logs assemblies build-utils</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="note warn">
+            <span class="tag">Consequence</span>
+            The gap is a platform re-baseline (JDK, Jakarta EE, Tomcat, Karaf), not just features. Basing Helix on <code>master-0718</code> means the Jakarta / JDK-17 migration comes along for free &mdash; but the forked upstream libraries must be at their <strong>11.x (Jakarta-compatible)</strong> lines too, not 10.1.
+          </div>
+        </div>
+      </section>
+
+      <section id="delta">
+        <div class="prose">
+          <span class="sec-num">03</span>
+          <h2>Commit delta since 10.1</h2>
+          <p><code>git log 10.1..master-0718</code> &rarr; <strong>954 commits</strong> over ~26 months; 614 non-merge commits through 340 pull requests. Full lists saved at <code>helix-fork/</code>: <code>commits-after-10.1-full.txt</code>, <code>commits-after-10.1-nomerge.txt</code>, <code>merge-prs-after-10.1.txt</code>, <code>changed-files-10.1-to-master.txt</code>.</p>
+<pre><code><span class="cmt"># regenerate</span>
+git log --pretty='%h %ad %s' --date=short 10.1..master-0718
+git log --merges --pretty='%h %ad %s' --date=short 10.1..master-0718
+git diff --stat 10.1 master-0718</code></pre>
+
+          <h3>By work-item prefix (merged PRs)</h3>
+          <div class="barrow"><span class="lbl">BACKLOG</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="val">80</span></div>
+          <div class="barrow"><span class="lbl">BISERVER</span><span class="track"><span class="fill" style="width:72%"></span></span><span class="val">58</span></div>
+          <div class="barrow"><span class="lbl">PPP</span><span class="track"><span class="fill" style="width:71%"></span></span><span class="val">57</span></div>
+          <div class="barrow"><span class="lbl">PPUC</span><span class="track"><span class="fill" style="width:31%"></span></span><span class="val">25</span></div>
+          <div class="barrow"><span class="lbl">PDI</span><span class="track"><span class="fill" style="width:10%"></span></span><span class="val">8</span></div>
+          <div class="barrow"><span class="lbl">PPN / other</span><span class="track"><span class="fill" style="width:16%"></span></span><span class="val">13</span></div>
+          <p style="font-size:var(--step--1);color:var(--muted);margin-top:0.6rem">PPUC = Platform User Console; PPP = platform hardening/security; BISERVER/BACKLOG = feature &amp; bug work.</p>
+
+          <h3>Major initiatives inside the window</h3>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Theme</th><th>What moved</th><th>Branches / PRs</th></tr></thead>
+              <tbody>
+                <tr><td>JDK 11 &rarr; 17 &rarr; 21</td><td>Language level, <span class="mono">--add-opens</span>, reflection, removed APIs</td><td><span class="mono">JDK17</span>, <span class="mono">Upgrade-JDK</span>, <span class="mono">JDK-21</span> (#6009, #6029)</td></tr>
+                <tr><td>javax &rarr; jakarta</td><td>Servlet, JAX-RS, JAXB, mail, validation, websocket, JSP across 156 Java files + web descriptors</td><td>Tomcat-10 line, Jersey 2.44 upgrade</td></tr>
+                <tr><td>Tomcat 9 &rarr; 10.x</td><td>Assembly, <span class="mono">web.xml</span>, context, classloading</td><td><span class="mono">Tomcat-10.X</span> (#5962)</td></tr>
+                <tr><td>Karaf 4.4.6</td><td>OSGi runtime, feature files, boot features, cache</td><td><span class="mono">karaf-upgrade-4.4.6</span> (#5760–#5788)</td></tr>
+                <tr><td>Generic File System</td><td>New <span class="mono">pentaho-generic-file-system</span> API/impl abstraction</td><td>PPUC-124 and related</td></tr>
+                <tr><td>Security hardening</td><td>~57 PPP tickets: XSS, CSRF, authz, path traversal; <span class="mono">com.hitachivantara.security.web</span> adoption</td><td>PPP-5370, PPP-6529, PPP-5969/5970</td></tr>
+                <tr><td>Dependency / CVE churn</td><td>Spring, Spring Security, log4j2, commons-*, jackson, xmlbeans, POI, Saxon, Guava, Drools 8</td><td>dependabot + snyk-fix + PPP bumps</td></tr>
+                <tr><td>Test modernization</td><td>JUnit 5, Mockito 5, PowerMock removal, HSQLDB test fixtures</td><td>BACKLOG-50636 series (#6331–#6335)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="font-size:var(--step--1);color:var(--muted);margin-top:0.8rem">Activity is steady across all 26 months &mdash; no single &ldquo;big bang&rdquo; commit, upgrades interleaved with features. The plan takes all of trunk, not a selection.</p>
+        </div>
+      </section>
+
+      <section id="deps">
+        <div class="prose">
+          <span class="sec-num">04</span>
+          <h2>Pentaho dependency analysis</h2>
+          <p><strong>84 distinct Pentaho-family artifact coordinates</strong> across the 9 module POMs, plus ~55 Kettle plugin zips assembled into <code>pentaho-solutions</code>. Almost all share the version <code>11.1.0.0-SNAPSHOT</code> &mdash; siblings in Hitachi's suite build. All resolve from one host:</p>
+          <pre><code>https://repo.orl.eng.hitachivantara.com/artifactory/pnt-mvn/   <span class="cmt">(Hitachi Vantara "Pentaho Public")</span></code></pre>
+
+          <h3>A &middot; Sibling suite libraries &mdash; versioned <span class="mono">11.1.0.0-SNAPSHOT</span></h3>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Group</th><th>Artifacts</th><th>Role</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">pentaho</td><td>mondrian, common-ui, pentaho-metadata, pentaho-connections, pentaho-versionchecker, pentaho-service-coordinator, pentaho-generic-file-system-api / -impl, pentaho-osgi-utils-api, pentaho-metaverse-api, pentaho-capability-manager, pentaho-mongo-utils, pentaho-mongodb-plugin, pdi-osgi-bridge-core, pentaho-proxy-factory, pentaho-data</td><td>OLAP engine, shared UI, metadata layer, data connections, VFS/GFS, OSGi glue</td></tr>
+                <tr><td class="mono">org.pentaho</td><td>actionsequence-dom, commons-database-model, commons-gwt-widgets, commons-xul-core / -gwt-impl / -html, json, pentaho-chartbeans, pentaho-report-wizard-core, pentaho-registry, shim-api, shim-api-core, pdi-engine-api</td><td>XUL UI toolkit, commons, Hadoop shim API, action-sequence engine</td></tr>
+                <tr><td class="mono">org.pentaho.reporting.engine</td><td>classic-core, classic-extensions (+ cda, drill-down, kettle, mondrian, olap4j, pmd, reportdesigner-parser, sampledata, scripting, toc, xpath), legacy-charts, legacy-functions, wizard-core</td><td>Pentaho Reporting engine (~15 artifacts)</td></tr>
+                <tr><td class="mono">org.pentaho.reporting.library</td><td>libbase, libdocbundle, libfonts, libformat, libformula, libloader, libpixie, librepository, libserializer, libsparkline, libswing, libxml, flute</td><td>Reporting support libraries (~13 artifacts)</td></tr>
+                <tr><td class="mono">org.pentaho.reporting.plugin</td><td>classic-core-platform-plugin</td><td>Reporting-in-platform plugin</td></tr>
+                <tr><td class="mono">pentaho-kettle</td><td>kettle-core, kettle-engine, kettle-ui-swt</td><td>PDI / Kettle runtime (<span class="mono">pdi.version</span>)</td></tr>
+                <tr><td class="mono">org.pentaho.di.plugins</td><td>pdi-engine-configuration-api, pentaho-kettle-repository-locator-api, pentaho-metastore-locator-api</td><td>PDI engine SPI</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>B &middot; Pinned, independently released Pentaho libraries</h3>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Coordinate</th><th>Version</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">pentaho:pentaho-concurrent</td><td class="mono">1.0.0</td></tr>
+                <tr><td class="mono">pentaho:pentaho-cwm</td><td class="mono">1.5.4</td></tr>
+                <tr><td class="mono">org.pentaho:pentaho-vfs</td><td class="mono">1.0</td></tr>
+                <tr><td class="mono">pentaho:simple-jndi</td><td class="mono">${simple-jndi.version}</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>C &middot; Third-party Hitachi Vantara libraries</h3>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Coordinate</th><th>Role</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">com.hitachivantara.security.web : security-web-server-api / -model-impl / -service-impl</td><td>CSRF / security-web framework</td></tr>
+                <tr><td class="mono">com.hitachivantara.security.web : csrf-token-service-client-java-jax-rs-v3</td><td>CSRF token client</td></tr>
+                <tr><td class="mono">org.hitachivantara.karaf.assemblies</td><td>Karaf base assembly</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="note crit">
+            <span class="tag">Air-gap blocker to investigate first</span>
+            <span class="mono">com.hitachivantara.*</span> artifacts are published by Hitachi but the source repos are not reliably open. If closed: (a) negotiate a source license, (b) vendor the binary jars into Nexus and accept they are un-rebuildable, or (c) replace them &mdash; the CSRF filter has an OWASP / Spring-Security equivalent.
+          </div>
+
+          <h3>D &middot; Parent POM chain (external)</h3>
+          <p><code>org.pentaho:pentaho-ce-jar-parent-pom</code> &rarr; <code>pentaho-ce-parent-pom</code> &rarr; <code>pentaho-parent-pom</code> (repo <span class="mono">pentaho/maven-parent-poms</span>). Pins hundreds of third-party versions, the license-header plugin, the Artifactory repo definitions, <span class="mono">maven.compiler</span> level. Must be forked for air-gap.</p>
+
+          <h3>E &middot; Runtime Kettle plugins (assembled, not compile deps)</h3>
+          <p><code>assemblies/pentaho-solutions/pom.xml</code> pulls ~55 <span class="mono">org.pentaho.di.plugins:*</span> zips into the shipped <code>system/</code> tree (excel, mail, ldap, s3csvinput, pdi-pur-plugin, reporting-plugins, streaming kafka/jms/mqtt, salesforce, teradata-tpt&hellip;). Most live in <span class="mono">pentaho-kettle</span> or <span class="mono">pentaho/pdi-*</span> plugin repos.</p>
+        </div>
+      </section>
+
+      <section id="airgap">
+        <div class="prose">
+          <span class="sec-num">05</span>
+          <h2>The air-gap fork program</h2>
+          <p>Because &ldquo;closed&rdquo; = fully self-contained, every artifact in &sect;4A&ndash;E that is not already third-party OSS must be forked, built on JDK 17, and published to your Nexus. <strong>The authoritative list is the resolved dependency tree</strong>, generated in Phase 2:</p>
+<pre><code>mvn -q -DskipTests dependency:tree -Dscope=compile -DoutputType=text \
+  | grep -Ei 'pentaho|mondrian|hitachivantara' | sort -u</code></pre>
+          <p>Best-effort mapping of dependency groups &rarr; upstream source repos (all <span class="mono">github.com/pentaho</span> unless noted):</p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Dependency group / artifacts</th><th>Upstream repo</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td>Parent POM chain</td><td class="mono">maven-parent-poms</td><td>fork first; defines the Nexus repos and JDK level</td></tr>
+                <tr><td><span class="mono">pentaho-kettle:*</span>, most <span class="mono">org.pentaho.di.plugins:*</span>, <span class="mono">pdi-engine-api</span></td><td class="mono">pentaho-kettle</td><td>large; also produces ~40 plugin zips</td></tr>
+                <tr><td><span class="mono">pentaho:mondrian</span></td><td class="mono">mondrian</td><td>pulls olap4j (pentaho fork)</td></tr>
+                <tr><td><span class="mono">org.pentaho:pentaho-metadata</span></td><td class="mono">pentaho-metadata</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">org.pentaho.reporting.{engine,library,plugin}:*</span> (~30)</td><td class="mono">pentaho-reporting</td><td>one repo builds all of them</td></tr>
+                <tr><td><span class="mono">pentaho:common-ui</span></td><td class="mono">pentaho-platform-plugin-common-ui</td><td>GWT / JS build</td></tr>
+                <tr><td><span class="mono">org.pentaho:commons-xul-*</span></td><td class="mono">pentaho-commons-xul</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">commons-gwt-widgets</span></td><td class="mono">pentaho-commons-gwt-modules</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">commons-database-model</span></td><td class="mono">pentaho-commons-database</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">pentaho:pentaho-connections</span></td><td class="mono">pentaho-commons-connections</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">actionsequence-dom, json, pentaho-registry</span></td><td class="mono">pentaho-commons</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">pentaho-osgi-utils-api, pentaho-service-coordinator, pentaho-capability-manager, pentaho-proxy-factory, pdi-osgi-bridge-core</span></td><td class="mono">pentaho-osgi-bundles</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">pentaho-metaverse-api</span></td><td class="mono">pentaho-metaverse</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">pentaho-mongo-utils, pentaho-mongodb-plugin</span></td><td class="mono">pentaho-mongo-utils, big-data-plugin</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">shim-api, shim-api-core</span></td><td class="mono">pentaho-hadoop-shims</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">pentaho-generic-file-system-*</span></td><td class="mono">pentaho-generic-file-system</td><td>newer repo (2024+)</td></tr>
+                <tr><td><span class="mono">pentaho-versionchecker</span></td><td class="mono">pentaho-versioncheck</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">pentaho-chartbeans</span></td><td class="mono">pentaho-chart-beans</td><td>&nbsp;</td></tr>
+                <tr><td><span class="mono">pentaho-report-wizard-core</span></td><td class="mono">pentaho-reporting / pentaho-report-wizard</td><td>verify</td></tr>
+                <tr><td><span class="mono">pdi-engine-configuration-api, pentaho-kettle-repository-locator-api, pentaho-metastore-locator-api</span></td><td class="mono">pdi-engine, pentaho-kettle-repository-locator, pentaho-metastore-locator</td><td>small SPI repos</td></tr>
+                <tr><td><span class="mono">pentaho-concurrent, pentaho-cwm, pentaho-vfs, simple-jndi</span></td><td>small legacy repos / <span class="mono">pentaho-commons</span></td><td>pinned versions &mdash; vendoring the released jar may suffice</td></tr>
+                <tr><td><span class="mono">com.hitachivantara.security.web:*, org.hitachivantara.karaf.assemblies</span></td><td>Hitachi &mdash; <strong>source unconfirmed</strong></td><td>see &sect;4C</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="note warn">
+            <span class="tag">Shape of the work</span>
+            Each forked repo needs the same treatment: repoint its parent POM + <span class="mono">&lt;repositories&gt;</span> at your Nexus, build on JDK 17, publish. Several are recursive (reporting &rarr; commons &rarr; &hellip;), so resolve the graph <strong>bottom-up</strong>. Realistically <strong>15&ndash;25 repos</strong>. This workstream dominates the timeline.
+          </div>
+        </div>
+      </section>
+
+      <section id="rename">
+        <div class="prose">
+          <span class="sec-num">06</span>
+          <h2>Rename surface: Pentaho &rarr; Helix</h2>
+          <p><code>git grep -i pentaho</code> hits 4,556 files. With decisions 2 and 5 locked, the work shrinks to branding + packaging.</p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Surface</th><th>Rename?</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td>Java packages <span class="mono">org.pentaho.*</span> (2,545 files)</td><td class="no">No</td><td>decision 2</td></tr>
+                <tr><td>JCR namespaces <span class="mono">pho</span> / <span class="mono">pho_nt</span> / <span class="mono">pho_mix</span>, node types <span class="mono">pho_nt:pentahoFile</span> &hellip;</td><td class="no">No</td><td>decision 5 &mdash; invisible to users; keeps in-place upgrade drop-in</td></tr>
+                <tr><td>Spring custom XML namespace <span class="mono">http://www.pentaho.com/schema/pentaho-system</span> (<span class="mono">pen:</span> handler, ~37 files)</td><td class="no">No</td><td>plugin contract; third-party plugins use it; decision 3 forbids breaking it</td></tr>
+                <tr><td>Spring bean ids in <span class="mono">pentahoObjects.spring.xml</span> / <span class="mono">pentahoSystemConfig</span> &hellip;</td><td class="no">No</td><td>referenced by name across plugins &mdash; an API break</td></tr>
+                <tr><td>Maven coordinates <span class="mono">groupId=pentaho</span>, <span class="mono">artifactId=pentaho-platform-*</span> (9 POMs)</td><td class="yes">Yes</td><td>&rarr; <span class="mono">com.helix.platform</span> / <span class="mono">helix-platform-*</span>; update <span class="mono">&lt;scm&gt;</span>, <span class="mono">&lt;url&gt;</span>, parent ref</td></tr>
+                <tr><td>Distribution / assembly names <span class="mono">pentaho-solutions</span>, <span class="mono">pentaho.war</span>, <span class="mono">pentaho-server</span></td><td class="yes">Yes</td><td>&rarr; <span class="mono">helix-solutions</span>, <span class="mono">helix.war</span>, <span class="mono">helix-server</span>; touches install paths, <span class="mono">CATALINA_BASE</span>, start scripts, <span class="mono">web.xml</span> context, <span class="mono">PENTAHO_INSTALLED_LICENSE_PATH</span>, <span class="mono">solution-path</span></td></tr>
+                <tr><td>UI branding &mdash; logos (<span class="mono">pentaho-logo.png/.svg</span>), favicons, About box, login screen, CSS in <span class="mono">pentaho-style</span> / <span class="mono">user-console</span></td><td class="yes">Yes</td><td>the actual point of the exercise</td></tr>
+                <tr><td>i18n &mdash; user-visible &ldquo;Pentaho&rdquo; in 667 <span class="mono">messages*.properties</span></td><td class="yes">Yes</td><td>display strings only</td></tr>
+                <tr><td>URLs &mdash; <span class="mono">pentaho.com</span>, <span class="mono">www.pentaho.org</span> doc &amp; support links</td><td class="yes">Yes</td><td><strong>Keep</strong> <span class="mono">http://www.pentaho.org/jcr/2.0</span> (JCR URI) and <span class="mono">http://reporting.pentaho.org/namespaces/*</span> (reporting-engine format contract)</td></tr>
+                <tr><td>License headers &mdash; &ldquo;Copyright &copy; &hellip; Pentaho / Hitachi Vantara&rdquo;, <span class="mono">license/templates/*</span>, per-module <span class="mono">LICENSE.txt</span></td><td class="yes">Yes (legal)</td><td>Pentaho CE is <strong>LGPL-2.1 / GPL-2.0</strong>. A fork <em>adds</em> Helix notices and <em>preserves</em> the originals. Confirm with legal</td></tr>
+                <tr><td>Maven repo URLs <span class="mono">repo.orl.eng.hitachivantara.com</span></td><td class="yes">Yes</td><td>&rarr; your Nexus (&sect;5)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Naming to fix now</h3>
+          <ul>
+            <li>Maven groupId: <strong><span class="mono">com.helix.platform</span></strong> &mdash; distinct from the <span class="mono">org.pentaho</span> Java packages, which stay</li>
+            <li>Artifact prefix: <span class="mono">helix-platform-*</span>; distribution: <span class="mono">helix-server</span>, <span class="mono">helix-solutions</span>, <span class="mono">helix.war</span></li>
+            <li>Product display name: <strong>&ldquo;Helix&rdquo;</strong> / &ldquo;Helix Platform&rdquo;</li>
+            <li>Env vars / system properties: <span class="mono">PENTAHO_*</span> &rarr; <span class="mono">HELIX_*</span>, <strong>with back-compat fallbacks</strong> so in-place upgrades keep working</li>
+          </ul>
+
+          <h3>Mechanics</h3>
+          <ul>
+            <li>Case-preserving replacement (<span class="mono">Pentaho&rarr;Helix</span>, <span class="mono">pentaho&rarr;helix</span>, <span class="mono">PENTAHO&rarr;HELIX</span>), scripted, per category, never one global sed.</li>
+            <li>Order: file <em>contents</em> first, then <span class="mono">git mv</span> paths, then directories; commit in reviewable slices.</li>
+            <li><strong>Exclusion list</strong> (never rewrite): JCR <span class="mono">pho*</span> prefixes &amp; <span class="mono">http://www.pentaho.org/jcr/2.0</span>; <span class="mono">http://www.pentaho.com/schema/pentaho-system</span>; <span class="mono">http://reporting.pentaho.org/namespaces/*</span>; vendored upstream Maven coordinates (<span class="mono">org.pentaho.*</span>, <span class="mono">pentaho-kettle:*</span>, <span class="mono">org.pentaho.reporting.*</span>); Java <span class="mono">package</span> / <span class="mono">import</span> statements.</li>
+            <li>Guardrail: full build + IT suite green before and after each slice; keep a read-only <span class="mono">pentaho-platform</span> mirror to diff against.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="plan">
+        <div class="prose">
+          <span class="sec-num">07</span>
+          <h2>Execution plan</h2>
+        </div>
+
+        <ol class="phases">
+          <li class="phase">
+            <span class="p-id">0</span>
+            <h4>Infra &amp; confirmation</h4>
+            <div class="p-body">
+              <ul>
+                <li>Private Git remote; Nexus with a <strong>hosted release repo</strong> (<span class="mono">helix-releases</span>) and no external proxy.</li>
+                <li>CI runners: JDK 17 (primary) and JDK 21.</li>
+                <li><strong>Confirm source availability</strong> of <span class="mono">com.hitachivantara.security.web:*</span> and <span class="mono">org.hitachivantara.karaf.assemblies</span>. Fork / vendor-binary / replace decision per artifact.</li>
+                <li>Legal sign-off: LGPL-2.1 / GPL-2.0 fork, copyright-notice handling, &ldquo;Helix&rdquo; trademark clearance.</li>
+                <li>Finalise names from &sect;6.</li>
+              </ul>
+              <span class="pill">blocking</span><span class="pill">no platform code</span>
+            </div>
+          </li>
+
+          <li class="phase">
+            <span class="p-id">1</span>
+            <h4>Seed the private repo (squashed)</h4>
+            <div class="p-body">
+<pre><code><span class="cmt"># orphan base at the 10.1 tree</span>
+git init helix-platform &amp;&amp; cd helix-platform
+git --git-dir=/path/to/pentaho-platform/.git archive 10.1 | tar -x
+git add -A &amp;&amp; git commit -m "Baseline: pentaho-platform 10.1 (squashed)"
+git tag helix-base-10.1
+
+<span class="cmt"># one squashed commit bringing the tree to master-0718</span>
+git --git-dir=/path/to/pentaho-platform/.git archive master-0718 | tar -x --overwrite
+git add -A &amp;&amp; git commit -m "Import trunk 10.1..master-0718 (954 commits squashed)"
+git tag helix-import-11.1
+
+git remote add origin &lt;private-url&gt; &amp;&amp; git push -u origin main --tags</code></pre>
+              <p>Attach <span class="mono">commits-after-10.1-full.txt</span> to the second commit message or a <span class="mono">PROVENANCE.md</span> so the squashed history stays auditable.</p>
+              <span class="pill">~1 day</span>
+            </div>
+          </li>
+
+          <li class="phase">
+            <span class="p-id">2</span>
+            <h4>Resolve &amp; fork the dependency graph</h4>
+            <div class="p-body">
+              <ul>
+                <li>Build the <span class="mono">master-0718</span> tree once against Hitachi Artifactory, clean <span class="mono">~/.m2</span>.</li>
+                <li>Capture the authoritative fork list: <span class="mono">dependency:tree</span> / <span class="mono">dependency:list</span> filtered to <span class="mono">pentaho|mondrian|hitachivantara</span>, deduped to <span class="mono">groupId:artifactId</span>.</li>
+                <li>Fork each source repo (&sect;5), bottom-up. Per repo: repoint parent POM + <span class="mono">&lt;repositories&gt;</span> to Nexus, build on JDK 17, publish to <span class="mono">helix-releases</span> (keep original coordinates; optional <span class="mono">-helix.1</span> suffix).</li>
+                <li>Pinned legacy jars that never change (<span class="mono">pentaho-cwm</span>, <span class="mono">pentaho-vfs</span>, <span class="mono">pentaho-concurrent</span>, <span class="mono">simple-jndi</span>): vendoring the released binary is acceptable.</li>
+                <li>Success test: <span class="mono">mvn -o</span> (offline) builds the platform tree end to end with <strong>zero</strong> hits to any <span class="mono">hitachivantara.com</span> host.</li>
+              </ul>
+              <span class="pill">the long pole</span><span class="pill">~4–8 months</span>
+            </div>
+          </li>
+
+          <li class="phase">
+            <span class="p-id">3</span>
+            <h4>Own the platform build config</h4>
+            <div class="p-body">
+              <ul>
+                <li>Replace <span class="mono">pentaho-ce-jar-parent-pom</span> with <span class="mono">helix-platform-parent</span> (fork of <span class="mono">maven-parent-poms</span>, or a thin parent that <span class="mono">&lt;parent&gt;</span>s your mirrored copy).</li>
+                <li>Reactor coordinates &rarr; <span class="mono">com.helix.platform:helix-platform-*</span>; <span class="mono">&lt;scm&gt;</span> / <span class="mono">&lt;url&gt;</span> &rarr; Helix.</li>
+                <li>CI green on JDK 17 and 21; full IT suite (<span class="mono">-DrunITs</span>) baseline recorded.</li>
+              </ul>
+              <span class="pill">~1 week</span>
+            </div>
+          </li>
+
+          <li class="phase">
+            <span class="p-id">4</span>
+            <h4>Rebrand in reviewable slices</h4>
+            <div class="p-body">
+              <p>One commit/PR per slice, build + IT between each:</p>
+              <ul>
+                <li><strong>4a</strong> Maven artifact + assembly names (<span class="mono">pentaho-solutions&rarr;helix-solutions</span>, <span class="mono">pentaho.war&rarr;helix.war</span>, <span class="mono">pentaho-server&rarr;helix-server</span>).</li>
+                <li><strong>4b</strong> Runtime paths, start scripts, system properties, <span class="mono">web.xml</span> context, license-path env var (with <span class="mono">PENTAHO_*</span> back-compat fallbacks for in-place upgrade).</li>
+                <li><strong>4c</strong> UI branding: logos, favicons, About / login, <span class="mono">pentaho-style</span> / <span class="mono">user-console</span> CSS.</li>
+                <li><strong>4d</strong> i18n sweep of 667 <span class="mono">messages*.properties</span> &mdash; user-visible strings only.</li>
+                <li><strong>4e</strong> URLs &amp; doc links &rarr; Helix (respecting the &sect;6 exclusion list).</li>
+                <li><strong>4f</strong> License headers: add Helix copyright, preserve Pentaho / HV notices; update <span class="mono">license/templates</span> + per-module <span class="mono">LICENSE.txt</span>.</li>
+              </ul>
+              <span class="pill">~2–4 weeks</span>
+            </div>
+          </li>
+
+          <li class="phase">
+            <span class="p-id">5</span>
+            <h4>Upgrade path &amp; release</h4>
+            <div class="p-body">
+              <ul>
+                <li>Build full <span class="mono">helix-server</span> assembly; boots on Tomcat 10 / JDK 17.</li>
+                <li><strong>In-place upgrade test (decision 3):</strong> stand up a real Pentaho 10.1 server with content (reports, schedules, ACLs, data sources) in its Jackrabbit repo &rarr; deploy Helix over it &rarr; verify login, repo browse, run report, run transformation, run schedule, import/export round-trip. This is the acceptance gate.</li>
+                <li>Security + license scan (FOSSA / Snyk) on the closed tree.</li>
+                <li>Document the upstream-merge procedure: read-only <span class="mono">pentaho-platform</span> remote, <span class="mono">git merge -X</span> strategy, the &sect;6 exclusion list as a <span class="mono">.gitattributes</span> merge-driver config, cadence for pulling upstream security fixes.</li>
+              </ul>
+              <span class="pill">~3–4 weeks</span>
+            </div>
+          </li>
+        </ol>
+        <div class="prose">
+          <div class="note">
+            <span class="tag">Order of magnitude</span>
+            Platform fork + rebrand (packages &amp; JCR untouched): <strong>~6&ndash;9 weeks</strong>, one engineer who knows the platform. Air-gap dependency program (&sect;5, 15&ndash;25 repos): <strong>~4&ndash;8 months</strong>, small team, partly parallel. In-place-upgrade hardening: <strong>~3&ndash;4 weeks</strong>. The air-gap program dominates &mdash; if it can be de-scoped to &ldquo;private source + frozen Nexus mirror&rdquo; the whole thing compresses to <strong>~8&ndash;12 weeks</strong>. Worth re-confirming &ldquo;air-gapped&rdquo; is a hard requirement.
+          </div>
+        </div>
+      </section>
+
+      <section id="risks">
+        <div class="prose">
+          <span class="sec-num">08</span>
+          <h2>Risks &amp; open items</h2>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>#</th><th>Risk</th><th>Mitigation</th></tr></thead>
+              <tbody>
+                <tr><td>R1</td><td><span class="mono">com.hitachivantara.security.web</span> / karaf-assemblies have no public source &rarr; can't truly air-gap</td><td>Phase 0 investigation; fork / vendor-binary / replace per artifact</td></tr>
+                <tr><td>R2</td><td>Air-gap fork graph is recursive and larger than the 84 direct coords (reporting&rarr;commons&rarr;olap4j&rarr;&hellip;)</td><td>Phase 2 <span class="mono">dependency:tree</span> is the source of truth; fork bottom-up</td></tr>
+                <tr><td>R3</td><td>SNAPSHOT upstream jars mutate / purge before you mirror them</td><td>Phase 2 step 1 freezes them into <span class="mono">helix-releases</span> immediately</td></tr>
+                <tr><td>R4</td><td>In-place upgrade breaks on a renamed system property / path / bean id</td><td><span class="mono">PENTAHO_*</span> back-compat fallbacks; &sect;6 exclusion list; Phase 5 upgrade gate with real 10.1 content</td></tr>
+                <tr><td>R5</td><td>LGPL / GPL obligations on a &ldquo;closed&rdquo; fork</td><td>Legal review Phase 0; closed <em>repo</em> &ne; closed <em>source</em> duties; preserve Pentaho notices</td></tr>
+                <tr><td>R6</td><td>Divergence from upstream &mdash; future Pentaho security fixes must be merged</td><td>Read-only upstream remote; packages unchanged (decision 2) keeps merges tractable; documented procedure Phase 5</td></tr>
+                <tr><td>R7</td><td>10.1&rarr;master gap includes JDK 17/21 + Jakarta &mdash; forked libs must be Jakarta-compatible</td><td>Fork upstream at their <span class="mono">11.x</span> lines, not <span class="mono">10.1</span></td></tr>
+                <tr><td>R8</td><td>Reporting-engine XML namespaces (<span class="mono">http://reporting.pentaho.org/...</span>) are wire / format contracts</td><td>On the exclusion list &mdash; never rewrite; existing report files depend on them</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Still open (decide during Phase 0)</h3>
+          <ol>
+            <li>Exact groupId: <span class="mono">com.helix.platform</span> vs <span class="mono">com.helix</span> vs <span class="mono">helix</span>.</li>
+            <li>Product name: &ldquo;Helix&rdquo; vs &ldquo;Helix Platform&rdquo; vs &ldquo;Helix BI&rdquo;.</li>
+            <li><span class="mono">-helix.N</span> version suffix on vendored upstream jars &mdash; yes (traceability) or no (minimal diff).</li>
+            <li>Is &ldquo;air-gapped&rdquo; truly required, or is a frozen Nexus mirror of upstream acceptable? (halves the timeline)</li>
+            <li>Which upstream <span class="mono">11.x</span> tag/commit of each dependency to fork from (must match what <span class="mono">master-0718</span> expects).</li>
+          </ol>
+        </div>
+      </section>
+
+      <footer>
+        <p>Generated from local branches <span class="mono">10.1</span> and <span class="mono">master-0718</span> of <span class="mono">pentaho-platform</span>. Supporting data: <span class="mono">helix-fork/*.txt</span>. Figures from <span class="mono">git log</span> / <span class="mono">git diff</span> and static analysis of the 9 module POMs &mdash; verify the dependency tree against a real resolve before committing to Phase 2. Upstream repo names in &sect;5 are best-effort and must be confirmed.</p>
+      </footer>
+    </main>
+  </div>
+</div>
