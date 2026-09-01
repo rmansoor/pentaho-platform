@@ -455,6 +455,18 @@ files; decide `swm:` namespace-handler reproduce-vs-rewrite; audit shipped
 >
 > Instrumentation is on branch **`helix-deosgi`** (`helix-main` + 6 commits); the
 > Phase-0 baseline + harness are in `helix-fork/phase0/`.
+>
+> **Update, 2026-09-01: dropping `pentaho-metaverse` (data lineage) too**
+> (decision). Re-ran the full smoke test against that config — report rendering
+> and a CDF dashboard verified with real output content, not just HTTP 200. With
+> metaverse out, **the OSGi object bridge is down to 5 resolutions and only 1 is a
+> genuine Pentaho interface** (`IAuthorizationRule`, itself just a classic bean
+> echoed into OSGi by `pentaho-blueprint-activators`) — everything else is Aries
+> Blueprint infra or Felix `ConfigurationAdmin`, both retired with the container
+> in Phase 5. `baseline/no-metaverse/` is now the canonical Helix reference
+> config. One thing still unverified: a **visual PUC pass** (the Claude-in-Chrome
+> extension wasn't connected this session) to confirm no OSGi-only i18n content
+> silently goes missing — HTTP status codes don't catch that.
 
 **Verdict: feasible, but a strangler migration in 6 phases, not one step.** Every
 phase leaves a working server. Karaf is glued to the server at **4 coupling
