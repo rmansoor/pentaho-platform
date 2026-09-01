@@ -1,0 +1,6 @@
+java.lang.ClassLoader,pentaho-blueprint-activators/11.1.0.SNAPSHOT-standard
+org.osgi.service.cm.ConfigurationAdmin,org.apache.felix.configadmin/1.9.26
+org.pentaho.metaverse.api.analyzer.kettle.step.IStepExternalResourceConsumerProvider,pentaho-blueprint-activators/11.1.0.SNAPSHOT-standard
+org.pentaho.platform.api.engine.security.authorization.IAuthorizationRule,pentaho-blueprint-activators/11.1.0.SNAPSHOT-standard
+org.springframework.context.ApplicationContext,pentaho-blueprint-activators/11.1.0.SNAPSHOT-standard
+org.springframework.context.support.GenericApplicationContext,pentaho-blueprint-activators/11.1.0.SNAPSHOT-standard

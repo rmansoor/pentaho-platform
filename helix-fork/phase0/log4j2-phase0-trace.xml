@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Phase-0 OSGi resolution trace — route the Phase0ServiceTrace logger to its own
+  file, keep it out of pentaho.log.
+
+  Install: merge these two elements into
+    <pentaho-server>/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml
+  (add the RollingFile under <Appenders>, the Logger under <Loggers>).
+
+  Enable the trace itself with a JVM arg (CATALINA_OPTS or setenv.sh):
+    -Dpentaho.osgi.phase0.trace=true
+-->
+<Configuration>
+  <Appenders>
+    <RollingFile name="PHASE0-TRACE"
+                 fileName="logs/osgi-resolutions.log"
+                 filePattern="logs/osgi-resolutions-%i.log.gz">
+      <PatternLayout pattern="%d{ISO8601} %m%n"/>
+      <Policies>
+        <SizeBasedTriggeringPolicy size="20 MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="5"/>
+    </RollingFile>
+  </Appenders>
+
+  <Loggers>
+    <!-- additivity=false: keep OSGI-RESOLVE lines out of pentaho.log -->
+    <Logger name="org.pentaho.platform.osgi.phase0" level="INFO" additivity="false">
+      <AppenderRef ref="PHASE0-TRACE"/>
+    </Logger>
+  </Loggers>
+</Configuration>

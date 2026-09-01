@@ -1,0 +1,2 @@
+Error: Unable to initialize main class org.apache.karaf.client.Main
+Caused by: java.lang.NoClassDefFoundError: org/apache/sshd/agent/SshAgentFactory
