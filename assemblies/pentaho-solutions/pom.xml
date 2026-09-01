@@ -90,13 +90,6 @@
                   <outputDirectory>${prepared.plugins.directory}</outputDirectory>
                 </artifactItem>
                 <artifactItem>
-                  <groupId>org.hitachivantara.karaf.assemblies</groupId>
-                  <artifactId>server</artifactId>
-                  <version>${project.version}</version>
-                  <type>zip</type>
-                  <outputDirectory>${prepared.plugins.directory}/karaf</outputDirectory>
-                </artifactItem>
-                <artifactItem>
                   <groupId>pentaho</groupId>
                   <artifactId>common-ui</artifactId>
                   <version>${project.version}</version>

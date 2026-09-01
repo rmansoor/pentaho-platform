@@ -222,8 +222,30 @@ Boots in **~23 s** (vs ~26–28 s with Karaf). `baseline/no-karaf/`.
 | startup log mentions of `karaf` / `OSGIBoot` / `felix` / `blueprint` | **0** |
 | `pentaho.log` ERRORs | only pre-existing noise (HSQLDB port, DI_HOME warning, missing EE `pentaho-interactive-reporting`, probe 404s) |
 
+### Step A — build-config cleanup (2026-09-01)
+
+Landed on `helix-nokaraf`:
+
+- `assemblies/pentaho-solutions/pom.xml` — removed the
+  `org.hitachivantara.karaf.assemblies:server` unpack into `system/karaf`.
+  **The 62 MB `system/karaf` tree stops shipping.** Also removes one
+  non-redistributable Hitachi dependency from the air-gap surface.
+- `assemblies/pentaho-war/pom.xml` — removed 6 now-dead dependencies:
+  `org.apache.karaf.main`, `.jaas.boot`, `.diagnostic.boot`, `.util`,
+  `org.apache.felix.http.proxy`, and `pdi-osgi-bridge-core`.
+
+Safe because **no live `src/main` code imports `org.apache.karaf.*`,
+`org.apache.felix.http.*`, or `org.pentaho.di.osgi.*`** — only the dead
+`KarafBoot` / `OSGIBoot` / `KarafInstance*` classes do, and those compile against
+`extensions/pom.xml`'s own `org.apache.karaf.main` dep (untouched, deleted in
+Step B). `core`'s `osgi.core` dep stays for the still-compiled (dead)
+`OSGIObjectFactory` — removed in Step B.
+
+Needs a clean rebuild to confirm; then the `karaf` folder is gone.
+
 ### Not verified
 
+- **Clean rebuild after Step A** — poms edited, not yet built.
 - **Visual PUC pass** — Claude-in-Chrome extension wouldn't connect this session.
   HTTP + rendered-output checks are strong (report data, CDF/CDE render), but a
   human should click through PUC once: message strings render as words not
