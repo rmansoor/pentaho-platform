@@ -1,0 +1,2 @@
+featuresBoot = \
+featuresBootAsynchronous=true
