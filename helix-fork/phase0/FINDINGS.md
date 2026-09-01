@@ -131,6 +131,45 @@ Known gaps: scheduler **job creation** via REST returned 500 (v1 deprecated) /
 the correct v2 path. `/osgi/cxf/i18n/messages` 404 on bare GET (needs `?_wadl` or
 a sub-path). Neither blocks Phase 0.
 
+## Addendum — `pentaho-metaverse` confirmed dropped (decision, 2026-09-01)
+
+User confirmed dropping data lineage entirely. Re-ran the full smoke test (login,
+`/public` browse, **Inventory report render — verified real data: "1958 Chevy",
+`S10_` product codes**, **CDF sample dashboard render — verified, no errors**,
+`.xaction` transformation, scheduler, GWT/mantle bootstrap) against the
+metaverse-removed config (`baseline/no-metaverse/`) — all green.
+
+**Object bridge with metaverse dropped: down to 5 resolutions, only 1 is a
+genuine Pentaho interface:**
+
+| interface | bundle | why it's still OSGi |
+|---|---|---|
+| `org.pentaho.platform.api.engine.security.authorization.IAuthorizationRule` | pentaho-blueprint-activators | **the only remaining Pentaho-domain interface** — a classic bean echoed into OSGi; candidate #1 to add to `ClassicResolutionList` |
+| `java.lang.ClassLoader`, `org.springframework.context.ApplicationContext`, `org.springframework.context.support.GenericApplicationContext` | pentaho-blueprint-activators | generic infra the Aries Blueprint container needs internally |
+| `org.osgi.service.cm.ConfigurationAdmin` | felix-configadmin | pure OSGi — dies with the container in Phase 5 |
+
+**UI bootstrap chain verified intact via HTTP** (no visual browser check — the
+Claude-in-Chrome extension wasn't connected this session): `/Home` 200, GWT
+`mantle.nocache.js` 200, `require-init.js` 200 (empty OSGi paths — the classic
+plugins' own RequireJS config, served via `<external-resources
+context="requirejs">`, is unaffected). `webcontext.js` references only the
+still-working `require-init.js` URL; no other `/osgi/*` reference appears in
+served HTML/JS. **Recommend one manual PUC pass** (browser, message strings
+render correctly rather than as raw i18n keys, a CDE editor session) before
+treating this as fully proven — HTTP status codes don't catch a silently-missing
+translated string.
+
+**Revised Phase 1 scope**: the `<pen:publish>` type-resolution ticket now only
+needs to additionally cover **one** interface (`IAuthorizationRule`) rather than
+~4. Phase 2 (re-host `/osgi/cxf/i18n`) may be **droppable entirely** if the manual
+UI pass confirms no OSGi-only i18n content is actually served — worth checking
+before committing engineering time to re-hosting it.
+
+Canonical baselines going forward: `baseline/no-metaverse/` (metaverse out, full
+smoke) supersedes `baseline/full/` as the Helix reference config;
+`baseline/trimmed/` (first metaverse-removal pass, partial smoke) is kept for
+provenance.
+
 ## Environment notes
 
 - JDK **17** — the `helix-deosgi` objfac unit tests (19, incl. `org.osgi.framework.Bundle`
