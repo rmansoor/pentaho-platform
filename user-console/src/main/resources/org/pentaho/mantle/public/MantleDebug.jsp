@@ -37,7 +37,7 @@
 
 <html>
 <head>
-  <title>Pentaho User Console</title>
+  <title>Helix User Console</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
   <meta name="gwt:property" content="locale=<%= Encode.forHtmlAttribute(effectiveLocale.toString()) %>">
   <link rel="icon" href="/pentaho-style/favicon.ico"/>

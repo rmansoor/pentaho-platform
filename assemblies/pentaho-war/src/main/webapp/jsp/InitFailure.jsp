@@ -47,11 +47,11 @@
 %>
 <html>
 <head>
-  <title>Error Initializing Pentaho</title>
+  <title>Error Initializing Helix</title>
 </head>
 <body bgcolor="white" dir="<%= LocaleHelper.getTextDirection() %>">
 
-  <h2>Pentaho Initialization Exception</h2>
+  <h2>Helix Initialization Exception</h2>
   <br />
   <div style='border:2px solid #cccccc'>
     <table width='100%' border='0'>
