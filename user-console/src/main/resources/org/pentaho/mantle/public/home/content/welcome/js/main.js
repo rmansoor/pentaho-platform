@@ -47,8 +47,8 @@ CCP.liveChat = function(){
 
 	//Verify if we are inside PUC
 	if ( pucOpenTab ) {
-		var name = "Pentaho Live Chat",
-		title = "Pentaho Live Chat";
+		var name = "Helix Live Chat",
+		title = "Helix Live Chat";
 		pucOpenTab( name, title, url );
 	}
 	else {
