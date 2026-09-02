@@ -371,10 +371,27 @@ manager are gone. `helix-nokaraf` = `helix-main` + Phase-0 + Phase K, builds a
 Net code impact: ~25 source files deleted, 2 modified, 4 config + 3 pom edits,
 1 static JS file. One pre-existing trunk IT failure (`DefaultUnifiedRepositoryJaxwsWebServiceIT`).
 
+### `extensions` `-DrunITs` (2026-09-02)
+
+567 ITs, **11 failures + 32 errors** — **all pre-existing on `helix-main`, none
+from Phase K or the rebrand.** Proof: `git diff --name-only helix-main HEAD`
+touches **zero `.spring.xml`, zero `src/it/`, zero non-Karaf test resources** —
+Phase K only deleted the `osgi/` Java + Karaf test fixtures; the rebrand only
+edited `*/messages/*.properties`.
+
+| cluster | count | cause |
+|---|---|---|
+| `SessionIT`, `ThemeManagerIT`, `DashboardWidgetIT`, `HttpUtilIT`, `ComponentExceptionIT`, `FilterDefinitionIT` | 24 | `web-solution/…/pentahoObjects.spring.xml` declared `<bean id="ISystemConfig">` **twice** → Spring 6 `allowBeanDefinitionOverriding=false` throws. **Fixed** (`3a8594a`) — dropped the dup line; test-only, portable to any branch. |
+| `MetadataQueryComponentIT` | 10 | `SQLConnection.getNativeConnection()` null — HSQLDB/JNDI datasource not up in the IT env |
+| `XQueryIT` | 7 | Saxon/XQuery column-metadata behavior change ("expected `<title>` but was `<Default Column>`") — library-migration debt |
+| `RulesIT`, `SessionCachingMetadataDomainRepositoryIT`, `EmailServiceIT` | 5 | assorted SS6 / env / test-brittleness |
+
+Same family as the `DefaultUnifiedRepositoryJaxwsWebServiceIT` repository failure —
+Spring-Security-6 / library-migration debt on trunk, needs its own trunk tickets.
+
 ### Still not verified
 
-- **Full `-DrunITs` on `extensions`** (core + repository done; repository has the
-  1 pre-existing failure).
+- **Re-run `extensions -DrunITs` after `3a8594a`** — should drop ~24 errors.
 - **Visual PUC pass** — Claude-in-Chrome extension wouldn't connect. HTTP +
   rendered-output evidence is strong; a human should still click through PUC
   (message strings, CDE drag-drop).
