@@ -335,10 +335,49 @@ tests 313/0, other 150 ITs pass on both branches.
 Action: leave it (fix belongs in a separate trunk ticket), or `@Ignore` it on the
 Helix branch with a pointer to this note.
 
-### Not verified
+### K3 — static `require-init.js` (2026-09-02)
 
-- **Clean rebuild of the full server after Step C** + boot/smoke/gate.
-- **Visual PUC pass** — Claude-in-Chrome extension wouldn't connect.
+Trimmed the interim `require-init.js` from 2,232 lines (it had captured the whole
+RequireJS 2.3.7 library) down to **101 lines** — just the config IIFE, guarded to
+no-op if `require` isn't defined yet.
+
+Rationale: `require-init.js` has exactly one consumer, `PentahoWebContextFilter`,
+which loads it only as `?requirejs=false` **after** webcontext.js has already
+pulled RequireJS from `content/common-ui/resources/web/require.js`. Bundling the
+library was a redundant second load. For Helix CE (no OSGi webpackage bundles)
+the config it applies is always `{paths:{},bundles:{},…}` merged with the
+`window.requireCfg` that plugins populate the classic way
+(`<external-resources context="requirejs">`).
+
+**Not a generator** — the output is static for a fixed CE plugin set. If Helix
+ever ships real runtime webpackage federation, this becomes a build-time
+generator (the original "Karaf Exit Plan Phase 3").
+
+Verified:
+- node harness simulating the webcontext.js load order → single `require.config`
+  call, empty `paths`, legacy plugin config merged, `CONTEXT_PATH` preserved,
+  safe no-op when `require` undefined
+- **full server assembly built** on `helix-nokaraf` (`BUILD SUCCESS`), boots 25 s
+- smoke green: `require-init.js?requirejs=false` 200, `require.js` 200 (separate),
+  report render, CDF dashboard, CDE editor, `.xaction`, scheduler, PUC
+- `gate-check.sh` vs `baseline/no-karaf`: **PASS** (no HTTP regressions, no
+  require-init module ids lost)
+
+## Phase K — complete for CE
+
+Karaf, the OSGi bridge, all Phase-0 instrumentation, and the runtime RequireJS
+manager are gone. `helix-nokaraf` = `helix-main` + Phase-0 + Phase K, builds a
+709 MB server that boots in ~25 s and passes the full smoke matrix + `gate-check`.
+Net code impact: ~25 source files deleted, 2 modified, 4 config + 3 pom edits,
+1 static JS file. One pre-existing trunk IT failure (`DefaultUnifiedRepositoryJaxwsWebServiceIT`).
+
+### Still not verified
+
+- **Full `-DrunITs` on `extensions`** (core + repository done; repository has the
+  1 pre-existing failure).
+- **Visual PUC pass** — Claude-in-Chrome extension wouldn't connect. HTTP +
+  rendered-output evidence is strong; a human should still click through PUC
+  (message strings, CDE drag-drop).
   HTTP + rendered-output checks are strong (report data, CDF/CDE render), but a
   human should click through PUC once: message strings render as words not
   `[keys]`, CDE drag-drop works, Analyzer is N/A on CE.
