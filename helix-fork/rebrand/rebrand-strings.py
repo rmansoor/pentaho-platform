@@ -30,7 +30,11 @@ EXCLUDE_LINE_SUBSTR = (
 )
 EXCLUDE_LINE_RE = re.compile(
     r"(?i)copyright|all rights reserved|licensed under|LICENSE\.TXT|"
-    r"GNU (Lesser )?General Public|Business Source License|"
+    r"GNU (Lesser )?General Public|Business Source License|&copy;|©|"
+    r"保留.{0,4}(權利|权利)|"        # zh "all rights reserved"
+    r"全著作権所有|"                  # zh-TW
+    r"Alle Rechte|Tous [Dd]roits|Todos los derechos|Wszelkie prawa|"
+    r"著作権所有|"
     r"^\s*[#*]|^\s*//|^\s*<!--"
 )
 
@@ -46,18 +50,38 @@ def repl_token(m):
 # 'pentaho' as a brand word: not part of a package (org.pentaho), not a class
 # prefix (PentahoSystem, IPentahoSession), not a hyphenated identifier token
 # used as code. Followed by whitespace / punctuation / end only.
-TOKEN_RE = re.compile(r"(?<![.\w/])[Pp][Ee][Nn][Tt][Aa][Hh][Oo](?![A-Za-z0-9_/])")
+# preceded by: not a letter / '.' / '/'  (so 'org.pentaho', 'myPentaho' are out,
+#   but '、Pentaho' in a .properties value and 'word Pentaho' are in)
+# followed by: not a letter / digit / '_' / '/'  (so 'PentahoSystem', 'pentaho/x'
+#   are out, 'Pentaho ', 'Pentaho.', 'Pentaho-X', 'Pentaho<' are in)
+# Not preceded by: '.' '/', or 2+ consecutive ASCII letters (mid-identifier like
+#   'myPentaho'). A single char before (incl. the trailing hex of a \uXXXX escape
+#   in a .properties value, e.g. '，Pentaho') is fine.
+# Not followed by: letter / digit / '_' / '/'  ('PentahoSystem', 'pentaho/x' out).
+TOKEN_RE = re.compile(
+    r"(?<!\.)(?<!/)(?<![A-Za-z][A-Za-z])[Pp][Ee][Nn][Tt][Aa][Hh][Oo](?![A-Za-z0-9_/])"
+)
+KEY_EXCLUDE = ("COPYRIGHT", "USER_ABOUT_TEXT", "LICENSE", "GPL", "LGPL")
+
+CASE_SENSITIVE_EXCL = ("PENTAHO_", "HELIX_")
+
+def _excluded(text):
+    if EXCLUDE_LINE_RE.search(text):
+        return True
+    low = text.lower()
+    if any(s.lower() in low for s in EXCLUDE_LINE_SUBSTR if s not in CASE_SENSITIVE_EXCL):
+        return True
+    return any(s in text for s in CASE_SENSITIVE_EXCL)
 
 def transform_line(line, is_properties):
-    if EXCLUDE_LINE_RE.search(line):
-        return line
-    low = line.lower()
-    if any(s.lower() in low for s in EXCLUDE_LINE_SUBSTR):
-        return line
     if is_properties and "=" in line and not line.lstrip().startswith(("#", "!")):
-        # never rename the KEY (it is an API contract); only the display VALUE
+        # never rename the KEY (it is an API contract); test the VALUE only
         key, _, val = line.partition("=")
+        if any(k in key.upper() for k in KEY_EXCLUDE) or _excluded(val):
+            return line
         return key + "=" + TOKEN_RE.sub(repl_token, val)
+    if _excluded(line):
+        return line
     return TOKEN_RE.sub(repl_token, line)
 
 def process(path, apply):
