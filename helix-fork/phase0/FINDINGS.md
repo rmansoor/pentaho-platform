@@ -243,9 +243,43 @@ Step B). `core`'s `osgi.core` dep stays for the still-compiled (dead)
 
 Needs a clean rebuild to confirm; then the `karaf` folder is gone.
 
+### Step A — verified (clean build)
+
+`system/karaf` gone. Distribution **−52 MB** (zip 801 → 747 MB). Boots in 25 s,
+full smoke green, `gate-check.sh` vs `baseline/no-karaf`: **PASS**, OSGi trace
+0 bytes. `org.apache.karaf.{main,jaas.boot,util}` still in `WEB-INF/lib` as
+transitive deps via `pentaho-platform-extensions` — cleared by Step B.
+
+### Step B — delete the dead Karaf source (2026-09-01)
+
+Deleted **2,495 lines / 19 files** — the self-contained Karaf cluster:
+
+`extensions/…/osgi/`: `OSGIBoot`, `KarafBoot`, `KarafInstance`, `KarafInstancePort`,
+`IKarafInstanceResolver`, `ServerSocketBasedKarafInstanceResolver`,
+`KarafInstanceResolverException`, `PentahoOSGIActivator`, `SystemPackageExtrapolator`,
+`ExceptionBasedClientTypeProvider`, `IClientTypeProvider` + 8 test classes. The
+`extensions/…/osgi/` package is now empty. Removed `org.apache.karaf.main` from
+`extensions/pom.xml` (its only consumer was `KarafBoot`).
+
+`core` + `extensions` **compile + test-compile clean on JDK 17** (`BUILD SUCCESS`).
+
+**Kept deliberately** (compile fine, load-bearing or harmless):
+
+| class | why kept |
+|---|---|
+| `core/…/objfac/OSGIObjectFactory`, `OSGIUtils`, `OsgiPentahoObjectReference` | now truly dead (only `PentahoOSGIActivator` registered `OSGIObjectFactory`, and it's gone) but still referenced by `OSGIRuntimeObjectFactory` / `ClassicResolutionList` / `Phase0ServiceTrace`. Removing them is **Step C** — touches `PentahoSystem`'s factory chain, needs its own IT cycle. |
+| `core/…/objfac/OSGIRuntimeObjectFactory` | **load-bearing** — `PentahoSystem.defaultObjectFactory()` registers it as the runtime object factory; `<pen:publish>` / `registerReference()` flow through it (WI-1.7 already made it work without OSGi). |
+| `extensions/…/web/http/ConfigurationAdminNonOsgiProxy` | **live** — `PentahoWebContextFilter` uses it; degrades to null cleanly without OSGi. |
+| `core/…/objfac/spring/*` + `PublishedBeanRegistry` | **load-bearing** — the `<pen:publish>` machinery. |
+| `Phase0ServiceTrace`, `ClassicResolutionList` | measurement scaffolding; keep until Step C. |
+
+`osgi.core` / `osgi.cmpn` stay in `core/pom.xml` — API jars (no OSGi runtime),
+still needed for `org.osgi.service.cm.ConfigurationAdmin` in `ConfigurationAdminNonOsgiProxy`.
+
 ### Not verified
 
-- **Clean rebuild after Step A** — poms edited, not yet built.
+- **Clean rebuild after Step B** + `system/karaf` jars gone from war.
+- **Full IT suite** (`-DrunITs`) — Step B touched the `osgi` package; run it.
 - **Visual PUC pass** — Claude-in-Chrome extension wouldn't connect this session.
   HTTP + rendered-output checks are strong (report data, CDF/CDE render), but a
   human should click through PUC once: message strings render as words not

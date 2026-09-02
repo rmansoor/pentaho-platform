@@ -2056,11 +2056,6 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.karaf</groupId>
-      <artifactId>org.apache.karaf.main</artifactId>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
       <groupId>org.osgi</groupId>
       <artifactId>osgi.core</artifactId>
     </dependency>
