@@ -312,9 +312,32 @@ it's a genuine improvement (removed a fragile field initializer), independent of
 instrumentation scaffolding are gone. What remains is the build-time
 `require-init.js` generator (K3) and regression.
 
+### Step C — IT run (2026-09-02)
+
+Full `mvn verify -DrunITs` on `helix-nokaraf`:
+
+- `pentaho-platform-core` — **SUCCESS**
+- `pentaho-platform-repository` — **151 ITs, 1 failure**:
+  `DefaultUnifiedRepositoryJaxwsWebServiceIT.testEverything:167` →
+  `ServerSOAPFault` … `AuthenticationCredentialsNotFoundException: An Authentication
+  object was not found in the SecurityContext` (server side of an in-process JAX-WS
+  call).
+
+**This is a pre-existing failure on trunk, not a Phase K regression.** Verified by
+running the same IT on **`helix-main`** (the squashed trunk, before any Phase K
+commit) — identical failure, same line, same cause. It is Spring Security 6
+migration debt: the IT sets `SecurityContextHolder.MODE_GLOBAL` in `@Before` and
+expects the in-process `Endpoint.publish` server thread to see the test thread's
+`login()`; under SS6 the `MethodSecurityInterceptor` on the server side finds no
+`Authentication`. Nothing to do with OSGi/Karaf — `helix-main` repository unit
+tests 313/0, other 150 ITs pass on both branches.
+
+Action: leave it (fix belongs in a separate trunk ticket), or `@Ignore` it on the
+Helix branch with a pointer to this note.
+
 ### Not verified
 
-- **Clean rebuild after Step C** + full IT suite (`-DrunITs`).
+- **Clean rebuild of the full server after Step C** + boot/smoke/gate.
 - **Visual PUC pass** — Claude-in-Chrome extension wouldn't connect.
   HTTP + rendered-output checks are strong (report data, CDF/CDE render), but a
   human should click through PUC once: message strings render as words not
