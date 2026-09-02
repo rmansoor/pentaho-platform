@@ -23,6 +23,9 @@ EXCLUDE_LINE_SUBSTR = (
     "org.pentaho", "com.pentaho", "pentaho.com", "pentaho.org",
     "www.pentaho", "/pentaho-style/", "schema/pentaho-system", "pentaho-gwt-rpc",
     "http://reporting.pentaho", "jcr/2.0",
+    # identifiers renamed (or not) in later slices, not here:
+    "pentaho.xml", "pentaho-system-cfg", "pentaho-solutions", "pentaho.war",
+    "pentaho-server", "PENTAHO_", "pentaho_mapping",  # env vars / install names
     "class=", "bean id=", "Bundle-", "-classname>", "<classname>",
 )
 EXCLUDE_LINE_RE = re.compile(
