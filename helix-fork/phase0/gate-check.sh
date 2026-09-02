@@ -12,7 +12,9 @@
 set -euo pipefail
 BASE="${1:?baseline dir}"; NEW="${2:?new capture dir}"
 RC=0
-CLASSIC_LIST="$(dirname "$0")/../../core/src/main/resources/org/pentaho/platform/engine/core/system/objfac/de-osgi-classic-interfaces.txt"
+# Was core/.../objfac/de-osgi-classic-interfaces.txt (removed in Phase K step C once
+# the OSGi bridge was deleted). Kept as an optional local override for allowed drops.
+CLASSIC_LIST="$(dirname "$0")/allowed-missing-interfaces.txt"
 
 say(){ printf '%s\n' "$*"; }
 fail(){ printf 'FAIL  %s\n' "$*"; RC=1; }

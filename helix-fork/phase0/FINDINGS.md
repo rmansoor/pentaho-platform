@@ -276,11 +276,46 @@ Deleted **2,495 lines / 19 files** — the self-contained Karaf cluster:
 `osgi.core` / `osgi.cmpn` stay in `core/pom.xml` — API jars (no OSGi runtime),
 still needed for `org.osgi.service.cm.ConfigurationAdmin` in `ConfigurationAdminNonOsgiProxy`.
 
+### Step B — verified (clean build)
+
+`system/karaf` gone; `org.apache.karaf.{main,jaas.boot,util}` jars gone from
+`WEB-INF/lib`. Distribution **709 MB** (−92 MB total). Boots 24 s, full smoke +
+`gate-check` **PASS**, OSGi trace 0 bytes.
+
+### Step C — delete the OSGi object-factory bridge (2026-09-02)
+
+The forward bridge was never registered after `PentahoOSGIActivator` went (Step B),
+and the reverse-bridge / runtime factory is a pure pass-through to
+`RuntimeObjectFactory` whenever `bundleContext == null` — which is now always.
+So both come out cleanly. Deleted (6 main + 1 resource + 4 tests):
+
+- `core/…/objfac/`: `OSGIObjectFactory`, `OSGIRuntimeObjectFactory`,
+  `Phase0ServiceTrace`, `ClassicResolutionList`, `de-osgi-classic-interfaces.txt`
+- `core/…/system/osgi/`: `OSGIUtils`, `OsgiPentahoObjectReference` (package now empty)
+
+`PentahoSystem.java`:
+- `defaultObjectFactory()` now `new RuntimeObjectFactory()` (was `OSGIRuntimeObjectFactory`)
+- removed `import org.osgi.framework.BundleContext` and the
+  `public static void setBundleContext( BundleContext )` method (no production caller —
+  only `PentahoOSGIActivator`, deleted in Step B)
+
+**No `src/main` code in `core` imports `org.osgi` anymore.** `core` + `extensions`
+compile + test-compile clean on JDK 17 (`BUILD SUCCESS`).
+
+Left in place: `core/pom.xml`'s `osgi.core` dep (unused now, but a tiny API jar —
+low-value/low-risk trim for later); `extensions` keeps `osgi.cmpn` for
+`ConfigurationAdminNonOsgiProxy`'s `org.osgi.service.cm.ConfigurationAdmin` import.
+The WI-1.4-Tier2 lazy `getSystemConfig()` in `PentahoSystemPluginManager` stays —
+it's a genuine improvement (removed a fragile field initializer), independent of OSGi.
+
+**Phase K is now code-complete for CE** — Karaf, the OSGi bridge, and all the
+instrumentation scaffolding are gone. What remains is the build-time
+`require-init.js` generator (K3) and regression.
+
 ### Not verified
 
-- **Clean rebuild after Step B** + `system/karaf` jars gone from war.
-- **Full IT suite** (`-DrunITs`) — Step B touched the `osgi` package; run it.
-- **Visual PUC pass** — Claude-in-Chrome extension wouldn't connect this session.
+- **Clean rebuild after Step C** + full IT suite (`-DrunITs`).
+- **Visual PUC pass** — Claude-in-Chrome extension wouldn't connect.
   HTTP + rendered-output checks are strong (report data, CDF/CDE render), but a
   human should click through PUC once: message strings render as words not
   `[keys]`, CDE drag-drop works, Analyzer is N/A on CE.
