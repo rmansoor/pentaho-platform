@@ -5,21 +5,24 @@ CE server by reimplementing its web-security layer as an owned module,
 `helix-security-web`, on the platform's already-current stack (Spring Security
 6.5, Spring 6.2, Jakarta EE 10, JAX-RS 3.1).
 
-**Status:** design + scaffold landed on `helix-rebrand`. The `helix-security-web/`
-module exists, compiles green (JDK 17), and covers S1 + most of S2/S3:
+**Status:** S0–S9 landed on `helix-rebrand`; S10 (full-assembly validation) in
+progress. `helix-security-web/` is a reactor module (before `extensions`),
+60 module tests green on JDK 17; `extensions` main+test compile + 138 security
+tests green against it.
 
-- the 6 model interfaces + `RequestMatcher.ALL/NONE`
-- `RegexRequestMatcher` (behaviour verified against the observed contract —
-  `getServletPath()+getPathInfo()`, `Matcher.matches()`, method set) + `OrRequestMatcher`
-- `SsrfConfigurationPojo`
-- the `hsw:` Spring namespace: `SecurityWebNamespaceHandler` + 3 parsers +
-  `hsw-1.0.xsd` + `META-INF/spring.{handlers,schemas}`
-- `RegexRequestMatcherTest` (7 tests, green)
-
-Not yet wired into the reactor `<modules>` (that happens once the filters compile).
-Still to build: the 3 servlet filters, aggregators, CORS pojo, `CsrfTokenService`,
-the JAX-RS client filters, and the migration of the 3 system XMLs + 6 Java files
-(§2). See the task table in §7.
+| step | done | what |
+|---|---|---|
+| S0 | ✅ | `fixtures/SPEC.md` + `s0-blackbox.txt` — frozen behaviour of HV 0.14.0 with all 3 protections on |
+| S1 | ✅ | module + poms + 6 model interfaces + `RequestMatcher.ALL/NONE` |
+| S2 | ✅ | `RegexRequestMatcher`, `OrRequestMatcher`, CSRF/CORS pojos, both aggregators |
+| S3 | ✅ | `hsw:` namespace (`http://www.pentaho.com/schema/security-web`): handler + 3 parsers + `hsw-1.0.xsd` + `spring.{handlers,schemas}`; full XML round-trip test |
+| S4 | ✅ | `CsrfGateFilter` over Spring `CsrfFilter` + `CsrfRequiredRequestMatcherAdapter` + body wrappers (`HttpUtil`, `CachedServletInputStream`, `MultiReadHttpServletRequestWrapper`, `ManagedBodyServletRequestWrapper`) |
+| S5 | ✅ | `CorsProtocolFilter` over Spring `CorsFilter` + `CorsConfigurationSourceAdapter` |
+| S6 | ✅ | `SsrfGateFilter` + `SsrfUtil` (custom; Host-header origin check, forwarded headers ignored) |
+| S7 | ✅ | `CsrfTokenService` JAX-RS resource (`@Path("/csrf")` `/token`) |
+| S8 | ✅ | `CsrfTokenFilter` + `CsrfTokenServiceClient` + `SessionCookiesFilter` (JAX-RS client, for the import/export CLI) |
+| S9 | ✅ | root pom module wiring; `extensions` + `pentaho-war` pom dep swap; 6 java files (FQCN only); 3 system XMLs + `pentahoServices.spring.xml` + 1 test resource (`swm:`→`hsw:`) |
+| S10 | ⏳ | full clean assembly build + boot + `gate-check.sh` + PUC pass with `csrf-protection-enabled=true` |
 
 ---
 
