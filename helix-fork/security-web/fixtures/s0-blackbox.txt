@@ -1,0 +1,99 @@
+=== S0 black-box capture — 2026-09-03T13:32Z ===
+server: candidate build (HV security-web 0.14.0), csrf+cors+ssrf ENABLED
+fully-qualified-server-url=http://localhost:8080/pentaho/  alt=http://127.0.0.1:8080/pentaho/
+cors-requests-allowed-domains=http://allowed.example.com
+
+### 1. CSRF token endpoint (unauthenticated, as used for login) ###
+-- GET /api/csrf/token?url=<import endpoint> --
+HTTP/1.1 204 
+Set-Cookie: JSESSIONID=F14279421CDF1ADA2288AC5AFEE43932; Path=/pentaho; HttpOnly
+X-CSRF-HEADER: X-CSRF-TOKEN
+X-CSRF-PARAM: _csrf
+X-CSRF-TOKEN: Vn3C_jeS5UzPVUFs2FaH1jgMxfpRkhXTL3xTnt9YU9DTTtcPZkT6yQD00XziNCNV4Xuz4lo06JgzqnH-Shgw_-lhMeW3LO5t
+
+-- GET /api/csrf/token with NO url param --
+HTTP/1.1 204 
+X-CSRF-HEADER: X-CSRF-TOKEN
+X-CSRF-PARAM: _csrf
+X-CSRF-TOKEN: -fxmH5HLWBpRV5_UMGdzlPTzWSgHkUOxctx63L-DOxXl8qw3m55TKffzOn98MazhAUpH8ZDAdBAx8HOcEexKuNy7CyTcw5wA
+
+-- GET /api/csrf/token?url=<unprotected endpoint, e.g. GET-only> --
+HTTP/1.1 204 
+X-CSRF-HEADER: X-CSRF-TOKEN
+X-CSRF-PARAM: _csrf
+X-CSRF-TOKEN: zRN53lcfbNjfKFs4v_5oj0lkqmDgqVR-MQiGLc9vZYxq_ms8-yEc6m4uWezyGmNcjdNc7X9Xh1nVzG1TVz6wT_gKAblTzAha
+
+
+### 2. CSRF enforcement on a protected endpoint ###
+-- login (does j_spring_security_check need a token?) --
+HTTP/1.1 302 
+Location: /pentaho/Home
+
+-- authed POST /api/repo/files/import WITHOUT csrf token (expect 403) --
+HTTP/1.1 403 
+
+-- get token bound to THIS session, then POST WITH token (expect not-403; likely 400/500 due to missing multipart body) --
+token: TvpHLS5TgZtQHQFLPwdjlwcO...
+HTTP/1.1 400 
+
+-- authed POST with WRONG token (expect 403) --
+HTTP/1.1 403 
+
+-- CSRF on GET /api/system/refresh/metadata (matcher lists it as GET-protected) --
+HTTP/1.1 403 
+HTTP/1.1 200 
+
+### 3. CORS ###
+-- preflight OPTIONS, ALLOWED origin (http://allowed.example.com) --
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+Access-Control-Allow-Origin: http://allowed.example.com
+Access-Control-Allow-Methods: HEAD,POST,GET
+Access-Control-Allow-Credentials: true
+
+-- preflight OPTIONS, DENIED origin (http://evil.example.com) --
+HTTP/1.1 403 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+
+-- actual GET with ALLOWED origin --
+HTTP/1.1 401 
+Access-Control-Allow-Origin: http://allowed.example.com
+Access-Control-Allow-Credentials: true
+
+-- actual GET with DENIED origin --
+HTTP/1.1 403 
+
+### 4. SSRF (Host header must match FQ server url) ###
+-- request with bogus Host header (expect reject) --
+HTTP/1.1 403 
+-- request with valid Host (localhost:8080) --
+HTTP/1.1 401 
+-- request with alt valid Host (127.0.0.1:8080) --
+HTTP/1.1 401 
+-- X-Forwarded-Host spoofing attempt --
+HTTP/1.1 401 
+
+### 5. CORS preflight detail (headers, max-age, credentials on ACAO) ###
+-- OPTIONS allowed origin, requesting a custom header --
+HTTP/1.1 200 
+Access-Control-Allow-Origin: http://allowed.example.com
+Access-Control-Allow-Methods: HEAD,POST,GET
+Access-Control-Allow-Headers: X-CSRF-TOKEN, Content-Type
+Access-Control-Allow-Credentials: true
+
+-- OPTIONS allowed origin, DISALLOWED method (PUT not in GET,HEAD,POST) --
+HTTP/1.1 403 
+
+-- no Origin header at all (normal same-origin request) --
+HTTP/1.1 401 
+
+### 6. CSRF token endpoint is reachable pre-auth & pre-SSRF? ###
+-- /api/csrf/token with bad Host (SSRF runs before CSRF in chain) --
+HTTP/1.1 403 
+
+NOTE: filter order in filterChainProxy = ssrfGateFilter, csrfGateFilter, corsFilter (all pre-auth)
+=== end S0 capture ===
