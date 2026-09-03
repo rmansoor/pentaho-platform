@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:hsw="http://www.pentaho.com/schema/security-web"
+       xsi:schemaLocation="
+          http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+          http://www.pentaho.com/schema/security-web http://www.pentaho.com/schema/security-web/hsw-spring.xsd">
+
+  <bean id="regex" class="org.pentaho.platform.security.web.model.csrf.CsrfRequestSetConfigurationPojo">
+    <property name="requestMatcher">
+      <hsw:regex-request-matcher pattern="^/api/user-settings/.*" methods="POST" />
+    </property>
+  </bean>
+
+  <bean id="all" class="org.pentaho.platform.security.web.model.csrf.CsrfRequestSetConfigurationPojo">
+    <property name="requestMatcher">
+      <hsw:all-request-matcher />
+    </property>
+  </bean>
+
+  <bean id="none" class="org.pentaho.platform.security.web.model.csrf.CsrfRequestSetConfigurationPojo">
+    <property name="requestMatcher">
+      <hsw:none-request-matcher />
+    </property>
+  </bean>
+
+  <bean id="or" class="org.pentaho.platform.security.web.model.csrf.CsrfRequestSetConfigurationPojo">
+    <property name="requestMatcher">
+      <hsw:or-request-matcher>
+        <hsw:regex-request-matcher pattern="^/api/theme/set\b.*" methods="POST" />
+        <hsw:regex-request-matcher pattern="^/UploadService\b.*" methods="POST" />
+      </hsw:or-request-matcher>
+    </property>
+  </bean>
+
+</beans>
