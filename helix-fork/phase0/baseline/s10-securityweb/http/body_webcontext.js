@@ -45,12 +45,12 @@ requireCfg.config["pentaho/environment"] = {
 };
 
 <!-- Injecting web resources defined in by plugins as external-resources for: requirejs-->
-document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "js/require-js-cfg.js'></scr"+"ipt>");
 document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/pentaho-cdf/js/cdf-require-js-cfg.js'></scr"+"ipt>");
-document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/reporting/reportviewer/reporting-require-js-cfg.js'></scr"+"ipt>");
-document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/pentaho-cdf-dd/js/cde-require-js-cfg.js'></scr"+"ipt>");
 document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/common-ui/resources/web/common-ui-require-js-cfg.js'></scr"+"ipt>");
 document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/scheduler-plugin/resources/scheduler-plugin-require-js-cfg.js'></scr"+"ipt>");
+document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/reporting/reportviewer/reporting-require-js-cfg.js'></scr"+"ipt>");
+document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "js/require-js-cfg.js'></scr"+"ipt>");
+document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/pentaho-cdf-dd/js/cde-require-js-cfg.js'></scr"+"ipt>");
 document.write("<script type='text/javascript' src='" + CONTEXT_PATH + "content/common-ui/resources/web/require.js'></scr"+"ipt>");
 
 document.write("<script type='text/javascript' src='" + CONTEXT_PATH + "content/common-ui/resources/web/require-cfg.js'></scr"+"ipt>");
@@ -83,8 +83,6 @@ var RESERVED_CHARS_REGEX_PATTERN = /.*[\/\\\t\r\n]+.*/;
 document.write("<script type='text/javascript' src='" + CONTEXT_PATH + "osgi/requirejs-manager/js/require-init.js?requirejs=false'></scr"+"ipt>");
 
 <!-- Injecting web resources defined in by plugins as external-resources for: global-->
-document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "js/themes.js'></scr"+"ipt>");
-document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/common-ui/resources/themes/jquery.js'></scr"+"ipt>");
 document.write("<link rel='stylesheet' type='text/css' href='" + CONTEXT_PATH + "content/data-access/resources/gwt/datasourceEditorDialog.css'/>");
 document.write("<link rel='stylesheet' type='text/css' href='" + CONTEXT_PATH + "content/data-access/resources/gwt/datasourceAdminDialog.css'/>");
 document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/common-ui/resources/web/dojo/djConfig.js'></scr"+"ipt>");
@@ -99,3 +97,5 @@ document.write("<script language='javascript' type='text/javascript' src='" + CO
 document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/common-ui/resources/web/util/SessionExpiryCheckStartingPoint.js'></scr"+"ipt>");
 document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/common-ui/resources/web/util/pentaho-csrf.js'></scr"+"ipt>");
 document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/common-ui/resources/web/repo/pentaho-ajax.js'></scr"+"ipt>");
+document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "js/themes.js'></scr"+"ipt>");
+document.write("<script language='javascript' type='text/javascript' src='" + CONTEXT_PATH + "content/common-ui/resources/themes/jquery.js'></scr"+"ipt>");
