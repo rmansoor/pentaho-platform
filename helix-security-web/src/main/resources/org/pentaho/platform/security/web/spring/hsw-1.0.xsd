@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
+<!--
+  Helix security-web request-matcher Spring namespace.
+
+  Clean-room re-authoring: the ELEMENT and ATTRIBUTE names below are the
+  compatibility contract that the platform's own applicationContext-spring-security-*.xml
+  files depend on. They are carried over deliberately. No prose, annotations, or
+  structure was copied from the proprietary com.hitachivantara.security.web schema.
+-->
+<xsd:schema xmlns:hsw="http://www.pentaho.com/schema/security-web"
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:beans="http://www.springframework.org/schema/beans"
+            targetNamespace="http://www.pentaho.com/schema/security-web"
+            elementFormDefault="qualified">
+
+  <xsd:import namespace="http://www.springframework.org/schema/beans"/>
+
+  <xsd:element name="or-request-matcher" type="hsw:TOrRequestMatcher"/>
+  <xsd:element name="regex-request-matcher" type="hsw:TRegexRequestMatcher"/>
+  <xsd:element name="all-request-matcher" type="hsw:TAbstractRequestMatcher"/>
+  <xsd:element name="none-request-matcher" type="hsw:TAbstractRequestMatcher"/>
+
+  <xsd:group name="requestMatcherElements">
+    <xsd:choice>
+      <xsd:element ref="hsw:or-request-matcher"/>
+      <xsd:element ref="hsw:regex-request-matcher"/>
+      <xsd:element ref="hsw:all-request-matcher"/>
+      <xsd:element ref="hsw:none-request-matcher"/>
+    </xsd:choice>
+  </xsd:group>
+
+  <xsd:complexType name="TAbstractRequestMatcher">
+    <xsd:complexContent>
+      <xsd:extension base="beans:identifiedType">
+        <xsd:attribute name="name" type="xsd:string"/>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="TRegexRequestMatcher">
+    <xsd:complexContent>
+      <xsd:extension base="hsw:TAbstractRequestMatcher">
+        <xsd:attribute name="pattern" type="xsd:string" use="required"/>
+        <xsd:attribute name="methods" type="hsw:THttpMethods"/>
+        <xsd:attribute name="insensitive" type="xsd:boolean"/>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="TOrRequestMatcher">
+    <xsd:complexContent>
+      <xsd:extension base="hsw:TAbstractRequestMatcher">
+        <xsd:choice minOccurs="0" maxOccurs="unbounded">
+          <xsd:group ref="hsw:requestMatcherElements"/>
+          <xsd:any namespace="##other" processContents="lax"/>
+        </xsd:choice>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+
+  <xsd:simpleType name="THttpMethod">
+    <xsd:restriction base="xsd:string">
+      <xsd:pattern value="[A-Za-z]+"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="THttpMethods">
+    <xsd:list itemType="hsw:THttpMethod"/>
+  </xsd:simpleType>
+
+</xsd:schema>
