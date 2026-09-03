@@ -60,18 +60,23 @@ public class CsrfTokenServiceTest {
   }
 
   @Test
-  public void noTokenAttributeMeansNoHeaders() {
+  public void noTokenOnTheRequestMeansNoHeaders() {
+    // csrfGateFilter short-circuits when CSRF is disabled -> no CsrfToken attribute -> empty 204
     Response res = service( enabled(), null ).getToken( null );
     assertEquals( 204, res.getStatus() );
     assertNull( res.getHeaderString( "X-CSRF-TOKEN" ) );
   }
 
   @Test
-  public void disabledConfigMeansNoHeaders() {
-    AggregatedRequestSetCsrfConfiguration disabled = new AggregatedRequestSetCsrfConfiguration();
-    CsrfToken token = new DefaultCsrfToken( "X-CSRF-TOKEN", "_csrf", "abc" );
-    Response res = service( disabled, token ).getToken( null );
+  public void reflectsTheTokenEvenWithNoInjectedConfiguration() {
+    // the JAX-RS runtime may build the resource via its no-arg constructor
+    CsrfTokenService s = new CsrfTokenService();
+    MockHttpServletRequest req = new MockHttpServletRequest( "GET", "/api/csrf/token" );
+    req.setAttribute( CsrfToken.class.getName(), new DefaultCsrfToken( "X-CSRF-TOKEN", "_csrf", "abc" ) );
+    s.setRequest( req );
+
+    Response res = s.getToken( null );
     assertEquals( 204, res.getStatus() );
-    assertNull( res.getHeaderString( "X-CSRF-TOKEN" ) );
+    assertEquals( "abc", res.getHeaderString( "X-CSRF-TOKEN" ) );
   }
 }

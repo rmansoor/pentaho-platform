@@ -24,13 +24,17 @@ import org.springframework.security.web.csrf.CsrfToken;
 /**
  * JAX-RS resource that hands a caller the current CSRF token so it can make a protected request.
  * Exposed at {@code /api/csrf/token}; must be reachable without authentication (a token is needed to
- * log in). Requires the {@code csrfGateFilter} to have run first so the token is on the request.
+ * log in).
  * <p>
- * Response: always {@code 204 No Content}. When a token is available, three headers carry it:
+ * The {@code csrfGateFilter} must run ahead of this resource in the filter chain: when CSRF protection
+ * is enabled it places a {@link CsrfToken} on the request, and this resource simply reflects it; when
+ * CSRF is disabled the filter short-circuits, no token is placed, and this resource returns an empty
+ * {@code 204}. So the response is:
  * <pre>
- *   X-CSRF-HEADER: &lt;header name a caller should send the token in, e.g. X-CSRF-TOKEN&gt;
- *   X-CSRF-PARAM:  &lt;form parameter name, e.g. _csrf&gt;
- *   X-CSRF-TOKEN:  &lt;the token value&gt;
+ *   204 No Content, always
+ *   X-CSRF-HEADER: &lt;header name to send the token in, e.g. X-CSRF-TOKEN&gt;   (only when protected)
+ *   X-CSRF-PARAM:  &lt;form parameter name, e.g. _csrf&gt;                        (only when protected)
+ *   X-CSRF-TOKEN:  &lt;the token value&gt;                                        (only when protected)
  * </pre>
  * Clean-room replacement for
  * {@code com.hitachivantara.security.web.impl.service.csrf.jaxrs.CsrfTokenService}.
@@ -42,10 +46,20 @@ public class CsrfTokenService {
   static final String RESPONSE_HEADER_PARAM = "X-CSRF-PARAM";
   static final String RESPONSE_HEADER_TOKEN = "X-CSRF-TOKEN";
 
+  @SuppressWarnings( "unused" )
   private final CsrfConfiguration configuration;
 
   @Context
   private HttpServletRequest request;
+
+  /**
+   * No-arg constructor for the JAX-RS runtime's own class scan. The resource does not need the
+   * {@link CsrfConfiguration} &mdash; whether a token is available is already decided by the
+   * {@code csrfGateFilter} upstream.
+   */
+  public CsrfTokenService() {
+    this( null );
+  }
 
   public CsrfTokenService( CsrfConfiguration configuration ) {
     this.configuration = configuration;
@@ -61,15 +75,13 @@ public class CsrfTokenService {
   public Response getToken( @QueryParam( "url" ) String url ) {
     Response.ResponseBuilder builder = Response.noContent();
 
-    if ( configuration != null && configuration.isEnabled() && request != null ) {
-      Object attr = request.getAttribute( CsrfToken.class.getName() );
-      if ( attr instanceof CsrfToken ) {
-        CsrfToken token = (CsrfToken) attr;
-        builder
-          .header( RESPONSE_HEADER_HEADER, token.getHeaderName() )
-          .header( RESPONSE_HEADER_PARAM, token.getParameterName() )
-          .header( RESPONSE_HEADER_TOKEN, token.getToken() );
-      }
+    Object attr = request == null ? null : request.getAttribute( CsrfToken.class.getName() );
+    if ( attr instanceof CsrfToken ) {
+      CsrfToken token = (CsrfToken) attr;
+      builder
+        .header( RESPONSE_HEADER_HEADER, token.getHeaderName() )
+        .header( RESPONSE_HEADER_PARAM, token.getParameterName() )
+        .header( RESPONSE_HEADER_TOKEN, token.getToken() );
     }
 
     return builder.build();

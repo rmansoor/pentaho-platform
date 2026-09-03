@@ -1,0 +1,26 @@
+=== S10 replay — helix-security-web vs SPEC.md — 2026-09-03T14:21Z ===
+server: full assembly build, csrf+cors+ssrf ENABLED, helix filters
+
+## SSRF (expect: bogus 403, valid 401, alt 401, token-ep-bad-host 403)
+  bogus Host        403
+  valid Host        401
+  alt 127.0.0.1     401
+  X-Forwarded-Host  401  (not trusted -> 401)
+  token ep bad Host 403
+
+## CSRF
+  token endpoint    1x204  X-CSRF-HEADER: X-CSRF-TOKEN X-CSRF-PARAM: _csrf
+  POST prot no tok  403  (403)
+  POST prot + tok   400  (400 = passed)
+  POST prot badtok  403  (403)
+  GET matcher notok 403  (403)
+  GET matcher +tok  200  (200)
+  plugin matcher    403  (403 - via replacer)
+
+## CORS
+  preflight allowed 1x200  ACAO=http://allowed.example.com  ACAH=X-CSRF-TOKEN, Content-Type
+  preflight PUT     403  (403)
+  preflight evil    403  (403)
+  actual allowed    1x ACAO   (401)
+  actual evil       403  (403)
+  no origin         401  (401)
