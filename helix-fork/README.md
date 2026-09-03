@@ -464,9 +464,16 @@ files; decide `swm:` namespace-handler reproduce-vs-rewrite; audit shipped
 > echoed into OSGi by `pentaho-blueprint-activators`) — everything else is Aries
 > Blueprint infra or Felix `ConfigurationAdmin`, both retired with the container
 > in Phase 5. `baseline/no-metaverse/` is now the canonical Helix reference
-> config. One thing still unverified: a **visual PUC pass** (the Claude-in-Chrome
-> extension wasn't connected this session) to confirm no OSGi-only i18n content
-> silently goes missing — HTTP status codes don't catch that.
+> config.
+>
+> **Update, 2026-09-02: visual PUC pass DONE** (Playwright, no-Karaf/no-metaverse
+> server). Logged in, walked every perspective — Reporting+Prompting (Invoice
+> report, full data), CDF dashboard (live queries), Browse Files/JCR, Scheduler,
+> Administration. No OSGi-only i18n content missing; every label renders as words,
+> not `[keys]`; `require-init.js` static file serves 200; zero `/osgi/*` failures;
+> no `i18n-osgi!` module refs anywhere. Console 404s are all pre-existing
+> dev-profile packaging / sample-content issues with working fallbacks. Full
+> results + table in `helix-fork/phase0/FINDINGS.md`.
 
 **Verdict: feasible, but a strangler migration in 6 phases, not one step.** Every
 phase leaves a working server. Karaf is glued to the server at **4 coupling

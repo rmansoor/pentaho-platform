@@ -389,15 +389,41 @@ edited `*/messages/*.properties`.
 Same family as the `DefaultUnifiedRepositoryJaxwsWebServiceIT` repository failure —
 Spring-Security-6 / library-migration debt on trunk, needs its own trunk tickets.
 
+### Visual PUC pass — DONE (2026-09-02)
+
+Driven with Playwright (Claude-in-Chrome extension still wouldn't connect) against
+the running no-Karaf / no-metaverse server (`assemblies/pentaho-server/target/ps-ce`,
+clean build 2026-09-02 14:35, boot 26s). Logged in as `admin`, walked every
+perspective. **No Karaf/metaverse-removal regression found.**
+
+| Screen | Result |
+|---|---|
+| Login + PUC shell | renders; File/View/Tools/Help + perspective switcher (Home/Browse Files/Opened/Schedules/Administration) all resolved to words, no `[keys]` |
+| Home perspective | Browse Files / Create New / Manage Data Sources / Documentation, Recents, Favorites — all OK |
+| **Reporting + Prompting** — Steel Wheels `Invoice (report)` | full render: 3 pages, live data (line items, prices, payment history, remittance), parameter UI, toolbar, pagination, Auto-Submit |
+| **CDF dashboard** — `home_dashboard.xcdf` | live query data — territory pie (EMEA/NA/APAC/Japan), product-line breakdown, `dashboard.fireChange` interactivity |
+| **Browse Files / JCR** | repo tree (Home→admin/bob/pat/suzy/tiffany, Public→plugin-samples/Steel Wheels, Trash), Folder Actions toolbar — JCR fully up despite `KarafFeatureWatcherBarrier` removal |
+| **Scheduler** (Quartz) | Manage Schedules table (all columns), Blockout Times showing a live recurring entry |
+| **Administration** | Users & Roles / Mail Server / Settings tree + Users/Roles panel |
+
+Runtime signals: `/pentaho/osgi/requirejs-manager/js/require-init.js?requirejs=false`
+→ **200 every time** (our static file); **zero `/osgi/*` request failures**;
+**zero unresolved `pentaho/i18n*` modules**; `/pentaho/i18n?plugin=…` servlet 200
+for common-ui / prompting / reporting / data-access; **no `i18n-osgi!` refs
+anywhere** in the shipped war + `pentaho-solutions/system`.
+
+Console 404s seen — **all pre-existing, none Karaf-related, nothing breaks**:
+`…/compressed/jquery/jquery.js` and `…/reportviewer/compressed/reportviewer-app.js`
+(dev-profile packaging — RequireJS `paths` falls back `compressed/x`→`x`; same URL
+returns 200 on repeat curl — a browser parallel-load race during plugin warm-up),
+CDF sample's own relative-path CSS images via direct `generatedContent`,
+`api/ldap/config/getAttributeValues` (Admin probes LDAP endpoint regardless of the
+JCR security provider), `favicon.ico` (raw-URL nav). Screenshot:
+`helix-fork/phase0/puc-invoice-report.png`.
+
 ### Still not verified
 
 - **Re-run `extensions -DrunITs` after `3a8594a`** — should drop ~24 errors.
-- **Visual PUC pass** — Claude-in-Chrome extension wouldn't connect. HTTP +
-  rendered-output evidence is strong; a human should still click through PUC
-  (message strings, CDE drag-drop).
-  HTTP + rendered-output checks are strong (report data, CDF/CDE render), but a
-  human should click through PUC once: message strings render as words not
-  `[keys]`, CDE drag-drop works, Analyzer is N/A on CE.
 - A **full clean build** of `helix-nokaraf` (the spike patched a deployed server;
   the source edits are committed but not yet built into an assembly).
 - `pentaho-war` pom cleanup (drop karaf/felix jars) and the `system/karaf` unpack
