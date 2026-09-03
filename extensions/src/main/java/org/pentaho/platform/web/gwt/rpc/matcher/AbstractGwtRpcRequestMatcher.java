@@ -15,7 +15,7 @@
 package org.pentaho.platform.web.gwt.rpc.matcher;
 
 import com.google.gwt.user.server.rpc.SerializationPolicy;
-import com.hitachivantara.security.web.impl.model.matcher.RegexRequestMatcher;
+import org.pentaho.platform.security.web.model.matcher.RegexRequestMatcher;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import org.pentaho.platform.web.gwt.rpc.AbstractGwtRpc;

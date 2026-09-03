@@ -276,6 +276,7 @@
       <modules>
         <module>core</module>
         <module>repository</module>
+        <module>helix-security-web</module>
         <module>extensions</module>
         <module>tomcat-logs</module>
       </modules>

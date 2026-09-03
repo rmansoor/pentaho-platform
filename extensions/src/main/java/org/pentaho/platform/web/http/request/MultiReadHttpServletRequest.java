@@ -30,7 +30,7 @@ import java.io.InputStreamReader;
  * @author Rowell Belen
  * <p>
  * see http://stackoverflow.com/questions/10210645/http-servlet-request-lose-params-from-post-body-after-read-it-once
- * @deprecated Please use {@link com.hitachivantara.security.web.impl.service.util.MultiReadHttpServletRequestWrapper}
+ * @deprecated Please use {@link org.pentaho.platform.security.web.servlet.util.MultiReadHttpServletRequestWrapper}
  * instead. It supports multi-part requests, including the new {@link HttpServletRequest#getPart(String)} and
  * {@link HttpServletRequest#getParts()} methods.
  */

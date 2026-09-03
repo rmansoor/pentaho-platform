@@ -30,7 +30,7 @@
 
     <!-- servlet filter class that will be used to filter the request and response for SSRF protection -->
 
-    <bean id="ssrfGateFilter" class="com.hitachivantara.security.web.impl.service.ssrf.servlet.SsrfGateFilter">
+    <bean id="ssrfGateFilter" class="org.pentaho.platform.security.web.servlet.ssrf.SsrfGateFilter">
         <constructor-arg ref="pentahoSsrfConfigurationPojo" />
     </bean>
 

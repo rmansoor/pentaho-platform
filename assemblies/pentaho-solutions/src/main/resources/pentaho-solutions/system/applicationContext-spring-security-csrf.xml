@@ -15,24 +15,24 @@
   +-->
 <beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:pen="http://www.pentaho.com/schema/pentaho-system"
-       xmlns:swm="http://www.hitachivantara.com/schema/security/web/model/spring"
+       xmlns:hsw="http://www.pentaho.com/schema/security-web"
        xmlns:pen-gpc="http://www.pentaho.com/schema/pentaho-gwt-rpc-spring"
        xmlns="http://www.springframework.org/schema/beans"
        xsi:schemaLocation="
           http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
           http://www.pentaho.com/schema/pentaho-system http://www.pentaho.com/schema/pentaho-system.xsd
           http://www.pentaho.com/schema/pentaho-gwt-rpc-spring http://www.pentaho.com/schema/pentaho-gwt-rpc-spring.xsd
-          http://www.hitachivantara.com/schema/security/web/model/spring http://www.hitachivantara.com/schema/security/web/model/spring/hv-swm-spring.xsd"
+          http://www.pentaho.com/schema/security-web http://www.pentaho.com/schema/security-web/hsw-spring.xsd"
        default-lazy-init="true">
 
   <!-- region CSRF Configurations -->
 
   <!-- CSRF protected system endpoints -->
-  <bean class="com.hitachivantara.security.web.impl.model.csrf.CsrfRequestSetConfigurationPojo">
+  <bean class="org.pentaho.platform.security.web.model.csrf.CsrfRequestSetConfigurationPojo">
     <pen:publish as-type="INTERFACES" />
 
     <constructor-arg>
-      <swm:or-request-matcher>
+      <hsw:or-request-matcher>
         <!-- REST /api/* -->
 
         <!--
@@ -43,22 +43,22 @@
           POST /api/user-settings/MANTLE_SHOW_DESCRIPTIONS_FOR_TOOLTIPS
           POST /api/user-settings/*
         -->
-        <swm:regex-request-matcher pattern="^/api/user-settings/.*" methods="POST" />
+        <hsw:regex-request-matcher pattern="^/api/user-settings/.*" methods="POST" />
 
         <!--
           POST /api/mantle/session-variable
         -->
-        <swm:regex-request-matcher pattern="^/api/mantle/session-variable\b.*" methods="POST" />
+        <hsw:regex-request-matcher pattern="^/api/mantle/session-variable\b.*" methods="POST" />
 
         <!--
           POST /api/repo/files/import
         -->
-        <swm:regex-request-matcher pattern="^/api/repo/files/import\b.*" methods="POST" />
+        <hsw:regex-request-matcher pattern="^/api/repo/files/import\b.*" methods="POST" />
 
         <!--
           POST /api/theme/set
          -->
-        <swm:regex-request-matcher pattern="^/api/theme/set\b.*" methods="POST" />
+        <hsw:regex-request-matcher pattern="^/api/theme/set\b.*" methods="POST" />
 
         <!--
           GET /api/system/refresh/globalActions
@@ -69,12 +69,12 @@
           GET /api/system/refresh/mondrianSchemaCache
           GET /api/system/refresh/authorizationDecisionCache
          -->
-        <swm:regex-request-matcher pattern="^/api/system/refresh/(globalActions|metadata|systemSettings|reportingDataCache|mondrianSingleSchemaCache|mondrianSchemaCache|authorizationDecisionCache)\b.*" methods="GET" />
+        <hsw:regex-request-matcher pattern="^/api/system/refresh/(globalActions|metadata|systemSettings|reportingDataCache|mondrianSingleSchemaCache|mondrianSchemaCache|authorizationDecisionCache)\b.*" methods="GET" />
 
         <!--
          POST /api/licenseManager/addLicense
         -->
-        <swm:regex-request-matcher pattern="^/api/licenseManager/addLicense\b.*" methods="POST" />
+        <hsw:regex-request-matcher pattern="^/api/licenseManager/addLicense\b.*" methods="POST" />
 
         <!-- GWT-RPC ws/gwt/* -->
 
@@ -105,19 +105,19 @@
         <!--
           POST /UploadService
         -->
-        <swm:regex-request-matcher pattern="^/UploadService\b.*" methods="POST" />
+        <hsw:regex-request-matcher pattern="^/UploadService\b.*" methods="POST" />
 
         <!--
           POST /upload/<IUploadFileServletPlugin-bean-id>
         -->
-        <swm:regex-request-matcher pattern="^/upload/.*" methods="POST" />
-      </swm:or-request-matcher>
+        <hsw:regex-request-matcher pattern="^/upload/.*" methods="POST" />
+      </hsw:or-request-matcher>
     </constructor-arg>
   </bean>
 
   <!-- Aggregates all registered CSRF request set configurations, from the system and plugins -->
   <bean id="aggregatedCsrfConfiguration"
-        class="com.hitachivantara.security.web.impl.model.csrf.AggregatedRequestSetCsrfConfiguration">
+        class="org.pentaho.platform.security.web.model.csrf.AggregatedRequestSetCsrfConfiguration">
 
     <!-- Needed by CsrfTokenService in another app context -->
     <pen:publish as-type="INTERFACES" />
@@ -126,7 +126,7 @@
     <property name="enabled" value="${system.csrf-protection-enabled:false}" />
 
     <property name="requestSetConfigurations">
-      <pen:list class="com.hitachivantara.security.web.model.csrf.CsrfRequestSetConfiguration" />
+      <pen:list class="org.pentaho.platform.security.web.model.csrf.CsrfRequestSetConfiguration" />
     </property>
   </bean>
 
@@ -137,7 +137,7 @@
   <!-- Servlet Filter that checks that requests to protected endpoints specify a CSRF token.
        Should be the first filter. See `filterChainProxy` in `applicationContext-spring-security.xml`.
     -->
-  <bean id="csrfGateFilter" class="com.hitachivantara.security.web.impl.service.csrf.servlet.CsrfGateFilter">
+  <bean id="csrfGateFilter" class="org.pentaho.platform.security.web.servlet.csrf.CsrfGateFilter">
     <constructor-arg ref="aggregatedCsrfConfiguration" />
   </bean>
 
@@ -148,15 +148,15 @@
     Depends on `csrfGateFilter` being applied to it.
     Should not require authentication, so that a token can be obtained for login.
 
-    <bean class="com.hitachivantara.security.web.impl.service.csrf.jaxrs.CsrfTokenService" scope="request" />
+    <bean class="org.pentaho.platform.security.web.jaxrs.csrf.CsrfTokenService" scope="request" />
   -->
 
   <!-- Publish the CORS configuration of the CSRF token service -->
-  <bean class="com.hitachivantara.security.web.impl.model.cors.CorsRequestSetConfigurationPojo">
+  <bean class="org.pentaho.platform.security.web.model.cors.CorsRequestSetConfigurationPojo">
     <pen:publish as-type="INTERFACES" />
     <property name="requestMatcher">
       <!-- /api/csrf/token -->
-      <swm:regex-request-matcher pattern="^/api/csrf/token\b.*" />
+      <hsw:regex-request-matcher pattern="^/api/csrf/token\b.*" />
     </property>
     <property name="allowedMethods" value="GET" />
     <property name="exposedHeaders" value="X-CSRF-HEADER, X-CSRF-PARAM, X-CSRF-TOKEN" />

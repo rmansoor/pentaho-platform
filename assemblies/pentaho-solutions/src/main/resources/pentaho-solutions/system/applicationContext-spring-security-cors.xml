@@ -15,26 +15,26 @@
   +-->
 <beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:pen="http://www.pentaho.com/schema/pentaho-system"
-       xmlns:swm="http://www.hitachivantara.com/schema/security/web/model/spring"
+       xmlns:hsw="http://www.pentaho.com/schema/security-web"
        xmlns="http://www.springframework.org/schema/beans"
        xsi:schemaLocation="
           http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
           http://www.pentaho.com/schema/pentaho-system http://www.pentaho.com/schema/pentaho-system.xsd
           http://www.pentaho.com/schema/pentaho-system http://www.pentaho.com/schema/pentaho-system.xsd
-          http://www.hitachivantara.com/schema/security/web/model/spring http://www.hitachivantara.com/schema/security/web/model/spring/hv-swm-spring.xsd"
+          http://www.pentaho.com/schema/security-web http://www.pentaho.com/schema/security-web/hsw-spring.xsd"
        default-lazy-init="true">
 
   <!-- region CORS Configurations -->
 
   <!-- Root/Default CORS configuration -->
-  <bean class="com.hitachivantara.security.web.impl.model.cors.CorsRequestSetConfigurationPojo">
+  <bean class="org.pentaho.platform.security.web.model.cors.CorsRequestSetConfigurationPojo">
     <pen:publish as-type="INTERFACES" />
 
     <!-- There can be only one root CORS configuration -->
     <property name="name" value="root" />
 
     <property name="requestMatcher">
-      <swm:all-request-matcher />
+      <hsw:all-request-matcher />
     </property>
 
     <!-- Old configuration properties are expected to be in `pentaho.xml` -->
@@ -51,13 +51,13 @@
 
   <!-- Aggregates all registered CORS request set configurations, from the system and plugins -->
   <bean id="aggregatedCorsConfiguration"
-        class="com.hitachivantara.security.web.impl.model.cors.AggregatedRequestSetCorsConfiguration">
+        class="org.pentaho.platform.security.web.model.cors.AggregatedRequestSetCorsConfiguration">
 
     <!-- Can be used by others to know if CORS is enabled. -->
     <pen:publish as-type="INTERFACES" />
 
     <property name="requestSetConfigurations">
-      <pen:list class="com.hitachivantara.security.web.model.cors.CorsRequestSetConfiguration" />
+      <pen:list class="org.pentaho.platform.security.web.model.cors.CorsRequestSetConfiguration" />
     </property>
   </bean>
 
@@ -66,7 +66,7 @@
   <!-- CORS filter that handles pre-flight and normal CORS requests.
        See use in `filterChainProxy` in `applicationContext-spring-security.xml`.
        -->
-  <bean id="corsFilter" class="com.hitachivantara.security.web.impl.service.cors.servlet.CorsProtocolFilter">
+  <bean id="corsFilter" class="org.pentaho.platform.security.web.servlet.cors.CorsProtocolFilter">
     <constructor-arg ref="aggregatedCorsConfiguration" />
   </bean>
 </beans>

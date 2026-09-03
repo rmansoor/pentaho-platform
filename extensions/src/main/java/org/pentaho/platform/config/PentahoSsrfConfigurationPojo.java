@@ -14,7 +14,7 @@
 
 package org.pentaho.platform.config;
 
-import com.hitachivantara.security.web.impl.model.ssrf.SsrfConfigurationPojo;
+import org.pentaho.platform.security.web.model.ssrf.SsrfConfigurationPojo;
 
 import java.net.URI;
 import java.util.List;

@@ -31,7 +31,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
 import org.springframework.util.Assert;
 
-import com.hitachivantara.security.web.impl.service.util.ManagedBodyServletRequestWrapper;
+import org.pentaho.platform.security.web.servlet.util.ManagedBodyServletRequestWrapper;
 
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;

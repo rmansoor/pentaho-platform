@@ -126,28 +126,13 @@
       </exclusions>
     </dependency>
 
-    <!-- region HV Web Security -->
+    <!-- [helix] web security: owned replacement for com.hitachivantara.security.web -->
     <dependency>
-      <groupId>com.hitachivantara.security.web</groupId>
-      <artifactId>security-web-server-api</artifactId>
+      <groupId>pentaho</groupId>
+      <artifactId>helix-security-web</artifactId>
+      <version>${project.version}</version>
       <scope>compile</scope>
     </dependency>
-    <dependency>
-      <groupId>com.hitachivantara.security.web</groupId>
-      <artifactId>security-web-server-model-impl</artifactId>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.hitachivantara.security.web</groupId>
-      <artifactId>security-web-server-service-impl</artifactId>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.hitachivantara.security.web</groupId>
-      <artifactId>csrf-token-service-client-java-jax-rs-v3</artifactId>
-      <scope>compile</scope>
-    </dependency>
-    <!-- endregion HV Web Security -->
 
     <!-- region GFS -->
     <dependency>

@@ -205,9 +205,9 @@
   <bean class="org.pentaho.platform.web.http.api.resources.PasswordResource" scope="request"/>
   <bean class="org.pentaho.platform.web.http.api.resources.ServiceResource" scope="request"/>
 
-  <bean class="com.hitachivantara.security.web.impl.service.csrf.jaxrs.CsrfTokenService" scope="request">
+  <bean class="org.pentaho.platform.security.web.jaxrs.csrf.CsrfTokenService" scope="request">
     <constructor-arg>
-      <pen:bean class="com.hitachivantara.security.web.model.csrf.CsrfConfiguration"/>
+      <pen:bean class="org.pentaho.platform.security.web.model.csrf.CsrfConfiguration"/>
     </constructor-arg>
   </bean>
   <bean class="org.pentaho.platform.web.http.api.resources.MantleResource" scope="request"/>

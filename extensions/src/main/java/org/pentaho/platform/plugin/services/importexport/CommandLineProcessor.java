@@ -15,8 +15,8 @@
 package org.pentaho.platform.plugin.services.importexport;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.hitachivantara.security.web.impl.client.csrf.jaxrsv3.CsrfTokenFilter;
-import com.hitachivantara.security.web.impl.client.csrf.jaxrsv3.util.SessionCookiesFilter;
+import org.pentaho.platform.security.web.client.csrf.CsrfTokenFilter;
+import org.pentaho.platform.security.web.client.csrf.util.SessionCookiesFilter;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
