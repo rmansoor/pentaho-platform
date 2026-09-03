@@ -26,6 +26,7 @@
     <prepared.samples.directory>${project.build.directory}/dependency/plugin-samples</prepared.samples.directory>
     <prepared.plugins.directory>${project.build.directory}/dependency/plugins</prepared.plugins.directory>
     <prepared.kettle.plugins.directory>${project.build.directory}/dependency/pdi-plugins</prepared.kettle.plugins.directory>
+    <replacer.version>1.5.2</replacer.version>
   </properties>
   <dependencies>
     <dependency>
@@ -556,6 +557,61 @@
               </artifactItems>
               <overWriteReleases>false</overWriteReleases>
               <overWriteSnapshots>true</overWriteSnapshots>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- [helix] Binary platform plugins (data-access, scheduler-plugin, ...) still ship
+           plugin.spring.xml wired against the proprietary com.hitachivantara.security.web
+           swm: namespace + FQCNs. Rewrite them, in the unpacked copy only, to the owned
+           helix-security-web hsw: namespace so they register. Remove once those plugins are
+           re-owned. -->
+      <plugin>
+        <groupId>com.google.code.maven-replacer-plugin</groupId>
+        <artifactId>replacer</artifactId>
+        <version>${replacer.version}</version>
+        <executions>
+          <execution>
+            <id>helix-rewrite-security-web-namespace</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>replace</goal>
+            </goals>
+            <configuration>
+              <basedir>${prepared.plugins.directory}</basedir>
+              <includes>
+                <include>**/plugin.spring.xml</include>
+                <include>**/*.spring.xml</include>
+              </includes>
+              <replacements>
+                <replacement>
+                  <token>http://www\.hitachivantara\.com/schema/security/web/model/spring/hv-swm-spring(-1\.0)?\.xsd</token>
+                  <value>http://www.pentaho.com/schema/security-web/hsw-spring.xsd</value>
+                </replacement>
+                <replacement>
+                  <token>http://www\.hitachivantara\.com/schema/security/web/model/spring</token>
+                  <value>http://www.pentaho.com/schema/security-web</value>
+                </replacement>
+                <replacement>
+                  <token>xmlns:swm=</token>
+                  <value>xmlns:hsw=</value>
+                </replacement>
+                <replacement>
+                  <token>([&lt;/])swm:</token>
+                  <value>$1hsw:</value>
+                </replacement>
+                <replacement>
+                  <token>com\.hitachivantara\.security\.web\.impl\.model\.csrf\.CsrfRequestSetConfigurationPojo</token>
+                  <value>org.pentaho.platform.security.web.model.csrf.CsrfRequestSetConfigurationPojo</value>
+                </replacement>
+                <replacement>
+                  <token>com\.hitachivantara\.security\.web\.impl\.model\.cors\.CorsRequestSetConfigurationPojo</token>
+                  <value>org.pentaho.platform.security.web.model.cors.CorsRequestSetConfigurationPojo</value>
+                </replacement>
+              </replacements>
+              <regex>true</regex>
+              <quiet>true</quiet>
             </configuration>
           </execution>
         </executions>
