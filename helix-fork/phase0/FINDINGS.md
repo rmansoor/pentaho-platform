@@ -421,13 +421,35 @@ CDF sample's own relative-path CSS images via direct `generatedContent`,
 JCR security provider), `favicon.ico` (raw-URL nav). Screenshot:
 `helix-fork/phase0/puc-invoice-report.png`.
 
+### Module drop + consolidated build — DONE (2026-09-02)
+
+`helix-rebrand` @ `7a363a7` (Karaf-removal + rebrand + metaverse/hadoop-shims
+drop, all layered). **Full clean `mvn install -DskipTests` on JDK 17 — BUILD
+SUCCESS**, all 18 modules. This is the first build proving the three tracks
+compile + assemble *together*.
+
+Fresh `pentaho-server-ce` assembly:
+- WEB-INF/lib 444 → 428 jars (shim-api, shim-api-core, pentaho-metaverse-api,
+  orc-shims + transitives gone); no `karaf` dir; `meta-inject-plugins` kept,
+  `metaverse-plugin` gone from `system/kettle/plugins`.
+- Boots in **26.8 s**, log line: `Helix BI Platform server is ready.
+  (pentaho-platform-core 11.1.0.0-SNAPSHOT)` — rebrand live, drop clean.
+- Boot log: **zero** karaf / osgi / metaverse / shim / NoClassDefFound / CNFE.
+  5 ERROR lines, all pre-existing stock (`KettleSystemListener DI_HOME not set`,
+  `ArchiveLoader: Some files have invalid mime types` on first-run sample import).
+- **`gate-check.sh` vs `baseline/nokaraf-cleanbuild` → GATE: PASS** (no HTTP
+  status regressions, no require-init module ids lost, OSGi contract intact).
+  HTTP-manifest hash diffs are all same-byte-size (`/api/plugin-manager/ids`
+  reorders without metaverse; folder-listing timestamps) or the expected
+  `require-init.js` 89 KB→3.7 KB static-file swap from K3.
+- HTTP smoke (authed): report `/parameter` 200 (46 KB), CDF `generatedContent`
+  200, `/i18n?plugin=…` 200 for common-ui + reporting, `/api/repo/files` 200.
+
+Baseline capture: `helix-fork/phase0/baseline/cecandidate/`.
+
 ### Still not verified
 
 - **Re-run `extensions -DrunITs` after `3a8594a`** — should drop ~24 errors.
-- A **full clean build** of `helix-nokaraf` (the spike patched a deployed server;
-  the source edits are committed but not yet built into an assembly).
-- `pentaho-war` pom cleanup (drop karaf/felix jars) and the `system/karaf` unpack
-  removal — deferred to the real Phase K5.
 
 ### Revised Phase K estimate — even lower
 
