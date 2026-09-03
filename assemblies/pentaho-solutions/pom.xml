@@ -264,20 +264,8 @@
                   <type>zip</type>
                   <outputDirectory>${prepared.kettle.plugins.directory}</outputDirectory>
                 </artifactItem>
-                <artifactItem>
-                  <groupId>pentaho</groupId>
-                  <artifactId>metaverse-plugin</artifactId>
-                  <version>${project.version}</version>
-                  <type>zip</type>
-                  <outputDirectory>${prepared.kettle.plugins.directory}</outputDirectory>
-                </artifactItem>
-                <artifactItem>
-                  <groupId>pentaho</groupId>
-                  <artifactId>metaverse-plugin</artifactId>
-                  <version>${project.version}</version>
-                  <type>zip</type>
-                  <outputDirectory>${prepared.kettle.plugins.directory}</outputDirectory>
-                </artifactItem>
+                <!-- [helix] metaverse-plugin (PDI data-lineage) dropped — data
+                     lineage is not part of Helix CE. -->
                 <artifactItem>
                   <groupId>org.pentaho.di.plugins</groupId>
                   <artifactId>meta-inject-plugins</artifactId>
