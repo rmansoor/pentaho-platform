@@ -22,7 +22,25 @@ tests green against it.
 | S7 | ✅ | `CsrfTokenService` JAX-RS resource (`@Path("/csrf")` `/token`) |
 | S8 | ✅ | `CsrfTokenFilter` + `CsrfTokenServiceClient` + `SessionCookiesFilter` (JAX-RS client, for the import/export CLI) |
 | S9 | ✅ | root pom module wiring; `extensions` + `pentaho-war` pom dep swap; 6 java files (FQCN only); 3 system XMLs + `pentahoServices.spring.xml` + 1 test resource (`swm:`→`hsw:`) |
-| S10 | ⏳ | full clean assembly build + boot + `gate-check.sh` + PUC pass with `csrf-protection-enabled=true` |
+| S10 | ✅ | full clean assembly builds; boots with `data-access`/`scheduler-plugin` registered; `gate-check.sh` **PASS**; SPEC.md replayed on the running server with all 3 protections on — **every row matches HV 0.14.0** (`fixtures/s10-replay.txt`) |
+
+**Phase S complete.** `com.hitachivantara.security.web` is gone from every pom,
+source file, and shipped config in the tree. Two integration wrinkles fixed
+during S10:
+- external binary plugins (`data-access`, `scheduler-plugin`) still ship
+  `plugin.spring.xml` on the `swm:` namespace → an assembly-time
+  `maven-replacer-plugin` step in `assemblies/pentaho-solutions/pom.xml` rewrites
+  them to `hsw:` in the unpacked copy (remove when those plugins are re-owned);
+- the platform's Jersey layer instantiates `@Path` resources via their no-arg
+  constructor when the Spring-bind path misses → `CsrfTokenService` reworked to
+  reflect the upstream filter's `CsrfToken` rather than depend on a
+  constructor-injected `CsrfConfiguration`.
+
+Follow-ups (not blockers): remove the `replacer` step once `data-access` /
+`pentaho-scheduler-plugin` are rebuilt against `helix-security-web`; wire the
+JAX-RS `CsrfTokenService` bean through the Spring provider so the injected
+`CsrfConfiguration` path also works; add `mockwebserver` end-to-end tests for the
+CLI CSRF client (S8).
 
 ---
 
