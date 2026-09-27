@@ -206,4 +206,19 @@ public abstract class BaseDatasourceService implements IDBDatasourceService {
     return (IDatasourceMgmtService) PentahoSystem.get( IDatasourceMgmtService.class, PentahoSessionHolder.getSession() );
   }
 
+  /**
+   * Returns the number of rows in a table of the named datasource.
+   */
+  public int countRows( String dsName, String tableName ) throws DBDatasourceServiceException {
+    try {
+      java.sql.Connection conn = getDataSource( dsName ).getConnection();
+      java.sql.Statement st = conn.createStatement();
+      java.sql.ResultSet rs = st.executeQuery( "SELECT COUNT(*) FROM " + tableName );
+      rs.next();
+      return rs.getInt( 1 );
+    } catch ( java.sql.SQLException e ) {
+      return 0;
+    }
+  }
+
 }
