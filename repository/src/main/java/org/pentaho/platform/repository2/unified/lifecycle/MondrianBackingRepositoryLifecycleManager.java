@@ -73,10 +73,10 @@ public class MondrianBackingRepositoryLifecycleManager extends AbstractBackingRe
       final ITenantedPrincipleNameResolver userNameUtils, final JcrTemplate adminJcrTemplate,
       final IPathConversionHelper pathConversionHelper ) {
     super( txnTemplate, adminJcrTemplate, pathConversionHelper );
-    Assert.notNull( contentDao );
-    Assert.notNull( repositoryFileAclDao );
-    Assert.hasText( repositoryAdminUsername );
-    Assert.hasText( tenantAuthenticatedAuthorityNamePattern );
+    Assert.notNull( contentDao, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( repositoryFileAclDao, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.hasText( repositoryAdminUsername, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
+    Assert.hasText( tenantAuthenticatedAuthorityNamePattern, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
     this.repositoryFileDao = contentDao;
     this.repositoryFileAclDao = repositoryFileAclDao;
     this.repositoryAdminUsername = repositoryAdminUsername;
@@ -95,7 +95,7 @@ public class MondrianBackingRepositoryLifecycleManager extends AbstractBackingRe
             new RepositoryFileSid( userNameUtils.getPrincipleId( tenant, repositoryAdminUsername ) );
         RepositoryFile tenantEtcFolder =
             repositoryFileDao.getFileByAbsolutePath( ServerRepositoryPaths.getTenantEtcFolderPath( tenant ) );
-        Assert.notNull( tenantEtcFolder );
+        Assert.notNull( tenantEtcFolder, "[Assertion failed] - this argument is required; it must not be null" );
 
         if ( repositoryFileDao.getFileByAbsolutePath( ServerRepositoryPaths.getTenantEtcFolderPath( tenant )
             + RepositoryFile.SEPARATOR + FOLDER_MONDRIAN ) == null ) {
@@ -148,7 +148,7 @@ public class MondrianBackingRepositoryLifecycleManager extends AbstractBackingRe
 
   protected RepositoryFile internalCreateFolder( final Serializable parentFolderId, final RepositoryFile file,
       final boolean inheritAces, final RepositoryFileSid ownerSid, final String versionMessage ) {
-    Assert.notNull( file );
+    Assert.notNull( file, "[Assertion failed] - this argument is required; it must not be null" );
 
     return repositoryFileDao.createFolder( parentFolderId, file, makeAcl( inheritAces, ownerSid ), versionMessage );
   }

@@ -97,10 +97,10 @@ public abstract class AbstractJcrBackedRoleBindingDao implements IRoleAuthorizat
                                           final List<IAuthorizationAction> authorizationActions ) {
     this();
     // TODO: replace with IllegalArgumentException
-    Assert.notNull( immutableRoleBindings );
-    Assert.notNull( bootstrapRoleBindings );
-    Assert.notNull( superAdminRoleName );
-    Assert.notNull( authorizationActions );
+    Assert.notNull( immutableRoleBindings, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( bootstrapRoleBindings, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( superAdminRoleName, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( authorizationActions, "[Assertion failed] - this argument is required; it must not be null" );
 
     setAuthorizationActions( authorizationActions );
 
@@ -309,7 +309,7 @@ public abstract class AbstractJcrBackedRoleBindingDao implements IRoleAuthorizat
           runtimeRoleName ) ); //$NON-NLS-1$
     }
     session.save();
-    Assert.isTrue( NodeHelper.hasNode( runtimeRolesFolderNode, phoNsPrefix, runtimeRoleName ) );
+    Assert.isTrue( NodeHelper.hasNode( runtimeRolesFolderNode, phoNsPrefix, runtimeRoleName ), "[Assertion failed] - this expression must be true" );
 
     // update cache
     String roleId = tenantedRoleNameUtils.getPrincipleId( tenant, runtimeRoleName );

@@ -51,8 +51,8 @@ public class AuthorizationPolicyVoter implements AccessDecisionVoter {
 
   public AuthorizationPolicyVoter( final IAuthorizationPolicy policy, final String prefix ) {
     super();
-    Assert.notNull( policy );
-    Assert.notNull( prefix );
+    Assert.notNull( policy, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( prefix, "[Assertion failed] - this argument is required; it must not be null" );
     this.policy = policy;
     this.prefix = prefix;
   }

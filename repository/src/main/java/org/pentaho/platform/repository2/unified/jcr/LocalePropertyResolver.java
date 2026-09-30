@@ -42,7 +42,7 @@ public class LocalePropertyResolver {
   private String fileName;
 
   public LocalePropertyResolver( String fileName ) {
-    Assert.notNull( fileName );
+    Assert.notNull( fileName, "[Assertion failed] - this argument is required; it must not be null" );
     this.fileName = fileName;
   }
 

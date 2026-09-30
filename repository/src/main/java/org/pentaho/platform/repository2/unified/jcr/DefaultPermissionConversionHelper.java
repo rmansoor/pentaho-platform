@@ -70,9 +70,9 @@ public class DefaultPermissionConversionHelper implements IPermissionConversionH
 
   public Privilege[] pentahoPermissionsToPrivileges( final Session session,
       final EnumSet<RepositoryFilePermission> permissions ) throws RepositoryException {
-    Assert.notNull( session );
-    Assert.notNull( permissions );
-    Assert.notEmpty( permissions );
+    Assert.notNull( session, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( permissions, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notEmpty( permissions, "[Assertion failed] - this collection must not be empty: it must contain at least 1 element" );
 
     Set<Privilege> privileges = new HashSet<Privilege>();
 
@@ -94,8 +94,8 @@ public class DefaultPermissionConversionHelper implements IPermissionConversionH
 
   public EnumSet<RepositoryFilePermission> privilegesToPentahoPermissions( final Session session,
       final Privilege[] privileges ) throws RepositoryException {
-    Assert.notNull( session );
-    Assert.notNull( privileges );
+    Assert.notNull( session, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( privileges, "[Assertion failed] - this argument is required; it must not be null" );
 
     new PentahoJcrConstants( session );
     EnumSet<RepositoryFilePermission> permissions = EnumSet.noneOf( RepositoryFilePermission.class );

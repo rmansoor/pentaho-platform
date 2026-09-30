@@ -38,7 +38,7 @@ public class GetCheckedoutDocsResponseTest {
     GetCheckedoutDocsResponse response = new GetCheckedoutDocsResponse();
     List<CmisObject> docList = Arrays.asList( new CmisObject[] { mock( CmisObject.class ), mock( CmisObject.class ), mock( CmisObject.class ) } );
     response.setDocs( docList );
-    Assert.notEmpty( response.getDocs() );
+    Assert.notEmpty( response.getDocs(), "[Assertion failed] - this collection must not be empty: it must contain at least 1 element" );
   }
 
   @Test

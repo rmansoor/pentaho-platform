@@ -49,7 +49,7 @@ public class RepositoryAccessVoterManager implements IRepositoryAccessVoterManag
   public RepositoryAccessVoterManager( final List<IRepositoryAccessVoter> voters,
       final IAuthorizationPolicy authorizationPolicy, final String repositoryAdminUsername ) {
     this( authorizationPolicy, repositoryAdminUsername );
-    Assert.notNull( voters );
+    Assert.notNull( voters, "[Assertion failed] - this argument is required; it must not be null" );
     this.voters = new ArrayList<IRepositoryAccessVoter>();
     this.voters.addAll( voters );
   }

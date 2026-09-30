@@ -47,7 +47,7 @@ public class DelegatingBackingRepositoryLifecycleManager implements IBackingRepo
 
   public DelegatingBackingRepositoryLifecycleManager( final List<IBackingRepositoryLifecycleManager> managers ) {
     super();
-    Assert.notNull( managers );
+    Assert.notNull( managers, "[Assertion failed] - this argument is required; it must not be null" );
     this.managers = managers;
   }
 

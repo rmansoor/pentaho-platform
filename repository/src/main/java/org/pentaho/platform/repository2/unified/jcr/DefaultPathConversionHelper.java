@@ -36,8 +36,8 @@ public class DefaultPathConversionHelper implements IPathConversionHelper {
    */
   @Override
   public String absToRel( final String absPath ) {
-    Assert.hasLength( absPath );
-    Assert.isTrue( absPath.startsWith( RepositoryFile.SEPARATOR ) );
+    Assert.hasLength( absPath, "[Assertion failed] - this String argument must have length; it must not be null or empty" );
+    Assert.isTrue( absPath.startsWith( RepositoryFile.SEPARATOR ), "[Assertion failed] - this expression must be true" );
     String convertedAbsPath = convertPathSlashes( absPath );
     if ( ( ServerRepositoryPaths.getTenantRootFolderPath() != null )
         && convertedAbsPath.startsWith( ServerRepositoryPaths.getTenantRootFolderPath() ) ) {
@@ -58,8 +58,8 @@ public class DefaultPathConversionHelper implements IPathConversionHelper {
    */
   @Override
   public String relToAbs( final String relPath ) {
-    Assert.hasLength( relPath );
-    Assert.isTrue( relPath.startsWith( RepositoryFile.SEPARATOR ) );
+    Assert.hasLength( relPath, "[Assertion failed] - this String argument must have length; it must not be null or empty" );
+    Assert.isTrue( relPath.startsWith( RepositoryFile.SEPARATOR ), "[Assertion failed] - this expression must be true" );
     String convertedRelPath = convertPathSlashes( relPath );
     return ServerRepositoryPaths.getTenantRootFolderPath()
         + ( RepositoryFile.SEPARATOR.equals( convertedRelPath ) ? "" : convertedRelPath ); //$NON-NLS-1$

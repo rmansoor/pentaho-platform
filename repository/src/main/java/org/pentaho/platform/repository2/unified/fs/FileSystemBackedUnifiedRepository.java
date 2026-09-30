@@ -271,10 +271,10 @@ public class FileSystemBackedUnifiedRepository implements IUnifiedRepository {
 
   public <T extends IRepositoryFileData> List<T> getDataForReadInBatch( List<RepositoryFile> files,
                                                                         Class<T> dataClass ) {
-    Assert.notNull( files );
+    Assert.notNull( files, "[Assertion failed] - this argument is required; it must not be null" );
     List<T> data = new ArrayList<T>( files.size() );
     for ( RepositoryFile f : files ) {
-      Assert.notNull( f );
+      Assert.notNull( f, "[Assertion failed] - this argument is required; it must not be null" );
       data.add( repositoryFileDao.getData( f.getId(), f.getVersionId(), dataClass ) );
     }
     return data;
@@ -282,7 +282,7 @@ public class FileSystemBackedUnifiedRepository implements IUnifiedRepository {
 
   public List<VersionSummary> getVersionSummaryInBatch( List<RepositoryFile> files ) {
     
-    Assert.notNull( files );
+    Assert.notNull( files, "[Assertion failed] - this argument is required; it must not be null" );
     List<VersionSummary> versionSummaryList = new ArrayList<VersionSummary>( files.size() );
     
     for(RepositoryFile file : files){

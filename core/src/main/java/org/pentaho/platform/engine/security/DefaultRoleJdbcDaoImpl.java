@@ -99,7 +99,7 @@ public class DefaultRoleJdbcDaoImpl extends JdbcDaoImpl {
    *          the role name, including any desired prefix.
    */
   public void setDefaultRole( String defaultRole ) {
-    Assert.notNull( defaultRole );
+    Assert.notNull( defaultRole, "[Assertion failed] - this argument is required; it must not be null" );
     this.defaultRole = new SimpleGrantedAuthority( defaultRole );
   }
 

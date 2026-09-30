@@ -65,7 +65,7 @@ public class SimpleJcrTestUtils {
         Node newNode;
         try {
           Item item = session.getItem( parentAbsPath );
-          Assert.isTrue( item.isNode() );
+          Assert.isTrue( item.isNode(), "[Assertion failed] - this expression must be true" );
           Node parentNode = (Node) item;
           newNode = parentNode.addNode( name, primaryNodeTypeName );
           newNode.addMixin( pentahoJcrConstants.getMIX_REFERENCEABLE() );
@@ -101,7 +101,7 @@ public class SimpleJcrTestUtils {
         } catch ( PathNotFoundException e ) {
           return null;
         }
-        Assert.isTrue( item.isNode() );
+        Assert.isTrue( item.isNode(), "[Assertion failed] - this expression must be true" );
         return ( (Node) item ).getUUID();
       }
     } );
@@ -140,7 +140,7 @@ public class SimpleJcrTestUtils {
                                        final String... privNames ) {
     return (Boolean) jcrTemplate.execute( new JcrCallback() {
       public Object doInJcr( final Session session ) throws RepositoryException {
-        Assert.notEmpty( privNames );
+        Assert.notEmpty( privNames, "[Assertion failed] - this collection must not be empty: it must contain at least 1 element" );
         Privilege[] privs = new Privilege[privNames.length];
         for ( int i = 0; i < privs.length; i++ ) {
           privs[i] = session.getAccessControlManager().privilegeFromName( privNames[i] );
@@ -156,7 +156,7 @@ public class SimpleJcrTestUtils {
     return (Boolean) jcrTemplate.execute( new JcrCallback() {
       public Object doInJcr( final Session session ) throws RepositoryException {
         Item item = session.getItem( absPath );
-        Assert.isTrue( item.isNode() );
+        Assert.isTrue( item.isNode(), "[Assertion failed] - this expression must be true" );
         return ( (Node) item ).isLocked();
       }
     } );
@@ -166,7 +166,7 @@ public class SimpleJcrTestUtils {
     return (String) jcrTemplate.execute( new JcrCallback() {
       public Object doInJcr( final Session session ) throws RepositoryException {
         Item item = session.getItem( absPath );
-        Assert.isTrue( !item.isNode() );
+        Assert.isTrue( !item.isNode(), "[Assertion failed] - this expression must be true" );
         return ( (Property) item ).getString();
       }
     } );
@@ -176,7 +176,7 @@ public class SimpleJcrTestUtils {
     return (Date) jcrTemplate.execute( new JcrCallback() {
       public Object doInJcr( final Session session ) throws RepositoryException {
         Item item = session.getItem( absPath );
-        Assert.isTrue( !item.isNode() );
+        Assert.isTrue( !item.isNode(), "[Assertion failed] - this expression must be true" );
         return ( (Property) item ).getDate().getTime();
       }
     } );
@@ -194,7 +194,7 @@ public class SimpleJcrTestUtils {
           parentNode.setProperty( absPath.substring( lastSlashIdx + 1 ), cal );
         } else {
           Item item = session.getItem( absPath );
-          Assert.isTrue( !item.isNode() );
+          Assert.isTrue( !item.isNode(), "[Assertion failed] - this expression must be true" );
           Calendar cal = Calendar.getInstance();
           cal.setTime( date );
           ( (Property) item ).setValue( cal );
@@ -219,7 +219,7 @@ public class SimpleJcrTestUtils {
     return (Boolean) jcrTemplate.execute( new JcrCallback() {
       public Object doInJcr( final Session session ) throws RepositoryException {
         Item item = session.getItem( absPath );
-        Assert.isTrue( item.isNode() );
+        Assert.isTrue( item.isNode(), "[Assertion failed] - this expression must be true" );
         return ( (Node) item ).isCheckedOut();
       }
     } );
@@ -229,7 +229,7 @@ public class SimpleJcrTestUtils {
     return (String) jcrTemplate.execute( new JcrCallback() {
       public Object doInJcr( final Session session ) throws RepositoryException {
         Item item = session.getItem( absPath );
-        Assert.isTrue( item.isNode() );
+        Assert.isTrue( item.isNode(), "[Assertion failed] - this expression must be true" );
         Node node = ( (Node) item );
         return node.getVersionHistory().getPath();
       }

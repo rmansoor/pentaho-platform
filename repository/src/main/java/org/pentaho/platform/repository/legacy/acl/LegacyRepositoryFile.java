@@ -54,9 +54,9 @@ public class LegacyRepositoryFile implements ISolutionFile, IAclHolder, Serializ
 
   public LegacyRepositoryFile( String fileName, String fullPath, boolean directory ) {
 
-    Assert.notNull( fileName );
-    Assert.notNull( fullPath );
-    Assert.notNull( directory );
+    Assert.notNull( fileName, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( fullPath, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( directory, "[Assertion failed] - this argument is required; it must not be null" );
 
     this.fileName = fileName;
     this.fullPath = fullPath;

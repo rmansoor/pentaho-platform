@@ -107,8 +107,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       final IDeleteHelper deleteHelper, final IPathConversionHelper pathConversionHelper,
       final IRepositoryFileAclDao aclDao, final IRepositoryDefaultAclHandler defaultAclHandler ) {
     super();
-    Assert.notNull( jcrTemplate );
-    Assert.notNull( transformers );
+    Assert.notNull( jcrTemplate, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( transformers, "[Assertion failed] - this argument is required; it must not be null" );
     this.jcrTemplate = jcrTemplate;
     this.transformers = transformers;
     this.lockHelper = lockHelper;
@@ -183,11 +183,11 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
     }
 
     /*
-     * PPP-3049: Changed the Assert.notNull(content) to code that creates a file with a single blank when the assert
+     * PPP-3049: Changed the Assert.notNull(content, "[Assertion failed] - this argument is required; it must not be null" ) to code that creates a file with a single blank when the assert
      * WOULD have been triggered.
      */
-    Assert.notNull( file );
-    Assert.isTrue( !file.isFolder() );
+    Assert.notNull( file, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.isTrue( !file.isFolder(), "[Assertion failed] - this expression must be true" );
 
     // Get repository file info and acl info of parent
     if ( parentFolderId != null ) {
@@ -201,7 +201,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
         }
       }
     }
-    // Assert.notNull(content);
+    // Assert.notNull(content, "[Assertion failed] - this argument is required; it must not be null" );
     DataNode emptyDataNode = new DataNode( file.getName() );
     emptyDataNode.setProperty( " ", "content" ); //$NON-NLS-1$ //$NON-NLS-2$
     final IRepositoryFileData emptyContent = new NodeRepositoryFileData( emptyDataNode );
@@ -248,9 +248,9 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( file );
-    Assert.isTrue( !file.isFolder() );
-    Assert.notNull( content );
+    Assert.notNull( file, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.isTrue( !file.isFolder(), "[Assertion failed] - this expression must be true" );
+    Assert.notNull( content, "[Assertion failed] - this argument is required; it must not be null" );
     // Get repository file info and acl info of parent
     RepositoryFileAcl acl = aclDao.getAcl( file.getId() );
     // Invoke accessVoterManager to see if we have access to perform this operation
@@ -275,8 +275,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( folder );
-    Assert.isTrue( folder.isFolder() );
+    Assert.notNull( folder, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.isTrue( folder.isFolder(), "[Assertion failed] - this expression must be true" );
     lockHelper.addLockTokenToSessionIfNecessary( session, pentahoJcrConstants, folder.getId() );
     JcrRepositoryFileUtils.checkoutNearestVersionableFileIfNecessary( session, pentahoJcrConstants, folder.getId() );
     JcrRepositoryFileUtils.updateFolderNode( session, pentahoJcrConstants, folder );
@@ -326,8 +326,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
   @Override
   public RepositoryFile createFolder( final Serializable parentFolderId, final RepositoryFile folder,
       final RepositoryFileAcl acl, final String versionMessage ) {
-    Assert.notNull( folder );
-    Assert.isTrue( folder.isFolder() );
+    Assert.notNull( folder, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.isTrue( folder.isFolder(), "[Assertion failed] - this expression must be true" );
 
     return (RepositoryFile) jcrTemplate.execute( new JcrCallback() {
       @Override
@@ -365,8 +365,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
 
   @Override
   public RepositoryFile getFile( final String relPath, final boolean loadLocaleMaps, final IPentahoLocale locale ) {
-    Assert.hasText( relPath );
-    Assert.isTrue( relPath.startsWith( RepositoryFile.SEPARATOR ) );
+    Assert.hasText( relPath, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
+    Assert.isTrue( relPath.startsWith( RepositoryFile.SEPARATOR ), "[Assertion failed] - this expression must be true" );
 
     return (RepositoryFile) jcrTemplate.execute( new JcrCallback() {
       @Override
@@ -384,7 +384,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
 
   private RepositoryFile internalGetFileById( final Serializable fileId, final boolean loadMaps,
       final IPentahoLocale locale ) {
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     return (RepositoryFile) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -425,8 +425,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
    */
   @Override
   public RepositoryFile getFileByAbsolutePath( final String absPath ) {
-    Assert.hasText( absPath );
-    Assert.isTrue( absPath.startsWith( RepositoryFile.SEPARATOR ) );
+    Assert.hasText( absPath, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
+    Assert.isTrue( absPath.startsWith( RepositoryFile.SEPARATOR ), "[Assertion failed] - this expression must be true" );
     return (RepositoryFile) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -440,8 +440,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
    */
   @Override
   public RepositoryFile getFile( final String relPath, final boolean loadMaps ) {
-    Assert.hasText( relPath );
-    Assert.isTrue( relPath.startsWith( RepositoryFile.SEPARATOR ) );
+    Assert.hasText( relPath, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
+    Assert.isTrue( relPath.startsWith( RepositoryFile.SEPARATOR ), "[Assertion failed] - this expression must be true" );
     return (RepositoryFile) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -459,7 +459,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
     try {
       fileNode = session.getItem( JcrStringHelper.pathEncode( absPath ) );
       // items are nodes or properties; this must be a node
-      Assert.isTrue( fileNode.isNode() );
+      Assert.isTrue( fileNode.isNode(), "[Assertion failed] - this expression must be true" );
     } catch ( PathNotFoundException e ) {
       fileNode = null;
     }
@@ -483,7 +483,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
   @SuppressWarnings( "unchecked" )
   public <T extends IRepositoryFileData> T getData( final Serializable fileId, final Serializable versionId,
       final Class<T> contentClass ) {
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     return (T) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -515,7 +515,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
   @Override
   @SuppressWarnings( "unchecked" )
   public List<RepositoryFile> getChildren( final RepositoryRequest repositoryRequest ) {
-    Assert.notNull( repositoryRequest.getPath() );
+    Assert.notNull( repositoryRequest.getPath(), "[Assertion failed] - this argument is required; it must not be null" );
     return (List<RepositoryFile>) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -533,7 +533,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
   @SuppressWarnings( "unchecked" )
   public List<RepositoryFile> getChildren( final Serializable folderId, final String filter,
       final Boolean showHiddenFiles ) {
-    Assert.notNull( folderId );
+    Assert.notNull( folderId, "[Assertion failed] - this argument is required; it must not be null" );
     return (List<RepositoryFile>) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -554,8 +554,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( file );
-    Assert.isTrue( !file.isFolder() );
+    Assert.notNull( file, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.isTrue( !file.isFolder(), "[Assertion failed] - this expression must be true" );
     return (RepositoryFile) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -574,7 +574,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -594,7 +594,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -611,7 +611,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
   @Override
   @SuppressWarnings( "unchecked" )
   public List<VersionSummary> getVersionSummaries( final Serializable fileId ) {
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     return (List<VersionSummary>) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -626,8 +626,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
    */
   @Override
   public RepositoryFile getFile( final Serializable fileId, final Serializable versionId ) {
-    Assert.notNull( fileId );
-    Assert.notNull( versionId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( versionId, "[Assertion failed] - this argument is required; it must not be null" );
     return (RepositoryFile) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -647,7 +647,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -689,8 +689,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( fileId );
-    Assert.notNull( versionId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( versionId, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -719,7 +719,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
   @Override
   @SuppressWarnings( "unchecked" )
   public List<RepositoryFile> getDeletedFiles( final String origParentFolderPath, final String filter ) {
-    Assert.hasLength( origParentFolderPath );
+    Assert.hasLength( origParentFolderPath, "[Assertion failed] - this String argument must have length; it must not be null or empty" );
     return (List<RepositoryFile>) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -769,7 +769,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -800,7 +800,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -857,7 +857,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -903,7 +903,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
         }
         if ( destExists ) {
           // make sure it's a file or folder
-          Assert.isTrue( JcrRepositoryFileUtils.isSupportedNodeType( pentahoJcrConstants, destFileNode ) );
+          Assert.isTrue( JcrRepositoryFileUtils.isSupportedNodeType( pentahoJcrConstants, destFileNode ), "[Assertion failed] - this expression must be true" );
           // existing item; make sure src is not a folder if dest is a file
           Assert.isTrue(
               !( JcrRepositoryFileUtils.isPentahoFolder( pentahoJcrConstants, srcFileNode ) && JcrRepositoryFileUtils
@@ -1001,7 +1001,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
    */
   @Override
   public VersionSummary getVersionSummary( final Serializable fileId, final Serializable versionId ) {
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     return (VersionSummary) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -1021,8 +1021,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException(
         Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
-    Assert.notNull( fileId );
-    Assert.notNull( versionId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( versionId, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -1054,7 +1054,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
    */
   @Override
   public RepositoryFileTree getTree( final RepositoryRequest repositoryRequest ) {
-    Assert.hasText( repositoryRequest.getPath() );
+    Assert.hasText( repositoryRequest.getPath(), "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
     return (RepositoryFileTree) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -1073,7 +1073,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
   @Deprecated
   public RepositoryFileTree getTree( final String relPath, final int depth, final String filter,
       final boolean showHidden ) {
-    Assert.hasText( relPath );
+    Assert.hasText( relPath, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
     final RepositoryRequest repositoryRequest = new RepositoryRequest( relPath, showHidden, depth, filter );
     return (RepositoryFileTree) jcrTemplate.execute( new JcrCallback() {
       @Override
@@ -1100,7 +1100,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
 
         Node fileNode = session.getNodeByIdentifier( fileId.toString() );
         // guard against using a file retrieved from a more lenient session inside a more strict session
-        Assert.notNull( fileNode );
+        Assert.notNull( fileNode, "[Assertion failed] - this argument is required; it must not be null" );
 
         Set<RepositoryFile> referrers = new HashSet<RepositoryFile>();
         PropertyIterator refIter = fileNode.getReferences();
@@ -1141,7 +1141,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
     if ( isKioskEnabled() ) {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -1154,7 +1154,7 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
   @Override
   @SuppressWarnings( "unchecked" )
   public Map<String, Serializable> getFileMetadata( final Serializable fileId ) {
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     return (Map<String, Serializable>) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( Session session ) throws IOException, RepositoryException {
@@ -1258,9 +1258,9 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( repositoryFile );
-    Assert.notNull( locale );
-    Assert.notNull( properties );
+    Assert.notNull( repositoryFile, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( locale, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( properties, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -1287,8 +1287,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( repositoryFile );
-    Assert.notNull( locale );
+    Assert.notNull( repositoryFile, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( locale, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {
@@ -1315,8 +1315,8 @@ public class JcrRepositoryFileDao implements IRepositoryFileDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( file );
-    Assert.isTrue( file.isFolder() );
+    Assert.notNull( file, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.isTrue( file.isFolder(), "[Assertion failed] - this expression must be true" );
     return (RepositoryFile) jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {

@@ -90,11 +90,11 @@ public abstract class AbstractRepositoryTenantManager implements ITenantManager 
       final ITenantedPrincipleNameResolver tenantedUserNameResolver,
       final ITenantedPrincipleNameResolver tenantedRoleNameResolver, final String tenantAdminRoleName,
       final List<String> singleTenantAuthenticatedAuthorityRoleBindingList ) {
-    Assert.notNull( contentDao );
-    Assert.notNull( repositoryFileAclDao );
-    Assert.notNull( roleBindingDao );
-    Assert.hasText( repositoryAdminUsername );
-    Assert.hasText( tenantAuthenticatedAuthorityNamePattern );
+    Assert.notNull( contentDao, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( repositoryFileAclDao, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( roleBindingDao, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.hasText( repositoryAdminUsername, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
+    Assert.hasText( tenantAuthenticatedAuthorityNamePattern, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
     this.repositoryFileDao = contentDao;
     this.repositoryFileAclDao = repositoryFileAclDao;
     this.userRoleDao = userRoleDao;

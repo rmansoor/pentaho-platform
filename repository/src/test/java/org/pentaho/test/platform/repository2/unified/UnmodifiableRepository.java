@@ -54,7 +54,7 @@ public class UnmodifiableRepository implements IUnifiedRepository {
    * @param mockUnifiedRepository
    */
   public UnmodifiableRepository( final IUnifiedRepository repository ) {
-    Assert.notNull( repository );
+    Assert.notNull( repository, "[Assertion failed] - this argument is required; it must not be null" );
     this.repository = repository;
   }
 
@@ -767,78 +767,78 @@ public class UnmodifiableRepository implements IUnifiedRepository {
 
   @Override
   public List<Locale> getAvailableLocalesForFileById( Serializable fileId ) {
-    Assert.notNull( fileId );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
     return repository.getAvailableLocalesForFileById( fileId );
   }
 
   @Override
   public List<Locale> getAvailableLocalesForFileByPath( String relPath ) {
-    Assert.notNull( relPath );
+    Assert.notNull( relPath, "[Assertion failed] - this argument is required; it must not be null" );
     return repository.getAvailableLocalesForFileByPath( relPath );
   }
 
   @Override
   public List<Locale> getAvailableLocalesForFile( RepositoryFile repositoryFile ) {
-    Assert.notNull( repositoryFile );
+    Assert.notNull( repositoryFile, "[Assertion failed] - this argument is required; it must not be null" );
     return repository.getAvailableLocalesForFile( repositoryFile );
   }
 
   @Override
   public Properties getLocalePropertiesForFileById( Serializable fileId, String locale ) {
-    Assert.notNull( fileId );
-    Assert.notNull( locale );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( locale, "[Assertion failed] - this argument is required; it must not be null" );
     return repository.getLocalePropertiesForFileById( fileId, locale );
   }
 
   @Override
   public Properties getLocalePropertiesForFileByPath( String relPath, String locale ) {
-    Assert.notNull( relPath );
-    Assert.notNull( locale );
+    Assert.notNull( relPath, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( locale, "[Assertion failed] - this argument is required; it must not be null" );
     return repository.getLocalePropertiesForFileByPath( relPath, locale );
   }
 
   @Override
   public Properties getLocalePropertiesForFile( RepositoryFile repositoryFile, String locale ) {
-    Assert.notNull( repositoryFile );
-    Assert.notNull( locale );
+    Assert.notNull( repositoryFile, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( locale, "[Assertion failed] - this argument is required; it must not be null" );
     return repository.getLocalePropertiesForFile( repositoryFile, locale );
   }
 
   @Override
   public void setLocalePropertiesForFileById( Serializable fileId, String locale, Properties properties ) {
-    Assert.notNull( fileId );
-    Assert.notNull( locale );
-    Assert.notNull( properties );
+    Assert.notNull( fileId, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( locale, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( properties, "[Assertion failed] - this argument is required; it must not be null" );
     repository.setLocalePropertiesForFileById( fileId, locale, properties );
   }
 
   @Override
   public void setLocalePropertiesForFileByPath( String relPath, String locale, Properties properties ) {
-    Assert.notNull( relPath );
-    Assert.notNull( locale );
-    Assert.notNull( properties );
+    Assert.notNull( relPath, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( locale, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( properties, "[Assertion failed] - this argument is required; it must not be null" );
     repository.setLocalePropertiesForFileByPath( relPath, locale, properties );
   }
 
   @Override
   public void setLocalePropertiesForFile( RepositoryFile repositoryFile, String locale, Properties properties ) {
-    Assert.notNull( repositoryFile );
-    Assert.notNull( locale );
-    Assert.notNull( properties );
+    Assert.notNull( repositoryFile, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( locale, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( properties, "[Assertion failed] - this argument is required; it must not be null" );
     repository.setLocalePropertiesForFile( repositoryFile, locale, properties );
   }
 
   @Override
   public void deleteLocalePropertiesForFile( RepositoryFile repositoryFile, String locale ) {
-    Assert.notNull( repositoryFile );
-    Assert.notNull( locale );
+    Assert.notNull( repositoryFile, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( locale, "[Assertion failed] - this argument is required; it must not be null" );
     repository.deleteLocalePropertiesForFile( repositoryFile, locale );
   }
 
   @Override
   public RepositoryFile updateFolder( RepositoryFile folder, String versionMessage ) {
-    Assert.notNull( folder );
-    Assert.isTrue( folder.isFolder() );
+    Assert.notNull( folder, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.isTrue( folder.isFolder(), "[Assertion failed] - this expression must be true" );
     return repository.updateFolder( folder, versionMessage );
   }
 

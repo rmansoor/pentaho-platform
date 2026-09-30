@@ -473,7 +473,7 @@ public class PentahoEntryCollector extends EntryCollector {
   protected List<String> getRuntimeRoleNames() {
     IPentahoSession pentahoSession = PentahoSessionHolder.getSession();
     List<String> runtimeRoles = new ArrayList<String>();
-    Assert.state( pentahoSession != null );
+    Assert.state( pentahoSession != null, "[Assertion failed] - this state invariant must be true" );
     Authentication authentication = SecurityHelper.getInstance().getAuthentication();
     if ( authentication != null ) {
       Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();

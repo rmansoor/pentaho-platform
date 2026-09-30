@@ -77,7 +77,7 @@ public class ExceptionLoggingDecorator implements IUnifiedRepository {
   public ExceptionLoggingDecorator( final IUnifiedRepository delegatee,
       final Map<String, ExceptionConverter> exceptionConverterMap ) {
     super();
-    Assert.notNull( delegatee );
+    Assert.notNull( delegatee, "[Assertion failed] - this argument is required; it must not be null" );
     this.delegatee = delegatee;
     this.exceptionConverterMap = exceptionConverterMap;
   }
