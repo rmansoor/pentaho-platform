@@ -10,7 +10,7 @@
   <groupId>pentaho</groupId>
   <artifactId>pentaho-platform-repository</artifactId>
   <!-- own release version: rebuilt on Spring 7 / Java 21 for pentaho-kettle 9.4; never replaced by a remote snapshot -->
-  <version>9.4.0.0-jdk21-1</version>
+  <version>9.4.0.0-jdk21-2</version>
   <properties>
     <!-- this module carries its own release version; other Pentaho artifacts stay on the 9.4 snapshot -->
     <pentaho.snapshot.version>9.4.0.0-SNAPSHOT</pentaho.snapshot.version>
@@ -82,9 +82,9 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-      <version>${commons-lang.version}</version>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons-lang3.version}</version>
       <exclusions>
         <exclusion>
           <artifactId>*</artifactId>

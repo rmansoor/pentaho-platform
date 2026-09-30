@@ -9,7 +9,7 @@
   </parent>
   <artifactId>pentaho-platform-api</artifactId>
   <!-- own release version: rebuilt on Spring 7 / Java 21 for pentaho-kettle 9.4; never replaced by a remote snapshot -->
-  <version>9.4.0.0-jdk21-1</version>
+  <version>9.4.0.0-jdk21-2</version>
   <properties>
     <maven-surefire-plugin.reuseForks>false</maven-surefire-plugin.reuseForks>
     <mockito-all.version>1.8.5</mockito-all.version>
@@ -28,9 +28,9 @@
       <artifactId>commons-logging</artifactId>
     </dependency>
     <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-      <version>${commons-lang.version}</version>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons-lang3.version}</version>
       <scope>compile</scope>
       <exclusions>
         <exclusion>

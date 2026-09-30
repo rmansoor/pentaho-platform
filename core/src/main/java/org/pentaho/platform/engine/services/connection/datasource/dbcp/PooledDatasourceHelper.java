@@ -27,9 +27,9 @@ import org.apache.commons.dbcp.ConnectionFactory;
 import org.apache.commons.dbcp.DriverManagerConnectionFactory;
 import org.apache.commons.dbcp.PoolableConnectionFactory;
 import org.apache.commons.dbcp.PoolingDataSource;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.pool.KeyedObjectPoolFactory;
 import org.apache.commons.pool.impl.GenericKeyedObjectPoolFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
@@ -135,19 +135,19 @@ public class PooledDatasourceHelper {
       Map<String, String> attributes = databaseConnection.getConnectionPoolingProperties();
 
       if ( attributes.containsKey( IDBDatasourceService.MAX_ACTIVE_KEY )
-          && NumberUtils.isNumber( attributes.get( IDBDatasourceService.MAX_ACTIVE_KEY ) ) ) {
+          && NumberUtils.isCreatable( attributes.get( IDBDatasourceService.MAX_ACTIVE_KEY ) ) ) {
         maxActiveConnection = Integer.parseInt( attributes.get( IDBDatasourceService.MAX_ACTIVE_KEY ) );
       }
       if ( attributes.containsKey( IDBDatasourceService.MAX_WAIT_KEY )
-          && NumberUtils.isNumber( attributes.get( IDBDatasourceService.MAX_WAIT_KEY ) ) ) {
+          && NumberUtils.isCreatable( attributes.get( IDBDatasourceService.MAX_WAIT_KEY ) ) ) {
         waitTime = Integer.parseInt( attributes.get( IDBDatasourceService.MAX_WAIT_KEY ) );
       }
       if ( attributes.containsKey( IDBDatasourceService.MIN_IDLE_KEY )
-          && NumberUtils.isNumber( attributes.get( IDBDatasourceService.MIN_IDLE_KEY ) ) ) {
+          && NumberUtils.isCreatable( attributes.get( IDBDatasourceService.MIN_IDLE_KEY ) ) ) {
         minIdleConnection = Integer.parseInt( attributes.get( IDBDatasourceService.MIN_IDLE_KEY ) );
       }
       if ( attributes.containsKey( IDBDatasourceService.MAX_IDLE_KEY )
-          && NumberUtils.isNumber( attributes.get( IDBDatasourceService.MAX_IDLE_KEY ) ) ) {
+          && NumberUtils.isCreatable( attributes.get( IDBDatasourceService.MAX_IDLE_KEY ) ) ) {
         maxIdleConnection = Integer.parseInt( attributes.get( IDBDatasourceService.MAX_IDLE_KEY ) );
       }
       if ( attributes.containsKey( IDBDatasourceService.QUERY_KEY ) ) {
@@ -188,7 +188,7 @@ public class PooledDatasourceHelper {
         }
 
         if ( attributes.containsKey( IDBDatasourceService.REMOVE_ABANDONED_TIMEOUT )
-            && NumberUtils.isNumber( attributes.get( IDBDatasourceService.REMOVE_ABANDONED_TIMEOUT ) ) ) {
+            && NumberUtils.isCreatable( attributes.get( IDBDatasourceService.REMOVE_ABANDONED_TIMEOUT ) ) ) {
           config.setRemoveAbandonedTimeout( Integer.parseInt( attributes
               .get( IDBDatasourceService.REMOVE_ABANDONED_TIMEOUT ) ) );
         }
@@ -209,7 +209,7 @@ public class PooledDatasourceHelper {
       pool.setTestWhileIdle( testWhileIdle );
 
       if ( attributes.containsKey( IDBDatasourceService.TIME_BETWEEN_EVICTION_RUNS_MILLIS )
-          && NumberUtils.isNumber( attributes.get( IDBDatasourceService.TIME_BETWEEN_EVICTION_RUNS_MILLIS ) ) ) {
+          && NumberUtils.isCreatable( attributes.get( IDBDatasourceService.TIME_BETWEEN_EVICTION_RUNS_MILLIS ) ) ) {
         pool.setTimeBetweenEvictionRunsMillis( Long.parseLong( attributes
             .get( IDBDatasourceService.TIME_BETWEEN_EVICTION_RUNS_MILLIS ) ) );
       }
@@ -236,7 +236,7 @@ public class PooledDatasourceHelper {
         int maxOpenPreparedStatements = -1; // unlimited
 
         if ( attributes.containsKey( IDBDatasourceService.MAX_OPEN_PREPARED_STATEMENTS )
-            && NumberUtils.isNumber( attributes.get( IDBDatasourceService.MAX_OPEN_PREPARED_STATEMENTS ) ) ) {
+            && NumberUtils.isCreatable( attributes.get( IDBDatasourceService.MAX_OPEN_PREPARED_STATEMENTS ) ) ) {
 
           maxOpenPreparedStatements =
               Integer.parseInt( attributes.get( IDBDatasourceService.MAX_OPEN_PREPARED_STATEMENTS ) );
@@ -315,8 +315,8 @@ public class PooledDatasourceHelper {
 
   protected static ConnectionFactory getConnectionFactory( IDatabaseConnection databaseConnection, String url ) {
     Properties props = new Properties();
-    props.put( "user", StringEscapeUtils.unescapeHtml( databaseConnection.getUsername() ) );
-    props.put( "password", StringEscapeUtils.unescapeHtml( databaseConnection.getPassword() ) );
+    props.put( "user", StringEscapeUtils.unescapeHtml4( databaseConnection.getUsername() ) );
+    props.put( "password", StringEscapeUtils.unescapeHtml4( databaseConnection.getPassword() ) );
 
     if ( url.startsWith( "jdbc:mysql:" ) || ( url.startsWith( "jdbc:mariadb:" ) ) ) {
       props.put( "connectTimeout", "5000" );
