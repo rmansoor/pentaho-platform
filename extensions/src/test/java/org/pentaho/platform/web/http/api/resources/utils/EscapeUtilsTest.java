@@ -21,7 +21,7 @@ package org.pentaho.platform.web.http.api.resources.utils;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.io.CharacterEscapes;
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.eclipse.jetty.util.ajax.JSON;
 import org.junit.Test;
 import org.pentaho.platform.web.http.api.resources.utils.EscapeUtils.HTMLCharacterEscapes;
