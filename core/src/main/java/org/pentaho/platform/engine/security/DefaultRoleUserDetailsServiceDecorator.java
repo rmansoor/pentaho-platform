@@ -94,12 +94,12 @@ public class DefaultRoleUserDetailsServiceDecorator implements UserDetailsServic
   }
 
   public void setUserDetailsService( final UserDetailsService userDetailsService ) {
-    Assert.notNull( userDetailsService );
+    Assert.notNull( userDetailsService, "[Assertion failed] - this argument is required; it must not be null" );
     this.userDetailsService = userDetailsService;
   }
 
   public void setDefaultRole( final String defaultRole ) {
-    Assert.notNull( defaultRole );
+    Assert.notNull( defaultRole, "[Assertion failed] - this argument is required; it must not be null" );
     this.defaultRole = new SimpleGrantedAuthority( defaultRole );
   }
 
@@ -139,8 +139,8 @@ public class DefaultRoleUserDetailsServiceDecorator implements UserDetailsServic
     public DefaultRoleUserDetailsProxy( final UserDetails userDetails, final GrantedAuthority defaultRole,
         final IAuthenticationRoleMapper roleMapper ) {
       super();
-      Assert.notNull( userDetails );
-      Assert.notNull( defaultRole );
+      Assert.notNull( userDetails, "[Assertion failed] - this argument is required; it must not be null" );
+      Assert.notNull( defaultRole, "[Assertion failed] - this argument is required; it must not be null" );
       this.userDetails = userDetails;
       this.roleMapper = roleMapper;
       newRoles = getNewRoles( defaultRole );

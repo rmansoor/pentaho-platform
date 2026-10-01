@@ -24,7 +24,7 @@ import junit.framework.TestCase;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.http.Consts;
 import org.apache.http.HttpException;
 import org.apache.http.HttpStatus;

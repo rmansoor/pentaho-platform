@@ -32,7 +32,7 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.locale.IPentahoLocale;
@@ -77,7 +77,7 @@ public class ExceptionLoggingDecorator implements IUnifiedRepository {
   public ExceptionLoggingDecorator( final IUnifiedRepository delegatee,
       final Map<String, ExceptionConverter> exceptionConverterMap ) {
     super();
-    Assert.notNull( delegatee );
+    Assert.notNull( delegatee, "[Assertion failed] - this argument is required; it must not be null" );
     this.delegatee = delegatee;
     this.exceptionConverterMap = exceptionConverterMap;
   }

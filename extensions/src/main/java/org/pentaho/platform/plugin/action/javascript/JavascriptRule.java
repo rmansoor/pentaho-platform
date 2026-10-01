@@ -20,7 +20,9 @@
 
 package org.pentaho.platform.plugin.action.javascript;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.text.translate.CharSequenceTranslator;
+import org.apache.commons.lang3.text.translate.NumericEntityEscaper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.mozilla.javascript.Context;
@@ -50,6 +52,10 @@ import java.util.Set;
  *         Code Templates
  */
 public class JavascriptRule extends ComponentBase {
+
+  // HTML escaping as commons-lang 2 did it: HTML 4 entities, other characters above 0x7f as numeric references
+  private static final CharSequenceTranslator ESCAPE_HTML =
+    StringEscapeUtils.ESCAPE_HTML4.with( NumericEntityEscaper.above( 0x7f ) );
 
   /**
    * 
@@ -260,7 +266,7 @@ public class JavascriptRule extends ComponentBase {
       }
       inputValue = getInputValue( inputName );
       if ( inputValue instanceof String ) {
-        inputValue = StringEscapeUtils.escapeHtml( (String) inputValue );
+        inputValue = ESCAPE_HTML.translate( (String) inputValue );
       }
       Object wrapper;
       if ( inputValue instanceof IPentahoResultSet ) {

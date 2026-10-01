@@ -26,9 +26,9 @@ import org.apache.commons.dbcp2.ConnectionFactory;
 import org.apache.commons.dbcp2.DriverManagerConnectionFactory;
 import org.apache.commons.dbcp2.PoolableConnectionFactory;
 import org.apache.commons.dbcp2.PoolingDataSource;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.pentaho.database.DatabaseDialectException;
 import org.pentaho.database.IDatabaseDialect;
@@ -175,7 +175,7 @@ public class PooledDatasourceHelper {
   }
 
   private static void setTimeBetweenEvictionRunsMillis( Map<String, String> attributes, GenericObjectPool pool ) {
-    if ( NumberUtils.isNumber( attributes.get( IDBDatasourceService.TIME_BETWEEN_EVICTION_RUNS_MILLIS ) ) ) {
+    if ( NumberUtils.isCreatable( attributes.get( IDBDatasourceService.TIME_BETWEEN_EVICTION_RUNS_MILLIS ) ) ) {
       pool.setTimeBetweenEvictionRunsMillis( Long.parseLong( attributes
           .get( IDBDatasourceService.TIME_BETWEEN_EVICTION_RUNS_MILLIS ) ) );
     }
@@ -264,8 +264,8 @@ public class PooledDatasourceHelper {
 
   protected static ConnectionFactory getConnectionFactory( IDatabaseConnection databaseConnection, String url ) {
     Properties props = new Properties();
-    props.put( "user", StringEscapeUtils.unescapeHtml( databaseConnection.getUsername() ) );
-    props.put( "password", StringEscapeUtils.unescapeHtml( databaseConnection.getPassword() ) );
+    props.put( "user", StringEscapeUtils.unescapeHtml4( databaseConnection.getUsername() ) );
+    props.put( "password", StringEscapeUtils.unescapeHtml4( databaseConnection.getPassword() ) );
 
     if ( url.startsWith( "jdbc:mysql:" ) || ( url.startsWith( "jdbc:mariadb:" ) ) ) {
       props.put( "connectTimeout", "5000" );

@@ -82,7 +82,7 @@ public class JcrRoleAuthorizationPolicyRoleBindingDao extends AbstractJcrBackedR
       final ITenantedPrincipleNameResolver tenantedRoleNameUtils, final List<IAuthorizationAction> authorizationActions ) {
     super(immutableRoleBindings, bootstrapRoleBindings, superAdminRoleName, tenantedRoleNameUtils,
         authorizationActions );
-    Assert.notNull( jcrTemplate );
+    Assert.notNull( jcrTemplate, "[Assertion failed] - this argument is required; it must not be null" );
     this.jcrTemplate = jcrTemplate;
   }
 
@@ -133,7 +133,7 @@ public class JcrRoleAuthorizationPolicyRoleBindingDao extends AbstractJcrBackedR
     if ( !TenantUtils.isAccessibleTenant( tempTenant ) ) {
       throw new NotFoundException( "Tenant " + tenant.getId() + " not found" );
     }
-    Assert.notNull( logicalRoleNames );
+    Assert.notNull( logicalRoleNames, "[Assertion failed] - this argument is required; it must not be null" );
     jcrTemplate.execute( new JcrCallback() {
       @Override
       public Object doInJcr( final Session session ) throws RepositoryException, IOException {

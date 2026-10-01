@@ -9,8 +9,13 @@
   </parent>
   <groupId>pentaho</groupId>
   <artifactId>pentaho-platform-extensions</artifactId>
-  <version>10.1.0.0-SNAPSHOT</version>
+  <!-- PDI 10.1 on Java 21: rebuilt only to move to commons-lang3. It still compiles against the 10.1 platform
+       jars and Spring 5.x it was built with (PDI runs it on the Spring 7 platform jars as it did the 10.1 build) -->
+  <version>10.1.0.0-jdk21-1</version>
   <properties>
+    <pentaho.snapshot.version>10.1.0.0-SNAPSHOT</pentaho.snapshot.version>
+    <spring.version>5.3.39</spring.version>
+    <spring-security.version>5.8.16</spring-security.version>
     <asm-attrs.version>2.2.3</asm-attrs.version>
     <license.header.file>${basedir}/../license/templates/LGPL-2.1.txt</license.header.file>
     <maven-failsafe-plugin.reuseForks>false</maven-failsafe-plugin.reuseForks>
@@ -113,18 +118,6 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
       <version>${commons-lang3.version}</version>
-      <scope>compile</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-      <version>${commons-lang.version}</version>
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -2031,13 +2024,13 @@
     <dependency>
       <groupId>pentaho</groupId>
       <artifactId>pentaho-platform-api</artifactId>
-      <version>${project.version}</version>
+      <version>${pentaho.snapshot.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>pentaho</groupId>
       <artifactId>pentaho-platform-core</artifactId>
-      <version>${project.version}</version>
+      <version>${pentaho.snapshot.version}</version>
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -2049,13 +2042,13 @@
     <dependency>
       <groupId>pentaho</groupId>
       <artifactId>pentaho-platform-repository</artifactId>
-      <version>${project.version}</version>
+      <version>${pentaho.snapshot.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>pentaho</groupId>
       <artifactId>pentaho-platform-core</artifactId>
-      <version>${project.version}</version>
+      <version>${pentaho.snapshot.version}</version>
       <classifier>tests</classifier>
       <scope>test</scope>
       <exclusions>
@@ -2068,7 +2061,7 @@
     <dependency>
       <groupId>pentaho</groupId>
       <artifactId>pentaho-platform-repository</artifactId>
-      <version>${project.version}</version>
+      <version>${pentaho.snapshot.version}</version>
       <classifier>tests</classifier>
       <scope>test</scope>
       <exclusions>
@@ -2761,7 +2754,7 @@
     <dependency>
       <groupId>pentaho-kettle</groupId>
       <artifactId>kettle-core</artifactId>
-      <version>${project.version}</version>
+      <version>${pentaho.snapshot.version}</version>
       <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>

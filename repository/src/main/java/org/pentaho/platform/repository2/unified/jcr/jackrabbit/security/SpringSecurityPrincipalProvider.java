@@ -218,7 +218,7 @@ public class SpringSecurityPrincipalProvider implements PrincipalProvider {
     }
 
     checkInitialized();
-    Assert.notNull( principalName );
+    Assert.notNull( principalName, "[Assertion failed] - this argument is required; it must not be null" );
     // first handle AclMetadataPrincipal, admin, anonymous, and everyone
     // specially
     if ( AclMetadataPrincipal.isAclMetadataPrincipal( principalName ) ) {
@@ -318,7 +318,7 @@ public class SpringSecurityPrincipalProvider implements PrincipalProvider {
    */
   public PrincipalIterator getGroupMembership( final Principal principal ) {
     checkInitialized();
-    Assert.notNull( principal );
+    Assert.notNull( principal, "[Assertion failed] - this argument is required; it must not be null" );
     // first handle anonymous and everyone specially
     Set<Principal> groups = new HashSet<Principal>();
     if ( principal instanceof AnonymousPrincipal ) {

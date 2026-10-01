@@ -69,7 +69,7 @@ public abstract class AbstractBackingRepositoryLifecycleManager implements IBack
 
   public AbstractBackingRepositoryLifecycleManager( final TransactionTemplate txnTemplate,
       final JcrTemplate adminJcrTemplate, final IPathConversionHelper pathConversionHelper ) {
-    Assert.notNull( txnTemplate );
+    Assert.notNull( txnTemplate, "[Assertion failed] - this argument is required; it must not be null" );
     this.txnTemplate = txnTemplate;
     this.adminJcrTemplate = adminJcrTemplate;
     this.pathConversionHelper = pathConversionHelper;

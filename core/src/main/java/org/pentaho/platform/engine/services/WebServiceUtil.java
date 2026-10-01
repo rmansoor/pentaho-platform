@@ -20,7 +20,7 @@
 
 package org.pentaho.platform.engine.services;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import org.pentaho.platform.util.xml.XmlHelper;
 import org.dom4j.Document;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
@@ -31,14 +31,14 @@ public class WebServiceUtil {
   public static Document createErrorDocument( String errorMsg ) {
     Element rootElement = new DefaultElement( "web-service" );
     Document doc = DocumentHelper.createDocument( rootElement );
-    rootElement.addElement( "error" ).addAttribute( "msg", StringEscapeUtils.escapeXml( errorMsg ) );
+    rootElement.addElement( "error" ).addAttribute( "msg", XmlHelper.encode( errorMsg ) );
     return doc;
   }
 
   public static Document createStatusDocument( String statusMsg ) {
     Element rootElement = new DefaultElement( "web-service" );
     Document doc = DocumentHelper.createDocument( rootElement );
-    rootElement.addElement( "status" ).addAttribute( "msg", StringEscapeUtils.escapeXml( statusMsg ) );
+    rootElement.addElement( "status" ).addAttribute( "msg", XmlHelper.encode( statusMsg ) );
     return doc;
   }
 }

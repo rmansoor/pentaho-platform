@@ -55,7 +55,7 @@ public class PentahoSessionCredentialsStrategy implements CredentialsStrategy {
   public PentahoSessionCredentialsStrategy( final String preAuthenticationToken,
       final ITenantedPrincipleNameResolver tenantedUserNameUtils ) {
     super();
-    Assert.hasText( preAuthenticationToken );
+    Assert.hasText( preAuthenticationToken, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
     this.preAuthenticationToken = preAuthenticationToken;
     this.tenantedUserNameUtils = tenantedUserNameUtils;
   }

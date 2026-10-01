@@ -20,7 +20,7 @@
 
 package org.pentaho.platform.repository2.unified.jcr;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.Assert;
 
 import java.util.Locale;
@@ -38,7 +38,7 @@ public class LocalizationUtil {
   public static final String DEFAULT = "default";
 
   public LocalizationUtil( Map<String, Properties> localePropertiesMap, Locale locale ) {
-    Assert.notNull( localePropertiesMap );
+    Assert.notNull( localePropertiesMap, "[Assertion failed] - this argument is required; it must not be null" );
     this.localePropertiesMap = localePropertiesMap;
     this.locale = locale;
   }

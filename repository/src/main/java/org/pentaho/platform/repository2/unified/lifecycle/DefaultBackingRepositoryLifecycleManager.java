@@ -111,10 +111,10 @@ public class DefaultBackingRepositoryLifecycleManager extends AbstractBackingRep
       final IPasswordService passwordService, final JcrTemplate adminJcrTemplate,
       final IPathConversionHelper pathConversionHelper ) {
     super( txnTemplate, adminJcrTemplate, pathConversionHelper );
-    Assert.notNull( contentDao );
-    Assert.notNull( repositoryFileAclDao );
-    Assert.hasText( repositoryAdminUsername );
-    Assert.hasText( tenantAuthenticatedRoleName );
+    Assert.notNull( contentDao, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( repositoryFileAclDao, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.hasText( repositoryAdminUsername, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
+    Assert.hasText( tenantAuthenticatedRoleName, "[Assertion failed] - this String argument must have text; it must not be null, empty, or blank" );
     this.repositoryFileDao = contentDao;
     this.repositoryFileAclDao = repositoryFileAclDao;
     this.repositoryAdminUsername = repositoryAdminUsername;

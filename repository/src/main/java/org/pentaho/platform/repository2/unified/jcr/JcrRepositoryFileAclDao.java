@@ -124,7 +124,7 @@ public class JcrRepositoryFileAclDao implements IRepositoryFileAclDao {
         AccessControlPolicy[] acPolicies = session.getAccessControlManager().getEffectivePolicies( absPath );
         // logic assumes policies are ordered from leaf to root
         for ( AccessControlPolicy policy : acPolicies ) {
-          Assert.isTrue( policy instanceof AccessControlList );
+          Assert.isTrue( policy instanceof AccessControlList, "[Assertion failed] - this expression must be true" );
           AccessControlList acList = ( (AccessControlList) policy );
           if ( !isEntriesInheriting( session, absPath, acList ) ) {
             List<RepositoryFileAce> aces = new ArrayList<RepositoryFileAce>();
@@ -275,11 +275,11 @@ public class JcrRepositoryFileAclDao implements IRepositoryFileAclDao {
       throw new RuntimeException( Messages.getInstance().getString( "JcrRepositoryFileDao.ERROR_0006_ACCESS_DENIED" ) ); //$NON-NLS-1$
     }
 
-    Assert.notNull( id );
-    Assert.notNull( recipient );
-    Assert.notNull( permission );
+    Assert.notNull( id, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( recipient, "[Assertion failed] - this argument is required; it must not be null" );
+    Assert.notNull( permission, "[Assertion failed] - this argument is required; it must not be null" );
     RepositoryFileAcl acl = getAcl( id );
-    Assert.notNull( acl );
+    Assert.notNull( acl, "[Assertion failed] - this argument is required; it must not be null" );
     // TODO mlowery find an ACE with the recipient and update that rather than adding a new ACE
     RepositoryFileSid newRecipient = recipient;
     if ( recipient.getType().equals( Type.USER ) ) {

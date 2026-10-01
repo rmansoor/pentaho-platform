@@ -36,7 +36,7 @@ import java.util.StringTokenizer;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.collections.list.UnmodifiableList;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.dom4j.Document;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;

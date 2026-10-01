@@ -121,7 +121,7 @@ public class DefaultLockHelper implements ILockHelper {
     throws RepositoryException {
     Node lockTokensNode = getOrCreateLockTokensNode( session, pentahoJcrConstants, lock );
     NodeIterator nodes = lockTokensNode.getNodes( lock.getNode().getIdentifier() );
-    Assert.isTrue( nodes.hasNext() );
+    Assert.isTrue( nodes.hasNext(), "[Assertion failed] - this expression must be true" );
     return nodes.nextNode().getProperty( pentahoJcrConstants.getPHO_LOCKTOKEN() ).getString();
   }
 
@@ -233,7 +233,7 @@ public class DefaultLockHelper implements ILockHelper {
         makeOwnerInfo( JcrTenantUtils.getTenantedUser( PentahoSessionHolder.getSession().getName() ), Calendar
             .getInstance().getTime(), message );
     Node fileNode = session.getNodeByIdentifier( fileId.toString() );
-    Assert.isTrue( fileNode.isNodeType( pentahoJcrConstants.getMIX_LOCKABLE() ) );
+    Assert.isTrue( fileNode.isNodeType( pentahoJcrConstants.getMIX_LOCKABLE() ), "[Assertion failed] - this expression must be true" );
     Lock lock = lockManager.lock( fileNode.getPath(), isDeep, isSessionScoped, timeoutHint, ownerInfo );
     addLockToken( session, pentahoJcrConstants, lock );
   }

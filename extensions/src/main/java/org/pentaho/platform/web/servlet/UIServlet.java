@@ -20,7 +20,9 @@
 
 package org.pentaho.platform.web.servlet;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.text.translate.CharSequenceTranslator;
+import org.apache.commons.lang3.text.translate.NumericEntityEscaper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.engine.IMessageFormatter;
@@ -53,6 +55,10 @@ import java.io.OutputStream;
 @Deprecated
 public class UIServlet extends ServletBase {
 
+  // HTML escaping as commons-lang 2 did it: HTML 4 entities, other characters above 0x7f as numeric references
+  private static final CharSequenceTranslator ESCAPE_HTML =
+    StringEscapeUtils.ESCAPE_HTML4.with( NumericEntityEscaper.above( 0x7f ) );
+
   /**
    * 
    */
@@ -83,7 +89,7 @@ public class UIServlet extends ServletBase {
       }
 
       // find out which component is going to fulfill this request
-      String componentName = StringEscapeUtils.escapeHtml( request.getParameter( "component" ) ); //$NON-NLS-1$
+      String componentName = ESCAPE_HTML.translate( request.getParameter( "component" ) ); //$NON-NLS-1$
       if ( componentName == null ) {
         response.setContentType( "text/html" ); //$NON-NLS-1$
         StringBuffer buffer = new StringBuffer();

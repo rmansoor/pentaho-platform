@@ -22,6 +22,7 @@ package org.pentaho.platform.plugin.services.metadata;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.pentaho.platform.util.xml.XmlHelper;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -250,7 +251,7 @@ public class PentahoMetadataDomainRepository implements IMetadataDomainRepositor
     int datasourceModelTagPosition = sb.indexOf( "datasourceModel" );
     if ( datasourceModelTagPosition != -1 ) {
       String xmiDomainId = endsWithXmi( domainId );
-      String noXmiDomainId = StringEscapeUtils.escapeXml( noXmi( domainId ) );
+      String noXmiDomainId = XmlHelper.encode( noXmi( domainId ) );
       String tag = "<CWM:Description body=";
 
       int startTagPosition = sb.indexOf( tag, datasourceModelTagPosition );

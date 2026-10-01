@@ -191,7 +191,7 @@ public class UserRoleDaoUserDetailsService implements UserDetailsService {
    *          the role name, including any desired prefix.
    */
   public void setDefaultRole( String defaultRole ) {
-    Assert.notNull( defaultRole );
+    Assert.notNull( defaultRole, "[Assertion failed] - this argument is required; it must not be null" );
     this.defaultRoleString = defaultRole;
     this.defaultRole = new SimpleGrantedAuthority( defaultRole );
   }

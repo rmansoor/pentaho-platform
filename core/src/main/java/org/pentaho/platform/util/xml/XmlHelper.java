@@ -48,7 +48,9 @@ import javax.xml.transform.URIResolver;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.text.translate.CharSequenceTranslator;
+import org.apache.commons.lang3.text.translate.NumericEntityEscaper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.engine.IDocumentResourceLoader;
@@ -188,9 +190,16 @@ public class XmlHelper {
     }
   }
 
+  /**
+   * XML escaping as commons-lang 2 did it: the five XML entities, and every character above 0x7f as a numeric
+   * reference (lang3's escapeXml leaves those as they are).
+   */
+  private static final CharSequenceTranslator ESCAPE_XML =
+    StringEscapeUtils.ESCAPE_XML.with( NumericEntityEscaper.above( 0x7f ) );
+
   public static String encode( final String string ) {
 
-    return StringEscapeUtils.escapeXml( string );
+    return string == null ? null : ESCAPE_XML.translate( string );
   }
 
   private static final int BUFF_SIZE = 512;

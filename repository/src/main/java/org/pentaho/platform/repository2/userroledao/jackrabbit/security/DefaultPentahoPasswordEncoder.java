@@ -20,7 +20,7 @@
 
 package org.pentaho.platform.repository2.userroledao.jackrabbit.security;
 
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 import org.apache.jackrabbit.core.security.authentication.CryptedSimpleCredentials;
 import org.pentaho.platform.engine.security.messages.Messages;
 import org.pentaho.platform.util.StringUtil;
@@ -50,8 +50,10 @@ import javax.jcr.SimpleCredentials;
  */
 public class DefaultPentahoPasswordEncoder implements PasswordEncoder {
 
+  // Validate.isTrue, not notNull: lang3's notNull throws NullPointerException, and isPasswordValid relies on
+  // IllegalArgumentException to answer false
   public String encodePassword( final String rawPass, final Object salt ) throws DataAccessException {
-    Validate.notNull( rawPass, Messages.getInstance().getString(
+    Validate.isTrue( rawPass != null, Messages.getInstance().getString(
         "DefaultPentahoPasswordEncoder.ERROR_0001_RAWPASS_CANNOT_BE_NULL" ) ); //$NON-NLS-1$
 
     if ( StringUtil.isEmpty( rawPass ) ) {
@@ -69,9 +71,9 @@ public class DefaultPentahoPasswordEncoder implements PasswordEncoder {
   public boolean isPasswordValid( final String encPass, final String rawPass, final Object salt )
     throws DataAccessException {
     try {
-      Validate.notNull( encPass, Messages.getInstance().getString(
+      Validate.isTrue( encPass != null, Messages.getInstance().getString(
           "DefaultPentahoPasswordEncoder.ERROR_0002_ENCPASS_CANNOT_BE_NULL" ) ); //$NON-NLS-1$
-      Validate.notNull( rawPass, Messages.getInstance().getString(
+      Validate.isTrue( rawPass != null, Messages.getInstance().getString(
           "DefaultPentahoPasswordEncoder.ERROR_0001_RAWPASS_CANNOT_BE_NULL" ) ); //$NON-NLS-1$
     } catch ( IllegalArgumentException e ) {
       return false;

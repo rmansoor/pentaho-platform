@@ -238,7 +238,7 @@ public class RepositoryFilenameUtils {
     if ( fullFilenameToAdd == null ) {
       return null;
     }
-    if ( org.apache.commons.lang.StringUtils.isBlank( fullFilenameToAdd ) ) {
+    if ( org.apache.commons.lang3.StringUtils.isBlank( fullFilenameToAdd ) ) {
       return normalizeNoEndSeparator( basePath );
     }
     int prefix = 0;
