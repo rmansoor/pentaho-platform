@@ -956,7 +956,7 @@
         <artifactId>license-maven-plugin</artifactId>
       </plugin>
       <plugin>
-        <!-- Java 21: the JCR security classes need java.security.acl.Group (removed in Java 14); see src/compat.
+        <!-- Java 14+: the JCR security classes need java.security.acl.Group (removed in Java 14); see src/compat.
              Only the main compile gets the stub (the compiler plugin fails on patch-module in testCompile). -->
         <artifactId>maven-compiler-plugin</artifactId>
         <executions>
@@ -964,10 +964,10 @@
             <id>default-compile</id>
             <configuration>
               <!-- -source/-target instead of release: javac refuses exporting from java.base with release;
-                   this module is compiled by JDK 21 itself -->
+                   build this module with a JDK 17, so it also only links against Java 17 APIs -->
               <release combine.self="override"></release>
-              <source>21</source>
-              <target>21</target>
+              <source>17</source>
+              <target>17</target>
               <compilerArgs>
                 <arg>--patch-module</arg>
                 <arg>java.base=${project.basedir}/src/compat</arg>
