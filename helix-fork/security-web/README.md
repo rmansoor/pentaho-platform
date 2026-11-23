@@ -329,13 +329,21 @@ Parallelisable: S4/S5/S6 are independent once S2–S3 land.
 
 ---
 
-## 8. Open questions for the team
+## 8. Decisions (2026-11-23, answered by the project owner)
 
-1. Package/namespace: `org.pentaho.platform.security.web` + `hsw:` (recommended)
-   vs. keep `com.hitachivantara…` FQCNs + `swm:` for zero-churn drop-in.
-2. Is CSRF/CORS/SSRF **in scope for Helix CE at all**, or is it EE-only hardening
-   we can stub to "disabled, no-op filters" for v1 and implement properly later?
-   (Defaults are `false` in CE — a no-op path would cut this to ~1 week and defer
-   the rest.)
-3. The CSRF token handler mode (`CsrfTokenRequestAttributeHandler` vs `Xor…`)
-   must match the PUC/`webContext` JS — needs a JS-side check.
+1. **Package/namespace → new names.** Keep `org.pentaho.platform.security.web` +
+   `hsw:` (`http://www.pentaho.com/schema/security-web`). No drop-in
+   `com.hitachivantara…` / `swm:` compatibility layer.
+2. **CSRF/CORS/SSRF is OUT of Helix CE.** It will ship as a separate plugin.
+   CE core keeps no web-security filters; `helix-security-web` becomes the
+   basis of that plugin. (Follow-up work: remove the filters/beans and the
+   `hsw:` blocks from CE system configs, move the module out of the CE
+   reactor/WAR, decide how the plugin hooks into the filter chain.)
+3. **CSRF token handler mode — checked in code, not a blocker.** Production
+   `CsrfGateFilter` keeps Spring's default (`XorCsrfTokenRequestAttributeHandler`);
+   `CsrfTokenService` returns the request-attribute token as-is. The clients
+   (`pentaho/csrf/service` JS, GWT `CsrfRequestBuilder`, CLI `CsrfTokenFilter`)
+   treat the token as opaque and echo it back in `X-CSRF-TOKEN`, so either mode
+   works. S10 replay confirms the round trip (`POST prot + tok` passes).
+   Not yet verified: a real browser PUC action with CSRF on — moves to the
+   plugin's test plan per decision 2.
