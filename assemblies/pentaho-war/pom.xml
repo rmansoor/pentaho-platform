@@ -1084,6 +1084,42 @@
           </execution>
           <execution>
             <!--
+              [helix] INTERIM rebrand of the console's message bundles.
+              mantle/messages/*.properties have no source in this repo: they arrive inside the
+              pentaho-user-console gwt jar (via pentaho-user-console-package), unpacked into the
+              prepared war by prepare-webapp above. Until Helix owns that artifact (step 4),
+              rewrite the product-name keys in place. Runs in prepare-package after the unpack
+              (maven-dependency-plugin is declared earlier in this pom) and before war:war.
+              Only the named keys are touched; descriptive text and wiki links are left alone.
+              The build fails if "Pentaho User Console" survives, so a changed upstream bundle
+              is caught rather than shipped.
+            -->
+            <id>helix-rebrand-console-messages</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <replaceregexp byline="true" encoding="ISO-8859-1"
+                               match="^((productName|aboutDialogTitle|loadingConsole|pentahoBATitle|pentahoSolutionBrowser|popupWarning)\s*=.*?)Pentaho"
+                               replace="\1Helix">
+                  <fileset dir="${prepared.war.directory}/mantle/messages" includes="*.properties"/>
+                </replaceregexp>
+                <fail message="[helix] console message bundles still say 'Pentaho User Console' after rebrand">
+                  <condition>
+                    <resourcecount when="greater" count="0">
+                      <fileset dir="${prepared.war.directory}/mantle/messages" includes="*.properties">
+                        <contains text="Pentaho User Console"/>
+                      </fileset>
+                    </resourcecount>
+                  </condition>
+                </fail>
+              </target>
+            </configuration>
+          </execution>
+          <execution>
+            <!--
               gremlin-shaded relocates Jackson to org.apache.tinkerpop.shaded.jackson, but the
               jar still ships Maven provenance metadata (META-INF/maven/com.fasterxml.jackson.core/**)
               declaring jackson-databind 2.15.2, which security scanners (JFrog Xray) fingerprint
