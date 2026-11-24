@@ -15,24 +15,26 @@
   +-->
 <beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns="http://www.springframework.org/schema/beans"
+       xmlns:pen="http://www.pentaho.com/schema/pentaho-system"
        xsi:schemaLocation="
-          http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd"
+          http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+          http://www.pentaho.com/schema/pentaho-system http://www.pentaho.com/schema/pentaho-system.xsd"
        default-lazy-init="true">
 
     <!-- read the alternative-fully-qualified-server-url and fully-qualified-server-url from the system.properties file -->
     <!-- read the ssrf-protection-enabled from the system.properties file -->
 
     <bean id="pentahoSsrfConfigurationPojo" class="org.pentaho.platform.config.PentahoSsrfConfigurationPojo">
+        <!-- published so that the plugin (another app context) can resolve it as SsrfConfiguration -->
+        <pen:publish as-type="INTERFACES" />
         <constructor-arg value="${server.fully-qualified-server-url}"/>
         <constructor-arg value="${server.alternative-fully-qualified-server-urls}"/>
         <constructor-arg value= "${system.ssrf-protection-enabled:false}"/>
     </bean>
 
-    <!-- servlet filter class that will be used to filter the request and response for SSRF protection -->
-
-    <bean id="ssrfGateFilter" class="org.pentaho.platform.security.web.servlet.ssrf.SsrfGateFilter">
-        <constructor-arg ref="pentahoSsrfConfigurationPojo" />
-    </bean>
+  <!-- [helix] Enforcement moved out of CE: the SsrfGateFilter is in the optional Helix Security Web plugin
+       (helix-security-web-plugin), which picks up the configuration published here. Without the
+       plugin this file only declares configuration and nothing is enforced. -->
 
 </beans>
 

@@ -24,9 +24,11 @@
   <artifactId>helix-security-web</artifactId>
   <version>11.1.0.0-SNAPSHOT</version>
   <name>Helix Security Web</name>
-  <description>Owned reimplementation of the web-security layer (CSRF gate, CORS
-    protocol filter, SSRF gate, swm/hsw request-matcher Spring namespace) that
-    replaces the proprietary com.hitachivantara.security.web dependency.
+  <description>Owned replacement for the proprietary com.hitachivantara.security.web
+    dependency - the DECLARATION side only, shipped in Helix CE: CSRF/CORS/SSRF model and
+    aggregators, the hsw: request-matcher Spring namespace, the /api/csrf/token endpoint, the
+    CLI CSRF client and request-body wrappers. Enforcement (the filters) is in the optional
+    helix-security-web-plugin.
     See helix-fork/security-web/README.md.</description>
 
   <properties>

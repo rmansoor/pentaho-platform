@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>pentaho</groupId>
+    <artifactId>pentaho-platform-ce-parent</artifactId>
+    <version>11.1.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>helix-security-web-plugin</artifactId>
+  <version>11.1.0.0-SNAPSHOT</version>
+  <name>Helix Security Web Plugin</name>
+  <description>Optional server plugin that ENFORCES the web-security protections
+    (SSRF gate, CSRF gate, CORS protocol filter). Not part of Helix CE: CE only
+    ships the declarations (helix-security-web: model, hsw: namespace, token
+    endpoint) and an empty web-security slot in the filter chain, which this
+    plugin fills. Packaged as a drop-in system/helix-security-web/ plugin zip.
+    See helix-fork/security-web/README.md.</description>
+
+  <properties>
+    <maven-surefire-plugin.reuseForks>false</maven-surefire-plugin.reuseForks>
+    <license.header.file>${basedir}/../license/templates/LGPL-2.1.txt</license.header.file>
+    <license.header.definition.file>${basedir}/../license/styles/javadoc_style_license_header.xml</license.header.definition.file>
+  </properties>
+
+  <dependencies>
+    <!-- CE side: model + hsw namespace. Already in WEB-INF/lib; must NOT be re-shipped in the
+         plugin lib/ (would load a second copy of the model interfaces -> ClassCastException). -->
+    <dependency>
+      <groupId>pentaho</groupId>
+      <artifactId>helix-security-web</artifactId>
+      <version>${project.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.github.spotbugs</groupId>
+      <artifactId>spotbugs-annotations</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>commons-logging</groupId>
+      <artifactId>commons-logging</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.servlet</groupId>
+      <artifactId>jakarta.servlet-api</artifactId>
+      <version>${jakarta.servlet.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <!-- Spring: all in WEB-INF/lib already -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-web</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-web</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- test -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>${mockito-core.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- system/helix-security-web/{plugin.xml, plugin.spring.xml, lib/helix-security-web-plugin.jar} -->
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>plugin-zip</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <configuration>
+              <descriptors>
+                <descriptor>src/assembly/plugin.xml</descriptor>
+              </descriptors>
+              <appendAssemblyId>false</appendAssemblyId>
+              <attach>true</attach>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

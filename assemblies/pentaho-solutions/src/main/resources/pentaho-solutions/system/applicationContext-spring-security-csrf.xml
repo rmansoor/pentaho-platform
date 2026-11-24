@@ -134,18 +134,15 @@
 
   <!-- region CSRF Services -->
 
-  <!-- Servlet Filter that checks that requests to protected endpoints specify a CSRF token.
-       Should be the first filter. See `filterChainProxy` in `applicationContext-spring-security.xml`.
-    -->
-  <bean id="csrfGateFilter" class="org.pentaho.platform.security.web.servlet.csrf.CsrfGateFilter">
-    <constructor-arg ref="aggregatedCsrfConfiguration" />
-  </bean>
+  <!-- [helix] Enforcement moved out of CE: the CsrfGateFilter is in the optional Helix Security Web plugin
+       (helix-security-web-plugin), which picks up the configuration published here. Without the
+       plugin this file only declares configuration and nothing is enforced. -->
 
   <!-- JAX-RS Resource for obtaining a CSRF token.
 
     Has to be declared in the separate app context of `pentahoServices.spring.xml`,
     so that it gets exposed under /api/csrf/token.
-    Depends on `csrfGateFilter` being applied to it.
+    Returns 204 with no token headers unless the plugin's CsrfGateFilter is installed and enabled.
     Should not require authentication, so that a token can be obtained for login.
 
     <bean class="org.pentaho.platform.security.web.jaxrs.csrf.CsrfTokenService" scope="request" />

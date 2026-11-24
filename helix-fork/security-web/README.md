@@ -23,8 +23,9 @@ tests green against it.
 | S8 | ✅ | `CsrfTokenFilter` + `CsrfTokenServiceClient` + `SessionCookiesFilter` (JAX-RS client, for the import/export CLI) |
 | S9 | ✅ | root pom module wiring; `extensions` + `pentaho-war` pom dep swap; 6 java files (FQCN only); 3 system XMLs + `pentahoServices.spring.xml` + 1 test resource (`swm:`→`hsw:`) |
 | S10 | ✅ | full clean assembly builds; boots with `data-access`/`scheduler-plugin` registered; `gate-check.sh` **PASS**; SPEC.md replayed on the running server with all 3 protections on — **every row matches HV 0.14.0** (`fixtures/s10-replay.txt`) |
+| S11 | ✅ | **CSRF/CORS/SSRF out of CE** (decision §8.2): filters moved to the optional `helix-security-web-plugin`; CE gets an empty `webSecurityExtensionFilter` slot. Replayed: CE-only with all flags on → nothing enforced (`fixtures/s11-replay-ce-only.txt`); CE + plugin → every SPEC row matches (`fixtures/s11-replay-with-plugin.txt`); `gate-check.sh` PASS on both |
 
-**Phase S complete.** `com.hitachivantara.security.web` is gone from every pom,
+**Phase S complete.** (S11 then moved enforcement out of CE into a plugin, see §7a.) `com.hitachivantara.security.web` is gone from every pom,
 source file, and shipped config in the tree. Two integration wrinkles fixed
 during S10:
 - external binary plugins (`data-access`, `scheduler-plugin`) still ship
@@ -328,6 +329,40 @@ to root `pom.xml` before `extensions`, and to `dependencyManagement`.
 Parallelisable: S4/S5/S6 are independent once S2–S3 land.
 
 ---
+
+## 7a. S11 — CE / plugin split (2026-11-23)
+
+**CE (`helix-security-web`, in `WEB-INF/lib`)** keeps the declaration side, because other
+plugins (`data-access`, `scheduler-plugin`, …) declare `hsw:` request sets in their
+`plugin.spring.xml` and must still load without the enforcement plugin:
+model + aggregators, `hsw:` namespace, `CsrfTokenService` (`/api/csrf/token` → 204 with no
+token headers when nothing is enforcing), the CLI CSRF client, and request-body wrappers.
+The system configs `applicationContext-spring-security-{csrf,cors,ssrf}.xml` keep their
+configuration beans; the SSRF pojo is now `pen:publish`ed so the plugin can resolve it.
+
+**The slot:** `org.pentaho.platform.web.http.security.WebSecurityExtensionFilter` sits first in
+every chain of `filterChainProxy` (where `ssrfGateFilter, csrfGateFilter, corsFilter` were). It
+runs every `jakarta.servlet.Filter` published with attribute `helix.filter-slot=web-security`,
+in publish-priority order, then the rest of the chain. Pass-through when the slot is empty.
+Lookup is per request until `PentahoSystem.getInitializedOK()`, then cached; cache dropped on
+plugin-manager reload.
+
+**Plugin (`helix-security-web-plugin`)**, built in the reactor but not shipped by any CE
+assembly: the three filters + `plugin.xml`/`plugin.spring.xml`, packaged as
+`helix-security-web-plugin-<v>.zip` → unzip into `pentaho-solutions/system/`. Publishes one
+`CompositeFilter` (SSRF → CSRF → CORS) into the slot; the filters take their configuration via
+`pen:bean` from CE. The model jar is `provided` — must not be re-shipped in the plugin `lib/`.
+The existing `system.properties` flags still switch each protection on/off.
+
+Gotcha found during S11: a plugin context's `pen:publish` beans only reach `PentahoSystem` if
+the context declares `ApplicationContextPentahoSystemRegisterer` (same as `data-access`,
+`reporting`). Without it the slot silently stays empty.
+
+Not split out (left in CE, pre-existing upstream code): the legacy `WebUtil.setCorsResponseHeaders`
+path driven by `cors-requests-allowed` in `pentaho.xml`.
+
+Replay tool: `fixtures/replay.sh <base-url>` prints every SPEC row with its expected
+"spec" (plugin) and "off" (CE only) result.
 
 ## 8. Decisions (2026-11-23, answered by the project owner)
 

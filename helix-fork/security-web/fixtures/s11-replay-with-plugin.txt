@@ -1,0 +1,27 @@
+=== replay vs SPEC.md — 2026-11-24T00:47:19Z — http://localhost:8090/pentaho ===
+
+## SSRF
+  bogus Host         403    (spec 403, off 401)
+  valid Host         401    (spec 401, off 401)
+  alt Host           401    (spec 401, off 401)
+  X-Forwarded-Host   401    (spec 401, off 401)
+  token ep bad Host  403    (spec 403, off 204)
+
+## CSRF
+  token endpoint     204    (spec 204+hdr, off 204 no hdr)
+                     header=X-CSRF-TOKEN param=_csrf
+  POST prot no tok   403    (spec 403, off 400)
+  POST prot + tok    400    (spec 400, off 400)
+  POST prot badtok   403    (spec 403, off 400)
+  GET matcher notok  403    (spec 403, off 200)
+  GET matcher +tok   200    (spec 200, off 200)
+
+## CORS
+  preflight allowed  200    (spec 200+ACAO, off no ACAO)
+                     ACAO=http://allowed.example.com ACAH=X-CSRF-TOKEN, Content-Type
+  preflight PUT      403    (spec 403, off -)
+  preflight evil     403    (spec 403, off -)
+  actual allowed     401    (spec 401+ACAO, off 401)
+                     ACAO=http://allowed.example.com
+  actual evil        403    (spec 403, off 401)
+  no origin          401    (spec 401, off 401)

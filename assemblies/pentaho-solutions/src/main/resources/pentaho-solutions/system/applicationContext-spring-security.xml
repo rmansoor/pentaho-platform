@@ -27,6 +27,14 @@
 
   <!-- ======================== FILTER CHAIN ======================= -->
   <!--
+      [helix] The "web-security" slot. Helix CE ships no SSRF/CSRF/CORS enforcement: this filter is a
+      pass-through unless a plugin publishes a jakarta.servlet.Filter with attribute
+      helix.filter-slot=web-security (the optional Helix Security Web plugin does). It sits first in
+      every chain, where the HV ssrfGateFilter, csrfGateFilter and corsFilter used to be.
+  -->
+  <bean id="webSecurityExtensionFilter" class="org.pentaho.platform.web.http.security.WebSecurityExtensionFilter" />
+
+  <!--
       if you wish to use channel security, add "channelProcessingFilter," in
       front of "httpSessionContextIntegrationFilter" in the list below
   -->
@@ -34,14 +42,10 @@
     <constructor-arg>
       <util:list>
         <sec:filter-chain pattern="/api/csrf/token"
-                          filters="ssrfGateFilter,
-                                   csrfGateFilter,
-                                   corsFilter" />
+                          filters="webSecurityExtensionFilter" />
 
         <sec:filter-chain pattern="/webservices/**"
-                          filters="ssrfGateFilter,
-                                   csrfGateFilter,
-                                   corsFilter,
+                          filters="webSecurityExtensionFilter,
                                    securityContextHolderAwareRequestFilterForWS,
                                    httpSessionPentahoSessionContextIntegrationFilter,
                                    httpSessionContextIntegrationFilter,
@@ -53,9 +57,7 @@
                                    filterInvocationInterceptorForWS" />
 
         <sec:filter-chain pattern="/api/repos/**"
-                          filters="ssrfGateFilter,
-                                   csrfGateFilter,
-                                   corsFilter,
+                          filters="webSecurityExtensionFilter,
                                    securityContextHolderAwareRequestFilterForWS,
                                    httpSessionPentahoSessionContextIntegrationFilter,
                                    httpSessionContextIntegrationFilter,
@@ -69,9 +71,7 @@
                                    preFlightFilter" />
 
         <sec:filter-chain pattern="/api/**"
-                          filters="ssrfGateFilter,
-                                   csrfGateFilter,
-                                   corsFilter,
+                          filters="webSecurityExtensionFilter,
                                    securityContextHolderAwareRequestFilterForWS,
                                    httpSessionPentahoSessionContextIntegrationFilter,
                                    httpSessionContextIntegrationFilter,
@@ -84,9 +84,7 @@
                                    filterInvocationInterceptorForWS" />
 
         <sec:filter-chain pattern="/plugin/reporting/api/jobs/**"
-                          filters="ssrfGateFilter,
-                                   csrfGateFilter,
-                                   corsFilter,
+                          filters="webSecurityExtensionFilter,
                                    securityContextHolderAwareRequestFilterForWS,
                                    httpSessionPentahoSessionContextIntegrationFilter,
                                    httpSessionContextIntegrationFilter,
@@ -100,9 +98,7 @@
                                    preFlightFilter" />
 
         <sec:filter-chain pattern="/plugin/**"
-                          filters="ssrfGateFilter,
-                                   csrfGateFilter,
-                                   corsFilter,
+                          filters="webSecurityExtensionFilter,
                                    securityContextHolderAwareRequestFilterForWS,
                                    httpSessionPentahoSessionContextIntegrationFilter,
                                    httpSessionContextIntegrationFilter,
@@ -115,9 +111,7 @@
                                    filterInvocationInterceptorForWS" />
 
         <sec:filter-chain pattern="/**"
-                          filters="ssrfGateFilter,
-                                   csrfGateFilter,
-                                   corsFilter,
+                          filters="webSecurityExtensionFilter,
                                    securityContextHolderAwareRequestFilter,
                                    httpSessionPentahoSessionContextIntegrationFilter,
                                    httpSessionContextIntegrationFilter,

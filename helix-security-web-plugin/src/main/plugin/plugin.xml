@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
+<!-- Helix Security Web: enforces SSRF / CSRF / CORS protection. Optional, not part of Helix CE.
+     Install: unzip helix-security-web-plugin-<version>.zip into pentaho-solutions/system/ and
+     restart. Each protection is still switched by its existing system.properties /
+     pentaho.xml flag (ssrf-protection-enabled, csrf-protection-enabled, cors-requests-allowed). -->
+<plugin title="Helix Security Web" name="helix-security-web">
+</plugin>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
+<!--
+  Fills the CE "web-security" filter slot (webSecurityExtensionFilter, see
+  applicationContext-spring-security.xml) with the SSRF gate, CSRF gate and CORS protocol filter,
+  in that order (the order the filters had in the CE chain before the split).
+
+  The configurations are NOT defined here: CE publishes them (applicationContext-spring-security-
+  {ssrf,csrf,cors}.xml), together with the request sets that the system and every other plugin
+  declare with the hsw: namespace. This plugin only enforces them.
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:pen="http://www.pentaho.com/schema/pentaho-system"
+       xsi:schemaLocation="
+          http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+          http://www.pentaho.com/schema/pentaho-system http://www.pentaho.com/schema/pentaho-system.xsd">
+
+  <!-- Required for pen:publish in a plugin context: without it the published beans never reach
+       PentahoSystem (same as data-access, scheduler-plugin, reporting). -->
+  <bean class="org.pentaho.platform.engine.core.system.objfac.spring.ApplicationContextPentahoSystemRegisterer" scope="singleton"/>
+
+  <bean id="helixWebSecurityFilter" class="org.springframework.web.filter.CompositeFilter">
+    <pen:publish as-type="jakarta.servlet.Filter">
+      <pen:attributes>
+        <pen:attr key="helix.filter-slot" value="web-security"/>
+      </pen:attributes>
+    </pen:publish>
+    <property name="filters">
+      <list>
+        <bean class="org.pentaho.platform.security.web.servlet.ssrf.SsrfGateFilter">
+          <constructor-arg>
+            <pen:bean class="org.pentaho.platform.security.web.model.ssrf.SsrfConfiguration"/>
+          </constructor-arg>
+        </bean>
+        <bean class="org.pentaho.platform.security.web.servlet.csrf.CsrfGateFilter">
+          <constructor-arg>
+            <pen:bean class="org.pentaho.platform.security.web.model.csrf.CsrfConfiguration"/>
+          </constructor-arg>
+        </bean>
+        <bean class="org.pentaho.platform.security.web.servlet.cors.CorsProtocolFilter">
+          <constructor-arg>
+            <pen:bean class="org.pentaho.platform.security.web.model.cors.CorsConfiguration"/>
+          </constructor-arg>
+        </bean>
+      </list>
+    </property>
+  </bean>
+
+</beans>

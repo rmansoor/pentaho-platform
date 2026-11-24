@@ -277,6 +277,8 @@
         <module>core</module>
         <module>repository</module>
         <module>helix-security-web</module>
+        <!-- optional SSRF/CSRF/CORS enforcement plugin: built, but NOT shipped in the CE assembly -->
+        <module>helix-security-web-plugin</module>
         <module>extensions</module>
         <module>tomcat-logs</module>
       </modules>
