@@ -47,6 +47,8 @@ public class MultiReadHttpServletRequestWrapper extends HttpServletRequestWrappe
   private final Set<String> parseBodyMethods;
   private byte[] cachedBody;
   private Map<String, String[]> mergedParameters;
+  private CachedServletInputStream currentStream;
+  private EofTrackingReader currentReader;
 
   public MultiReadHttpServletRequestWrapper( HttpServletRequest request ) {
     this( request, HttpUtil.DEFAULT_PARSE_BODY_METHODS );
@@ -102,20 +104,70 @@ public class MultiReadHttpServletRequestWrapper extends HttpServletRequestWrappe
     }
   }
 
+  /**
+   * Returns the current replay of the buffered body. The same stream is returned until it has been
+   * read to the end; only then does the next call start a fresh replay.
+   * <p>
+   * Both halves matter: Jersey's servlet bridge calls {@code getInputStream()} for every read, so a
+   * fresh stream per call would replay the body forever (OOM); and a filter that consumes the body
+   * (e.g. the GWT-RPC CSRF matcher) must leave a full body for the servlet behind it.
+   */
   @Override
   public ServletInputStream getInputStream() throws IOException {
     if ( cachedBody == null ) {
       return super.getInputStream();
     }
-    return new CachedServletInputStream( cachedBody );
+    if ( currentStream == null || currentStream.isFinished() ) {
+      currentStream = new CachedServletInputStream( cachedBody );
+      currentReader = null;
+    }
+    return currentStream;
   }
 
+  /**
+   * Same rule as {@link #getInputStream()}: one reader per replay of the body. End-of-body is tracked
+   * on the reader itself, because a {@link BufferedReader} reads ahead and its stream can be finished
+   * while characters are still buffered.
+   */
   @Override
   public BufferedReader getReader() throws IOException {
     if ( cachedBody == null ) {
       return super.getReader();
     }
-    return new BufferedReader( new InputStreamReader( getInputStream(), charset() ) );
+    if ( currentReader == null || currentReader.eof ) {
+      currentStream = new CachedServletInputStream( cachedBody );
+      currentReader = new EofTrackingReader( new InputStreamReader( currentStream, charset() ) );
+    }
+    return currentReader;
+  }
+
+  private static final class EofTrackingReader extends BufferedReader {
+    private boolean eof;
+
+    EofTrackingReader( java.io.Reader in ) {
+      super( in );
+    }
+
+    @Override
+    public int read() throws IOException {
+      int c = super.read();
+      eof |= c == -1;
+      return c;
+    }
+
+    @Override
+    public int read( char[] cbuf, int off, int len ) throws IOException {
+      int n = super.read( cbuf, off, len );
+      eof |= n == -1;
+      return n;
+    }
+
+    @Override
+    public String readLine() throws IOException {
+      String line = super.readLine();
+      eof |= line == null;
+      return line;
+    }
   }
 
   /* ---- parameters: query string + reconstructed form body ------------------------------------- */
