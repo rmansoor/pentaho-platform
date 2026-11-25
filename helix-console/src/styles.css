@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@import "@helix/ui/theme.css";
+
+/* Tailwind scans the app automatically; the design-system package lives outside src/. */
+@source "../packages/ui/src";
