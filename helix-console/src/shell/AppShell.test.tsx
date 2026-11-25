@@ -1,19 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { act, render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { createAppRouter, BASEPATH } from '../app/router';
+import { renderApp } from '../test/render-app';
 import { LAYOUT_STORAGE_KEY, useLayoutStore } from './layout-store';
 
 async function renderAt(path: string) {
-  const prefix = BASEPATH === '/' ? '' : BASEPATH;
-  const history = createMemoryHistory({ initialEntries: [`${prefix}${path}`] });
-  const router = createAppRouter(history);
-  await act(async () => {
-    render(<RouterProvider router={router} />);
-    await router.load();
-  });
-  return router;
+  return (await renderApp(path)).router;
 }
 
 function dockedRail() {

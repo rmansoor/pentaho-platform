@@ -8,6 +8,8 @@ import {
 } from '@tanstack/react-router';
 import { AppShell } from '../shell/AppShell';
 import { AreaPlaceholder } from '../features/placeholder/AreaPlaceholder';
+import { FilesPage } from '../features/files/FilesPage';
+import { DEFAULT_FOLDER, normalizePath } from '../features/files/paths';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -36,10 +38,23 @@ function area<TPath extends string>(path: TPath, title: string, description: str
   });
 }
 
+const filesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/files',
+  validateSearch: (search: Record<string, unknown>): { path: string } => ({
+    path: typeof search.path === 'string' && search.path.trim() ? normalizePath(search.path) : DEFAULT_FOLDER,
+  }),
+  component: function FilesRoute() {
+    const { path } = filesRoute.useSearch();
+    const navigate = filesRoute.useNavigate();
+    return <FilesPage path={path} onNavigate={(next) => void navigate({ search: { path: next } })} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   area('/home', 'Home', 'Recents, favorites and create actions.'),
-  area('/files', 'Files', 'Folder tree, sortable file table, details panel and trash.'),
+  filesRoute,
   area('/schedules', 'Schedules', 'Schedule list, the new-schedule sheet and blockout times.'),
   area('/datasources', 'Data sources', 'JDBC, analysis and metadata sources, and the data source wizard.'),
   area('/admin', 'Administration', 'Users, roles, permissions, mail server and settings.'),

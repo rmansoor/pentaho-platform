@@ -13,8 +13,11 @@ helix-console/
   pom.xml                 war module; frontend-maven-plugin runs npm ci, build, test
   packages/ui/            @helix/ui: Atlas tokens (theme.css), Tailwind theme, components
   src/
-    app/router.tsx        TanStack Router routes (code-based for now)
+    app/                  router (TanStack, code-based), providers
+    api/                  fetch wrapper, Zod-validated REST clients, data-source context
+    api/mock/             sample repository for tests and `npm run dev:mock`
     shell/                AppShell, NavRail (collapsible), TopBar, layout store
+    features/files/       Files: folder tree, sortable table, selection toolbar
     features/             one folder per area as it is built
 ```
 
@@ -26,11 +29,29 @@ helix-console/
 - Below 768 px the rail becomes a drawer, opened from the top bar's menu button and closed with Esc.
 - Labels stay in the accessibility tree when collapsed and show as tooltips on hover.
 
+## Files
+
+`/files?path=/public/...` shows a folder tree (Home and Public) next to a sortable table of the folder's
+contents, read from `GET /api/repo/files/{pathId}/tree?depth=1`. The folder path lives in the URL, so a
+folder can be bookmarked and survives a reload.
+
+- **Table:** folders first, then by the chosen column. Click selects; Ctrl/Cmd+click toggles; Shift+click
+  or Shift+arrow selects a range; Enter or double-click opens a folder.
+- **Tree:** follows the ARIA tree pattern (arrows, Home/End, Right/Left to expand or collapse). Children
+  load on first expand and share the cache with the table.
+- **Toolbar:** Open works for folders. Opening files, Share, Schedule and More are shown as in the design
+  but disabled, with a tooltip saying why, until their screens exist.
+- **Errors:** an unreachable server and a missing or forbidden folder each get their own message and a retry.
+
+The REST client tolerates the JAXB JSON quirks: booleans and numbers as strings, epoch-millisecond date
+strings, and a one-element `children` list sent as a bare object.
+
 ## Develop
 
 ```sh
 npm install
 npm run dev        # http://localhost:5173/pentaho/console/ ; /pentaho/api is proxied to :8080
+npm run dev:mock   # same, backed by a sample repository (no server needed)
 npm test           # Vitest + Testing Library
 npm run build      # typecheck + production build into dist/
 ```

@@ -19,41 +19,49 @@ const sizes: Record<ButtonSize, string> = {
   md: 'h-[42px] px-[18px] text-sm',
 };
 
+// Icon-only sizes are separate classes, not overrides: two padding utilities on one element
+// resolve by stylesheet order, not by the order they're listed.
+const iconSizes: Record<ButtonSize, string> = {
+  sm: 'size-9 shrink-0',
+  md: 'size-[42px] shrink-0',
+};
+
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: ReactNode;
+  /** Square button holding only an icon. Prefer `IconButton`, which requires a label. */
+  iconOnly?: boolean;
 }
 
 export function Button({
   variant = 'secondary',
   size = 'md',
   icon,
+  iconOnly = false,
   className,
   children,
   type = 'button',
   ...rest
 }: ButtonProps) {
   return (
-    <button type={type} className={cn(base, variants[variant], sizes[size], className)} {...rest}>
+    <button
+      type={type}
+      className={cn(base, variants[variant], iconOnly ? iconSizes[size] : sizes[size], className)}
+      {...rest}
+    >
       {icon}
       {children}
     </button>
   );
 }
 
-export interface IconButtonProps extends Omit<ButtonProps, 'children' | 'icon'> {
+export interface IconButtonProps extends Omit<ButtonProps, 'children' | 'icon' | 'iconOnly'> {
   /** Required: icon-only buttons need an accessible name. */
   'aria-label': string;
   children: ReactNode;
 }
 
-export function IconButton({ size = 'md', className, ...rest }: IconButtonProps) {
-  return (
-    <Button
-      size={size}
-      className={cn(size === 'sm' ? 'w-9 px-0' : 'w-[42px] px-0', className)}
-      {...rest}
-    />
-  );
+export function IconButton(props: IconButtonProps) {
+  return <Button {...props} iconOnly />;
 }
