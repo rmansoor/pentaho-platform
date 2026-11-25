@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { CalendarPlus, Ellipsis, FolderOpen, RefreshCw, Share2, Trash2 } from 'lucide-react';
+import { CalendarPlus, Ellipsis, FolderOpen, Info, RefreshCw, Share2, Trash2 } from 'lucide-react';
 import { Button, IconButton, Menu } from '@helix/ui';
 import { useFolder } from '../../api/repo-context';
 import type { RepoItem } from '../../api/repo';
@@ -7,6 +7,7 @@ import { FILE_COLUMNS } from './columns';
 import { FilesLayout, SelectionCount } from './FilesLayout';
 import { FileTable, FileTableSkeleton, type Selection } from './FileTable';
 import { ancestorsOf, DEFAULT_FOLDER, lastSegment, rootLabel } from './paths';
+import { PropertiesSheet, type PropertiesTab } from './PropertiesSheet';
 import { QueryError } from './QueryError';
 import { DEFAULT_SORT, nextSort, sortItems, type Sort } from './sorting';
 import { useTrashActions } from './use-trash-actions';
@@ -25,6 +26,7 @@ export function FilesPage({ path, onNavigate, onOpenTrash }: FilesPageProps) {
   const { moveToTrash } = useTrashActions();
   const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
   const [selection, setSelection] = useState<Selection & { path: string }>({ path, ...NO_SELECTION });
+  const [properties, setProperties] = useState<{ item: RepoItem; tab: PropertiesTab } | null>(null);
 
   // Selection belongs to one folder; moving to another clears it.
   const current = selection.path === path ? selection : NO_SELECTION;
@@ -58,6 +60,7 @@ export function FilesPage({ path, onNavigate, onOpenTrash }: FilesPageProps) {
           onRefresh={() => void folder.refetch()}
           onOpen={open}
           onTrash={() => trash(selectedItems)}
+          onProperties={(item, tab) => setProperties({ item, tab })}
         />
       }
     >
@@ -84,6 +87,7 @@ export function FilesPage({ path, onNavigate, onOpenTrash }: FilesPageProps) {
           onDelete={() => trash(selectedItems.length ? selectedItems : [])}
         />
       )}
+      <PropertiesSheet item={properties?.item ?? null} initialTab={properties?.tab} onClose={() => setProperties(null)} />
     </FilesLayout>
   );
 }
@@ -132,6 +136,7 @@ function Toolbar({
   onRefresh,
   onOpen,
   onTrash,
+  onProperties,
 }: {
   selected: RepoItem[];
   total?: number;
@@ -139,6 +144,7 @@ function Toolbar({
   onRefresh: () => void;
   onOpen: (item: RepoItem) => void;
   onTrash: () => void;
+  onProperties: (item: RepoItem, tab: PropertiesTab) => void;
 }) {
   const single = selected.length === 1 ? selected[0] : undefined;
   const canOpen = single?.folder === true;
@@ -162,10 +168,26 @@ function Toolbar({
       >
         Open
       </Button>
-      <PendingAction label="Share" icon={<Share2 size={15} aria-hidden="true" />} />
+      <Button
+        size="sm"
+        icon={<Share2 size={15} aria-hidden="true" />}
+        aria-disabled={!single}
+        title={single ? undefined : 'Select one item to share it'}
+        onClick={() => single && onProperties(single, 'sharing')}
+        className={disabledLook}
+      >
+        Share
+      </Button>
       <PendingAction label="Schedule" icon={<CalendarPlus size={15} aria-hidden="true" />} />
       <Menu
         items={[
+          {
+            label: 'Properties',
+            icon: <Info size={15} aria-hidden="true" />,
+            onSelect: () => single && onProperties(single, 'general'),
+            disabled: !single,
+            reason: 'Select one item to see its properties',
+          },
           {
             label: selected.length > 1 ? `Move ${selected.length} items to trash` : 'Move to trash',
             icon: <Trash2 size={15} aria-hidden="true" />,

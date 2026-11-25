@@ -184,6 +184,111 @@ export function toPathId(path: string): string {
   return encodeURIComponent(id || ':');
 }
 
+/*
+ * Sharing. Permission ordinals follow RepositoryFilePermission: READ 0, WRITE 1, DELETE 2,
+ * ACL_MANAGEMENT 3, ALL 4. A single permission arrives as a string, several as an array.
+ */
+export type Permission = 'read' | 'write' | 'delete' | 'manage';
+export const PERMISSIONS: readonly Permission[] = ['read', 'write', 'delete', 'manage'];
+const ORDINAL: Record<Permission, string> = { read: '0', write: '1', delete: '2', manage: '3' };
+const ALL_ORDINAL = '4';
+
+export interface AclEntry {
+  recipient: string;
+  kind: 'user' | 'role';
+  permissions: Set<Permission>;
+  /** False for entries the server adds for display (the Administrator role); never sent back. */
+  modifiable: boolean;
+}
+
+export interface FileAcl {
+  owner: string;
+  ownerKind: 'user' | 'role';
+  /** When true, `entries` are the effective ones inherited from the parent folder. */
+  inheriting: boolean;
+  entries: AclEntry[];
+}
+
+const stringList = z
+  .union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))])
+  .nullish()
+  .transform((v) => (v == null ? [] : (Array.isArray(v) ? v : [v]).map(String)));
+
+const aclDtoSchema = z.object({
+  owner: z.string().nullish(),
+  ownerType: numberish,
+  entriesInheriting: boolish,
+  aces: z
+    .union([
+      z.object({ recipient: z.string(), recipientType: numberish, modifiable: boolish, permissions: stringList }),
+      z.array(z.object({ recipient: z.string(), recipientType: numberish, modifiable: boolish, permissions: stringList })),
+    ])
+    .nullish()
+    .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
+});
+
+/** Parses GET /repo/files/{id}/acl. Exported for tests. */
+export function parseAclResponse(json: unknown): FileAcl {
+  const dto = aclDtoSchema.parse(json);
+  return {
+    owner: dto.owner ?? '',
+    ownerKind: dto.ownerType === 1 ? 'role' : 'user',
+    inheriting: dto.entriesInheriting,
+    entries: dto.aces.map((ace) => ({
+      recipient: ace.recipient,
+      kind: ace.recipientType === 1 ? 'role' : 'user',
+      modifiable: ace.modifiable,
+      permissions: ace.permissions.includes(ALL_ORDINAL)
+        ? new Set(PERMISSIONS)
+        : new Set(PERMISSIONS.filter((p) => ace.permissions.includes(ORDINAL[p]))),
+    })),
+  };
+}
+
+/**
+ * Body for PUT /repo/files/{id}/acl. Server quirk: the DTO's list setter resets
+ * entriesInheriting to false, so turning inheritance on means sending no `aces` at all;
+ * sending entries turns it off. Display-only entries are dropped.
+ */
+export function aclRequestBody(acl: FileAcl): string {
+  const base = { owner: acl.owner, ownerType: acl.ownerKind === 'role' ? 1 : 0 };
+  if (acl.inheriting) return JSON.stringify({ ...base, entriesInheriting: true });
+  const aces = acl.entries
+    .filter((e) => e.modifiable && e.permissions.size > 0)
+    .map((e) => ({
+      recipient: e.recipient,
+      recipientType: e.kind === 'role' ? 1 : 0,
+      modifiable: true,
+      permissions:
+        e.permissions.size === PERMISSIONS.length ? [ALL_ORDINAL] : PERMISSIONS.filter((p) => e.permissions.has(p)).map((p) => ORDINAL[p]),
+    }));
+  return JSON.stringify({ ...base, aces, entriesInheriting: false });
+}
+
+/** Per-file flags kept as repository metadata. */
+export interface FileFlags {
+  hidden: boolean;
+  schedulable: boolean;
+}
+
+const metadataSchema = z.object({
+  stringKeyStringValueDto: z
+    .union([z.object({ key: z.string(), value: z.string().nullish() }), z.array(z.object({ key: z.string(), value: z.string().nullish() }))])
+    .nullish()
+    .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
+});
+
+export function parseMetadataResponse(json: unknown): FileFlags {
+  const entries = metadataSchema.parse(json).stringKeyStringValueDto;
+  const get = (key: string) => entries.find((e) => e.key === key)?.value;
+  return { hidden: get('_PERM_HIDDEN') === 'true', schedulable: get('_PERM_SCHEDULABLE') !== 'false' };
+}
+
+export interface Recipients {
+  users: string[];
+  roles: string[];
+}
+
 /** How a restore went; the server can refuse the original folder (no write access there). */
 export type RestoreOutcome =
   /** Back in its original folder. */
@@ -205,6 +310,12 @@ export interface RepoSource {
   /** Without `mode`, restores to the original folder; with it, to the user's home folder. */
   restore(ids: string[], mode?: OverwriteMode): Promise<RestoreOutcome>;
   deletePermanently(ids: string[]): Promise<void>;
+  getAcl(path: string, signal?: AbortSignal): Promise<FileAcl>;
+  setAcl(path: string, acl: FileAcl): Promise<void>;
+  getFlags(path: string, signal?: AbortSignal): Promise<FileFlags>;
+  setFlags(path: string, flags: FileFlags): Promise<void>;
+  /** Users and roles that permissions can be granted to. */
+  listRecipients(signal?: AbortSignal): Promise<Recipients>;
 }
 
 // The file endpoints take a comma-separated list of ids as a plain-text body.
@@ -233,5 +344,32 @@ export const httpRepoSource: RepoSource = {
   },
   async deletePermanently(ids) {
     await sendOk('PUT', '/repo/files/deletepermanent', idList(ids));
+  },
+  async getAcl(path, signal) {
+    return parseAclResponse(await getJson(`/repo/files/${toPathId(path)}/acl`, z.unknown(), signal));
+  },
+  async setAcl(path, acl) {
+    await sendOk('PUT', `/repo/files/${toPathId(path)}/acl`, { body: aclRequestBody(acl), contentType: 'application/json' });
+  },
+  async getFlags(path, signal) {
+    return parseMetadataResponse(await getJson(`/repo/files/${toPathId(path)}/metadata`, z.unknown(), signal));
+  },
+  async setFlags(path, flags) {
+    const body = JSON.stringify({
+      stringKeyStringValueDto: [
+        { key: '_PERM_HIDDEN', value: String(flags.hidden) },
+        { key: '_PERM_SCHEDULABLE', value: String(flags.schedulable) },
+      ],
+    });
+    await sendOk('PUT', `/repo/files/${toPathId(path)}/metadata`, { body, contentType: 'application/json' });
+  },
+  async listRecipients(signal) {
+    const usersSchema = z.object({ users: stringList });
+    const rolesSchema = z.object({ roles: stringList });
+    const [users, roles] = await Promise.all([
+      getJson('/userrolelist/permission-users', usersSchema, signal),
+      getJson('/userrolelist/permission-roles', rolesSchema, signal),
+    ]);
+    return { users: users.users, roles: roles.roles };
   },
 };

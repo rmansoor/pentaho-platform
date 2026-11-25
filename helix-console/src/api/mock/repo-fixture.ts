@@ -1,4 +1,12 @@
-import { OVERWRITE_MODE, parseFolderResponse, parseTrashResponse, type OverwriteMode, type RepoSource } from '../repo';
+import {
+  OVERWRITE_MODE,
+  parseFolderResponse,
+  parseTrashResponse,
+  type FileAcl,
+  type FileFlags,
+  type OverwriteMode,
+  type RepoSource,
+} from '../repo';
 
 /*
  * A small sample repository in the JSON shape the server returns, so the fixture exercises the
@@ -110,11 +118,24 @@ export interface FixtureOptions {
   user?: string;
 }
 
+const ADMIN_ENTRY = { recipient: 'Administrator', kind: 'role' as const, modifiable: false, permissions: new Set(['read', 'write', 'delete', 'manage'] as const) };
+const DEFAULT_ENTRIES = () => [{ recipient: 'Authenticated', kind: 'role' as const, modifiable: true, permissions: new Set(['read'] as const) }];
+
 /** An in-memory repository. Each call gets its own copy, so tests don't affect each other. */
 export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSource {
   const root: Node = structuredClone(TREE);
   const trash: Trashed[] = [];
   const user = options.user ?? 'admin';
+  // Explicit ACLs by path; anything absent inherits (effectively Authenticated: read).
+  const acls = new Map<string, { owner: string; entries: FileAcl['entries'] }>();
+  const flags = new Map<string, FileFlags>();
+  const effectiveEntries = (path: string): FileAcl['entries'] => {
+    for (let p: string | null = path; p; p = p === '/' ? null : p.slice(0, p.lastIndexOf('/')) || '/') {
+      const explicit = acls.get(p);
+      if (explicit) return explicit.entries;
+    }
+    return DEFAULT_ENTRIES();
+  };
   const wait = () => (options.delayMs ? new Promise((r) => setTimeout(r, options.delayMs)) : Promise.resolve());
 
   const find = (path: string): Node | undefined => {
@@ -200,6 +221,33 @@ export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSourc
         const index = trashedById(id);
         if (index >= 0) trash.splice(index, 1);
       }
+    },
+    async getAcl(path) {
+      await wait();
+      if (!find(path)) throw new Error(`Nothing at ${path}`);
+      const explicit = acls.get(path);
+      const entries = (explicit?.entries ?? effectiveEntries(split(path).parent)).map((e) => ({ ...e, permissions: new Set(e.permissions) }));
+      return { owner: explicit?.owner ?? 'admin', ownerKind: 'user', inheriting: !explicit, entries: [...entries, ADMIN_ENTRY] };
+    },
+    async setAcl(path, acl) {
+      await wait();
+      if (acl.inheriting) acls.delete(path);
+      else acls.set(path, { owner: acl.owner, entries: acl.entries.filter((e) => e.modifiable && e.permissions.size) });
+    },
+    async getFlags(path) {
+      await wait();
+      return { ...(flags.get(path) ?? { hidden: false, schedulable: true }) };
+    },
+    async setFlags(path, next) {
+      await wait();
+      flags.set(path, { ...next });
+    },
+    async listRecipients() {
+      await wait();
+      return {
+        users: ['admin', 'bob', 'pat', 'suzy', 'tiffany'],
+        roles: ['Anonymous', 'Authenticated', 'Business Analyst', 'Power User', 'Report Author'],
+      };
     },
   };
 }

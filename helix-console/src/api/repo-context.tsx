@@ -12,6 +12,9 @@ export const repoKeys = {
   all: ['repo'] as const,
   folder: (path: string) => ['repo', 'folder', path] as const,
   trash: ['repo', 'trash'] as const,
+  acl: (path: string) => ['repo', 'acl', path] as const,
+  flags: (path: string) => ['repo', 'flags', path] as const,
+  recipients: ['repo', 'recipients'] as const,
 };
 
 export function useRepoSource(): RepoSource {
@@ -30,5 +33,25 @@ export function useFolder(path: string, enabled = true) {
     queryKey: repoKeys.folder(path),
     queryFn: ({ signal }) => source.listFolder(path, signal),
     enabled,
+  });
+}
+
+export function useAcl(path: string) {
+  const source = useContext(RepoSourceContext);
+  return useQuery({ queryKey: repoKeys.acl(path), queryFn: ({ signal }) => source.getAcl(path, signal) });
+}
+
+export function useFlags(path: string) {
+  const source = useContext(RepoSourceContext);
+  return useQuery({ queryKey: repoKeys.flags(path), queryFn: ({ signal }) => source.getFlags(path, signal) });
+}
+
+export function useRecipients(enabled: boolean) {
+  const source = useContext(RepoSourceContext);
+  return useQuery({
+    queryKey: repoKeys.recipients,
+    queryFn: ({ signal }) => source.listRecipients(signal),
+    enabled,
+    staleTime: 5 * 60_000,
   });
 }

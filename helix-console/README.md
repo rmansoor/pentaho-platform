@@ -51,6 +51,23 @@ and deletion date. Restore puts them back; if you can't write to the original fo
 (406), and the console offers your home folder instead, asking what to do with name clashes (409:
 replace, keep both or skip). Delete permanently and Empty trash ask first and say how many items go.
 
+## Properties and Sharing
+
+One selected item: **Share** opens a side sheet on the Sharing tab; **More › Properties** opens it on
+General. General shows name, type, location, owner (from the ACL), size, dates and description, with
+the Hidden and Allow scheduling flags (`/metadata`, `_PERM_HIDDEN` / `_PERM_SCHEDULABLE`). Sharing has
+an "Use the folder's permissions" switch and a Read / Write / Delete / Manage matrix per user or role
+(ticking one ticks what it needs, as in the GWT console); users and roles come from
+`/api/userrolelist/permission-users` and `permission-roles`. Changes are saved together.
+
+ACL quirks on the server (`GET/PUT /repo/files/{id}/acl`):
+
+- Permissions are ordinals (READ 0, WRITE 1, DELETE 2, ACL_MANAGEMENT 3, ALL 4); one value comes back as
+  a string, several as an array. All four are sent as ALL.
+- The Administrator entry (`modifiable: false`) is added for display only and dropped on save.
+- The DTO's list setter resets `entriesInheriting` to false, so **to inherit, send no `aces` at all**;
+  sending entries turns inheritance off. (`aclRequestBody` in `src/api/repo.ts`.)
+
 ## Changing data
 
 Unsafe requests go through `send()` in `src/api/http.ts`, which adds the CSRF header from

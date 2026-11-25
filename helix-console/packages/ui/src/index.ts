@@ -9,3 +9,7 @@ export { Menu } from './components/Menu';
 export type { MenuItem, MenuProps } from './components/Menu';
 export { Toaster, toast, useToasts } from './components/Toast';
 export type { Toast } from './components/Toast';
+export { Tabs } from './components/Tabs';
+export type { TabsProps } from './components/Tabs';
+export { Checkbox, Switch } from './components/Checkbox';
+export type { CheckboxProps, SwitchProps } from './components/Checkbox';
