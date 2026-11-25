@@ -96,6 +96,15 @@ all scheduler calls live in `src/api/scheduler.ts` for a later switch. Live quir
 
 Creating and editing schedules (the recurrence wizard) and blockout times are not built yet.
 
+## Data sources
+
+`/datasources` lists database connections (with type, host and database from
+`jdbc/connection/{name}`), Analysis schemas, Metadata models and Data Source Wizard models from the
+data-access plugin (`/pentaho/plugin/data-access/api/datasource`), with type filters, search, Export
+(the server's attachment download for analysis, metadata and DSW) and Delete with a warning about what
+depends on it. DSW models are also returned as metadata domains and are shown once. Creating
+connections and the data source wizard are not built yet.
+
 ## Changing data
 
 Unsafe requests go through `send()` in `src/api/http.ts`, which adds the CSRF header from

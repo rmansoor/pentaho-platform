@@ -6,12 +6,15 @@ import { createFixtureRepoSource } from '../api/mock/repo-fixture';
 import type { RepoSource } from '../api/repo';
 import { createFixtureSchedulerSource } from '../api/mock/scheduler-fixture';
 import type { SchedulerSource } from '../api/scheduler';
+import { createFixtureDataSourceSource } from '../api/mock/datasource-fixture';
+import type { DataSourceSource } from '../api/datasources';
 
 /** Renders the whole console at `path` (e.g. "/files?path=/public"), backed by the sample repository. */
 export async function renderApp(
   path: string,
   repoSource: RepoSource = createFixtureRepoSource(),
   schedulerSource: SchedulerSource = createFixtureSchedulerSource(),
+  dataSourceSource: DataSourceSource = createFixtureDataSourceSource(),
 ) {
   const prefix = BASEPATH === '/' ? '' : BASEPATH;
   const history = createMemoryHistory({ initialEntries: [`${prefix}${path}`] });
@@ -20,7 +23,7 @@ export async function renderApp(
   queryClient.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
   await act(async () => {
     render(
-      <AppProviders queryClient={queryClient} repoSource={repoSource} schedulerSource={schedulerSource}>
+      <AppProviders queryClient={queryClient} repoSource={repoSource} schedulerSource={schedulerSource} dataSourceSource={dataSourceSource}>
         <RouterProvider router={router} />
       </AppProviders>,
     );

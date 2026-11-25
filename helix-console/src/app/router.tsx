@@ -12,6 +12,7 @@ import { FilesPage } from '../features/files/FilesPage';
 import { TrashPage } from '../features/files/TrashPage';
 import { HomePage } from '../features/home/HomePage';
 import { SchedulesPage } from '../features/schedules/SchedulesPage';
+import { DataSourcesPage } from '../features/datasources/DataSourcesPage';
 import { DEFAULT_FOLDER, normalizePath } from '../features/files/paths';
 
 const rootRoute = createRootRoute({
@@ -84,13 +85,19 @@ const schedulesRoute = createRoute({
   component: SchedulesPage,
 });
 
+const dataSourcesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/datasources',
+  component: DataSourcesPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   homeRoute,
   filesRoute,
   trashRoute,
   schedulesRoute,
-  area('/datasources', 'Data sources', 'JDBC, analysis and metadata sources, and the data source wizard.'),
+  dataSourcesRoute,
   area('/admin', 'Administration', 'Users, roles, permissions, mail server and settings.'),
 ]);
 
