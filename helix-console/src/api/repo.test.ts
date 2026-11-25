@@ -37,6 +37,21 @@ describe('parseFolderResponse', () => {
     expect(folder.children[0]?.modified?.getTime()).toBe(1787821200000);
   });
 
+  it('handles a live 11.1 folder entry: native types, fileSize -1, empty modified date, null owner', () => {
+    const folder = parseFolderResponse({
+      file: { name: 'public', path: '/public', title: 'Public', folder: true, fileSize: -1, createdDate: '1795643461373', lastModifiedDate: '' },
+      children: [
+        {
+          file: { name: 'Steel Wheels', path: '/public/Steel Wheels', folder: true, fileSize: -1, createdDate: '1795643462385', lastModifiedDate: '', owner: null },
+        },
+      ],
+    });
+    expect(folder.folder.title).toBe('Public');
+    expect(folder.children[0]).toMatchObject({ folder: true, size: undefined, owner: undefined });
+    // Falls back to the creation date when the modified date is empty.
+    expect(folder.children[0]?.modified?.getTime()).toBe(1795643462385);
+  });
+
   it('accepts native JSON types and a missing children list', () => {
     const folder = parseFolderResponse({
       file: { name: 'Empty', path: '/public/Empty', folder: true, lastModifiedDate: 1787821200000 },

@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { CalendarPlus, Ellipsis, FolderOpen, RefreshCw, Share2 } from 'lucide-react';
 import { Button, Card, IconButton } from '@helix/ui';
-import { ApiError } from '../../api/http';
+import { ApiError, LOGIN_URL } from '../../api/http';
 import { useFolder } from '../../api/repo-context';
 import type { RepoItem } from '../../api/repo';
 import { FileTable, FileTableSkeleton } from './FileTable';
@@ -212,6 +212,25 @@ function PendingAction({ label, icon }: { label: string; icon: ReactNode }) {
 
 function FolderError({ error, onRetry, onGoHome }: { error: Error; onRetry: () => void; onGoHome: () => void }) {
   const api = error instanceof ApiError ? error : undefined;
+  if (api?.signedOut) {
+    return (
+      <div role="alert" className="flex flex-col items-center gap-3 px-[18px] py-12 text-center">
+        <p className="m-0 font-bold">You're signed out</p>
+        <p className="m-0 max-w-[48ch] text-fg-muted">Sign in to the Pentaho Server, then try again.</p>
+        <div className="flex gap-2">
+          <a
+            href={LOGIN_URL}
+            className="inline-flex h-9 items-center rounded-control bg-accent px-3.5 text-[13px] font-bold text-accent-ink no-underline hover:bg-accent-hover"
+          >
+            Sign in
+          </a>
+          <Button size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
   const [heading, detail] = api?.unreachable
     ? ["Couldn't reach the Pentaho Server", 'Check that the server is running, then try again.']
     : api && (api.status === 403 || api.status === 404)

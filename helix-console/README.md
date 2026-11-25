@@ -50,11 +50,27 @@ strings, and a one-element `children` list sent as a bare object.
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173/pentaho/console/ ; /pentaho/api is proxied to :8080
+npm run dev        # http://localhost:5173/pentaho/console/ ; /pentaho/* is proxied to :8080
 npm run dev:mock   # same, backed by a sample repository (no server needed)
 npm test           # Vitest + Testing Library
 npm run build      # typecheck + production build into dist/
 ```
+
+### Against a live server
+
+Everything under `/pentaho` except the console is proxied to `HELIX_SERVER` (default
+`http://localhost:8080`), so the session cookie belongs to the dev origin, as it will in production:
+
+1. `HELIX_SERVER=http://localhost:8090 npm run dev`
+2. Open `http://localhost:5173/pentaho/console/files`. Signed out, it shows a **Sign in** link.
+3. Sign in on the server's login page (`admin` / `password` on a sample install). It returns you to
+   the old console; go back to `/pentaho/console/files`.
+
+What a Pentaho 11.1 server actually sends, and how the client handles it:
+
+- Folders have `fileSize: -1` and an empty `lastModifiedDate`, so the table shows the created date.
+- Tree responses carry no owner (it lives in the file's ACL), so there is no Owner column yet.
+- A signed-out API call is redirected to `/Login` and returns HTML; the client reports it as 401.
 
 ## Maven
 

@@ -31,18 +31,18 @@ const dateish = z
   });
 
 const fileDtoSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().nullish(),
   name: z.string(),
   path: z.string(),
-  title: z.string().optional(),
-  description: z.string().optional(),
+  title: z.string().nullish(),
+  description: z.string().nullish(),
   folder: boolish,
   hidden: boolish,
   fileSize: numberish,
   createdDate: dateish,
   lastModifiedDate: dateish,
-  owner: z.string().optional(),
-  creatorId: z.string().optional(),
+  owner: z.string().nullish(),
+  creatorId: z.string().nullish(),
 });
 
 interface TreeDtoInput {
@@ -88,6 +88,7 @@ export interface RepoItem {
   size?: number;
   created: Date | null;
   modified: Date | null;
+  /** Not sent by the tree endpoint today (it lives in the file's ACL); kept for when it is. */
   owner?: string;
 }
 
@@ -138,9 +139,11 @@ function toItem(dto: z.output<typeof fileDtoSchema>): RepoItem {
     folder: dto.folder,
     hidden: dto.hidden,
     kind,
-    size: dto.folder ? undefined : dto.fileSize,
+    // Folders report fileSize -1.
+    size: dto.folder || dto.fileSize === undefined || dto.fileSize < 0 ? undefined : dto.fileSize,
     created: dto.createdDate,
-    modified: dto.lastModifiedDate,
+    // Folders come back with an empty lastModifiedDate; their creation date is the best we have.
+    modified: dto.lastModifiedDate ?? dto.createdDate,
     owner: dto.owner || dto.creatorId || undefined,
   };
 }

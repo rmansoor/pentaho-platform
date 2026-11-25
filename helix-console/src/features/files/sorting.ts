@@ -1,6 +1,6 @@
 import { KIND_LABEL, type RepoItem } from '../../api/repo';
 
-export type SortKey = 'name' | 'kind' | 'modified' | 'owner' | 'size';
+export type SortKey = 'name' | 'kind' | 'modified' | 'size';
 export type SortDir = 'asc' | 'desc';
 export interface Sort {
   key: SortKey;
@@ -17,8 +17,6 @@ function compareBy(key: SortKey, a: RepoItem, b: RepoItem): number {
       return collator.compare(a.title, b.title);
     case 'kind':
       return collator.compare(KIND_LABEL[a.kind], KIND_LABEL[b.kind]);
-    case 'owner':
-      return collator.compare(a.owner ?? '', b.owner ?? '');
     case 'modified':
       return (a.modified?.getTime() ?? 0) - (b.modified?.getTime() ?? 0);
     case 'size':

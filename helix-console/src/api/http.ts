@@ -3,6 +3,9 @@ import type { z } from 'zod';
 /** Platform REST root. The console is served from /pentaho/console/, the API from /pentaho/api. */
 export const API_ROOT: string = import.meta.env.VITE_API_ROOT ?? '/pentaho/api';
 
+/** Server login page; `?then=` is not supported by the platform, so the console link returns the user manually. */
+export const LOGIN_URL = API_ROOT.replace(/\/api$/, '/Login');
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -11,6 +14,10 @@ export class ApiError extends Error {
   ) {
     super(message);
     this.name = 'ApiError';
+  }
+
+  get signedOut(): boolean {
+    return this.status === 401;
   }
 
   /** No response at all (server down, proxy target missing) or a gateway error. */
@@ -40,6 +47,15 @@ export async function getJson<T>(path: string, schema: z.ZodType<T>, signal?: Ab
   }
   if (!response.ok) {
     throw new ApiError(response.status, url, `${response.status} ${response.statusText}`.trim());
+  }
+  // Without a session the server redirects to its login page and fetch follows the redirect,
+  // so a signed-out call "succeeds" with HTML. Treat that as 401.
+  const type = response.headers.get('Content-Type') ?? '';
+  if (response.redirected && /\/Login\b/i.test(response.url)) {
+    throw new ApiError(401, url, 'Not signed in.');
+  }
+  if (!type.includes('json')) {
+    throw new ApiError(response.status, url, `Expected JSON but got ${type || 'no content type'}.`);
   }
   return schema.parse(await response.json());
 }

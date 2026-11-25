@@ -10,11 +10,10 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'name', label: 'Name' },
   { key: 'kind', label: 'Type' },
   { key: 'modified', label: 'Modified' },
-  { key: 'owner', label: 'Owner' },
   { key: 'size', label: 'Size' },
 ];
 
-const GRID_COLS = 'grid grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.6fr)] gap-3';
+const GRID_COLS = 'grid grid-cols-[minmax(0,2.6fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.6fr)] gap-3';
 
 export interface FileTableProps {
   label: string;
@@ -109,7 +108,7 @@ export function FileTable({ label, items, sort, onSort, selected, onSelectionCha
   const tabStop = items.some((i) => i.path === anchor) ? anchor : items[0]?.path;
 
   return (
-    <div role="grid" aria-label={label} aria-multiselectable="true" aria-rowcount={items.length + 1} className="min-w-[620px]">
+    <div role="grid" aria-label={label} aria-multiselectable="true" aria-rowcount={items.length + 1} className="min-w-[560px]">
       <div role="rowgroup">
         <div role="row" aria-rowindex={1} className={cn(GRID_COLS, 'px-[18px] py-2.5')}>
           {COLUMNS.map((col) => {
@@ -175,9 +174,6 @@ export function FileTable({ label, items, sort, onSort, selected, onSelectionCha
               <div role="gridcell" className="truncate text-fg-muted" title={formatDateTime(item.modified)}>
                 {formatDate(item.modified)}
               </div>
-              <div role="gridcell" className="truncate text-fg-muted">
-                {item.owner ?? '—'}
-              </div>
               <div role="gridcell" className="truncate text-right text-fg-muted tabular-nums">
                 {item.folder ? '' : formatSize(item.size)}
               </div>
@@ -192,7 +188,7 @@ export function FileTable({ label, items, sort, onSort, selected, onSelectionCha
 /** Placeholder rows while a folder loads. */
 export function FileTableSkeleton() {
   return (
-    <div aria-hidden="true" className="min-w-[620px]">
+    <div aria-hidden="true" className="min-w-[560px]">
       <div className="h-[42px]" />
       {Array.from({ length: 8 }, (_, i) => (
         <div key={i} className={cn(GRID_COLS, 'items-center border-t border-divider px-[18px] py-2.5')}>
@@ -202,7 +198,6 @@ export function FileTableSkeleton() {
           </div>
           <span className="h-3 w-3/5 rounded bg-divider" />
           <span className="h-3 w-3/5 rounded bg-divider" />
-          <span className="h-3 w-1/2 rounded bg-divider" />
           <span />
         </div>
       ))}

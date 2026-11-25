@@ -2,9 +2,8 @@ import type { RepoSource } from '../repo';
 import { parseFolderResponse } from '../repo';
 
 /*
- * A small sample repository in the same JSON shape the server returns (string booleans,
- * epoch-millisecond strings), so the fixture exercises the real parser. Used by tests and by
- * `npm run dev:mock` for working on screens without a Pentaho Server.
+ * A small sample repository in the JSON shape the server returns, so the fixture exercises the
+ * real parser. Used by tests and by `npm run dev:mock` for working on screens without a server.
  */
 
 type Node = { name: string; owner?: string; modified: string; size?: number; children?: Node[] };
@@ -86,16 +85,18 @@ function find(path: string): Node | undefined {
   return node;
 }
 
+// Same shape as a Pentaho 11.1 server: native booleans, folders with fileSize -1 and an empty
+// lastModifiedDate, dates as epoch-millisecond strings, and no owner in tree responses.
 function dto(node: Node, path: string) {
+  const folder = node.children !== undefined;
   return {
     name: node.name,
     path: path || '/',
-    folder: String(node.children !== undefined),
-    hidden: 'false',
-    lastModifiedDate: node.modified,
+    folder,
+    hidden: false,
+    fileSize: folder ? -1 : (node.size ?? 0),
     createdDate: node.modified,
-    ...(node.owner ? { owner: node.owner } : {}),
-    ...(node.size !== undefined ? { fileSize: String(node.size) } : {}),
+    lastModifiedDate: folder ? '' : node.modified,
   };
 }
 
@@ -109,8 +110,7 @@ export function createFixtureRepoSource(options: { delayMs?: number } = {}): Rep
       }
       const base = path === '/' ? '' : path;
       const children = node.children.map((c) => ({ file: dto(c, `${base}/${c.name}`) }));
-      // Mirror the server's quirk: a single child arrives as a bare object.
-      const json = { file: dto(node, path), children: children.length === 1 ? children[0] : children };
+      const json = { file: dto(node, path), children };
       return parseFolderResponse(json);
     },
   };
