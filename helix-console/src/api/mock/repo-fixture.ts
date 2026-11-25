@@ -116,6 +116,8 @@ export interface FixtureOptions {
   trash?: Array<[string, string]>;
   /** Name of the signed-in user, for their home folder. */
   user?: string;
+  /** Per-user settings as stored on the server (e.g. favorites JSON). */
+  settings?: Record<string, string>;
 }
 
 const ADMIN_ENTRY = { recipient: 'Administrator', kind: 'role' as const, modifiable: false, permissions: new Set(['read', 'write', 'delete', 'manage'] as const) };
@@ -129,6 +131,7 @@ export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSourc
   // Explicit ACLs by path; anything absent inherits (effectively Authenticated: read).
   const acls = new Map<string, { owner: string; entries: FileAcl['entries'] }>();
   const flags = new Map<string, FileFlags>();
+  const settings = new Map(Object.entries(options.settings ?? {}));
   const effectiveEntries = (path: string): FileAcl['entries'] => {
     for (let p: string | null = path; p; p = p === '/' ? null : p.slice(0, p.lastIndexOf('/')) || '/') {
       const explicit = acls.get(p);
@@ -248,6 +251,14 @@ export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSourc
         users: ['admin', 'bob', 'pat', 'suzy', 'tiffany'],
         roles: ['Anonymous', 'Authenticated', 'Business Analyst', 'Power User', 'Report Author'],
       };
+    },
+    async getUserSetting(key) {
+      await wait();
+      return settings.get(key) ?? null;
+    },
+    async setUserSetting(key, value) {
+      await wait();
+      settings.set(key, value);
     },
   };
 }

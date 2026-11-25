@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getJson, send, sendOk } from './http';
+import { getJson, getText, send, sendOk } from './http';
 
 /*
  * Repository browsing over the platform REST API:
@@ -143,9 +143,14 @@ function extensionOf(name: string): string {
   return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
 }
 
+/** File kind from its name (or path); folders are known only from the server. */
+export function kindOf(name: string, folder = false): FileKind {
+  return folder ? 'folder' : (KIND_BY_EXTENSION[extensionOf(name)] ?? 'file');
+}
+
 function toItem(dto: z.output<typeof fileDtoSchema>): RepoItem {
   const ext = extensionOf(dto.name);
-  const kind: FileKind = dto.folder ? 'folder' : (KIND_BY_EXTENSION[ext] ?? 'file');
+  const kind = kindOf(dto.name, dto.folder);
   const bare = !dto.folder && ext ? dto.name.slice(0, -(ext.length + 1)) : dto.name;
   return {
     id: dto.id || dto.path,
@@ -316,6 +321,9 @@ export interface RepoSource {
   setFlags(path: string, flags: FileFlags): Promise<void>;
   /** Users and roles that permissions can be granted to. */
   listRecipients(signal?: AbortSignal): Promise<Recipients>;
+  /** A per-user setting as stored (often JSON), or null when unset. */
+  getUserSetting(key: string, signal?: AbortSignal): Promise<string | null>;
+  setUserSetting(key: string, value: string): Promise<void>;
 }
 
 // The file endpoints take a comma-separated list of ids as a plain-text body.
@@ -371,5 +379,13 @@ export const httpRepoSource: RepoSource = {
       getJson('/userrolelist/permission-roles', rolesSchema, signal),
     ]);
     return { users: users.users, roles: roles.roles };
+  },
+  async getUserSetting(key, signal) {
+    // Unset settings answer 204 with no body; set ones return the stored text verbatim.
+    const text = await getText(`/user-settings/${encodeURIComponent(key)}`, signal);
+    return text === '' ? null : text;
+  },
+  async setUserSetting(key, value) {
+    await sendOk('POST', `/user-settings/${encodeURIComponent(key)}`, { body: value, contentType: 'text/plain' });
   },
 };

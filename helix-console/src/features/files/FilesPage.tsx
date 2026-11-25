@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { CalendarPlus, Ellipsis, FolderOpen, Info, RefreshCw, Share2, Trash2 } from 'lucide-react';
+import { CalendarPlus, Ellipsis, FolderOpen, Info, RefreshCw, Share2, Star, Trash2 } from 'lucide-react';
 import { Button, IconButton, Menu } from '@helix/ui';
 import { useFolder } from '../../api/repo-context';
+import { usePickList, useToggleFavorite } from '../../api/pick-lists';
 import type { RepoItem } from '../../api/repo';
 import { FILE_COLUMNS } from './columns';
 import { FilesLayout, SelectionCount } from './FilesLayout';
@@ -148,6 +149,9 @@ function Toolbar({
 }) {
   const single = selected.length === 1 ? selected[0] : undefined;
   const canOpen = single?.folder === true;
+  const favorites = usePickList('favorites');
+  const toggleFavorite = useToggleFavorite();
+  const isFavorite = !!single && !!favorites.data?.some((f) => f.fullPath === single.path);
   const openReason = !single ? 'Select one item to open it' : canOpen ? undefined : 'Opening files arrives with the report viewer';
 
   return (
@@ -187,6 +191,13 @@ function Toolbar({
             onSelect: () => single && onProperties(single, 'general'),
             disabled: !single,
             reason: 'Select one item to see its properties',
+          },
+          {
+            label: isFavorite ? 'Remove from favorites' : 'Add to favorites',
+            icon: <Star size={15} aria-hidden="true" />,
+            onSelect: () => single && toggleFavorite.mutate({ path: single.path, title: single.title, kind: single.kind }),
+            disabled: !single,
+            reason: 'Select one item to add it to favorites',
           },
           {
             label: selected.length > 1 ? `Move ${selected.length} items to trash` : 'Move to trash',

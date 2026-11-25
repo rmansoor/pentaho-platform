@@ -10,6 +10,7 @@ import { AppShell } from '../shell/AppShell';
 import { AreaPlaceholder } from '../features/placeholder/AreaPlaceholder';
 import { FilesPage } from '../features/files/FilesPage';
 import { TrashPage } from '../features/files/TrashPage';
+import { HomePage } from '../features/home/HomePage';
 import { DEFAULT_FOLDER, normalizePath } from '../features/files/paths';
 
 const rootRoute = createRootRoute({
@@ -67,9 +68,18 @@ const trashRoute = createRoute({
   },
 });
 
+const homeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/home',
+  component: function HomeRoute() {
+    const navigate = homeRoute.useNavigate();
+    return <HomePage onOpenFolder={(path) => void navigate({ to: '/files', search: { path } })} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  area('/home', 'Home', 'Recents, favorites and create actions.'),
+  homeRoute,
   filesRoute,
   trashRoute,
   area('/schedules', 'Schedules', 'Schedule list, the new-schedule sheet and blockout times.'),

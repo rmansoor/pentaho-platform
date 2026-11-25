@@ -44,6 +44,14 @@ folder can be bookmarked and survives a reload.
 - **Errors:** an unreachable server and a missing or forbidden folder each get their own message and a retry.
 - **Move to trash:** from the More menu or the Delete key, with an Undo toast.
 
+## Home
+
+Quick actions (Files, Schedules, Data sources, Trash), then **Favorites** and **Recent**. Both lists are
+per-user settings (`/api/user-settings/favorites`, `/recent`) in the GWT console's JSON format
+(`[{"fullPath","title","lastUse"}]`, 10 recents), so the old and new consoles share them during the
+transition. Star or unstar from Home or from Files › More › Add to favorites. Until files open in the
+console, choosing a file shows it in its folder.
+
 ## Trash
 
 `/files/trash` (Trash at the foot of the folder tree) lists deleted items with their original location

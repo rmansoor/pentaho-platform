@@ -56,6 +56,16 @@ export async function getJson<T>(path: string, schema: z.ZodType<T>, signal?: Ab
   return schema.parse(await response.json());
 }
 
+/** GET a resource as text; '' for 204 No Content. */
+export async function getText(path: string, signal?: AbortSignal): Promise<string> {
+  const url = `${API_ROOT}${path}`;
+  const response = await doFetch(url, { method: 'GET', headers: { Accept: 'application/json' }, signal });
+  if (!response.ok) {
+    throw new ApiError(response.status, url, `${response.status} ${response.statusText}`.trim());
+  }
+  return response.status === 204 ? '' : response.text();
+}
+
 /*
  * CSRF. With the Helix Security Web plugin installed, unsafe requests need a token header.
  * GET /api/csrf/token?url=<absolute target> answers 204 with X-CSRF-HEADER (the header name)
