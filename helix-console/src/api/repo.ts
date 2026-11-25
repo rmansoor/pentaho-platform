@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getJson } from './http';
+import { getJson, send, sendOk } from './http';
 
 /*
  * Repository browsing over the platform REST API:
@@ -43,6 +43,16 @@ const fileDtoSchema = z.object({
   lastModifiedDate: dateish,
   owner: z.string().nullish(),
   creatorId: z.string().nullish(),
+  deletedDate: dateish,
+  originalParentFolderPath: z.string().nullish(),
+});
+
+/** GET /repo/files/deleted: {repositoryFileDto: null | dto | dto[]}. */
+const deletedWrapperSchema = z.object({
+  repositoryFileDto: z
+    .union([fileDtoSchema, z.array(fileDtoSchema)])
+    .nullish()
+    .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
 });
 
 interface TreeDtoInput {
@@ -77,6 +87,8 @@ export type FileKind =
   | 'file';
 
 export interface RepoItem {
+  /** Repository id; what the trash, restore and delete endpoints take. */
+  id: string;
   path: string;
   name: string;
   /** Localized display name; falls back to the file name without its extension. */
@@ -90,6 +102,10 @@ export interface RepoItem {
   modified: Date | null;
   /** Not sent by the tree endpoint today (it lives in the file's ACL); kept for when it is. */
   owner?: string;
+  /** Set for items in the trash. */
+  deleted?: Date;
+  /** For items in the trash: the folder it was deleted from. */
+  originalFolder?: string;
 }
 
 export interface RepoFolder {
@@ -132,6 +148,7 @@ function toItem(dto: z.output<typeof fileDtoSchema>): RepoItem {
   const kind: FileKind = dto.folder ? 'folder' : (KIND_BY_EXTENSION[ext] ?? 'file');
   const bare = !dto.folder && ext ? dto.name.slice(0, -(ext.length + 1)) : dto.name;
   return {
+    id: dto.id || dto.path,
     path: dto.path,
     name: dto.name,
     title: dto.title?.trim() || bare || dto.path,
@@ -145,7 +162,14 @@ function toItem(dto: z.output<typeof fileDtoSchema>): RepoItem {
     // Folders come back with an empty lastModifiedDate; their creation date is the best we have.
     modified: dto.lastModifiedDate ?? dto.createdDate,
     owner: dto.owner || dto.creatorId || undefined,
+    deleted: dto.deletedDate ?? undefined,
+    originalFolder: dto.originalParentFolderPath || undefined,
   };
+}
+
+/** Parses the trash listing. Exported for tests. */
+export function parseTrashResponse(json: unknown): RepoItem[] {
+  return deletedWrapperSchema.parse(json).repositoryFileDto.map(toItem);
 }
 
 /** Parses one tree response into the folder and its direct children. Exported for tests. */
@@ -160,15 +184,54 @@ export function toPathId(path: string): string {
   return encodeURIComponent(id || ':');
 }
 
-/** Where the Files screen reads from. Swapped for a fixture in tests and in `npm run dev:mock`. */
+/** How a restore went; the server can refuse the original folder (no write access there). */
+export type RestoreOutcome =
+  /** Back in its original folder. */
+  | 'restored'
+  /** Can't go back; it can go to the user's home folder with no name clashes. */
+  | 'home-available'
+  /** Can't go back; the home folder already has items with the same names. */
+  | 'home-conflict';
+
+/** What to do with name clashes when restoring to the home folder (server MODE_* values). */
+export const OVERWRITE_MODE = { replace: 1, keepBoth: 2, skip: 3 } as const;
+export type OverwriteMode = (typeof OVERWRITE_MODE)[keyof typeof OVERWRITE_MODE];
+
+/** Where the Files screens read from and write to. Swapped for a fixture in tests and `npm run dev:mock`. */
 export interface RepoSource {
   listFolder(path: string, signal?: AbortSignal): Promise<RepoFolder>;
+  listTrash(signal?: AbortSignal): Promise<RepoItem[]>;
+  moveToTrash(ids: string[]): Promise<void>;
+  /** Without `mode`, restores to the original folder; with it, to the user's home folder. */
+  restore(ids: string[], mode?: OverwriteMode): Promise<RestoreOutcome>;
+  deletePermanently(ids: string[]): Promise<void>;
 }
+
+// The file endpoints take a comma-separated list of ids as a plain-text body.
+const idList = (ids: string[]) => ({ body: ids.join(','), contentType: 'text/plain' });
 
 export const httpRepoSource: RepoSource = {
   async listFolder(path, signal) {
     const query = 'depth=1&showHidden=false&filter=*';
     const json = await getJson(`/repo/files/${toPathId(path)}/tree?${query}`, z.unknown(), signal);
     return parseFolderResponse(json);
+  },
+  async listTrash(signal) {
+    return parseTrashResponse(await getJson('/repo/files/deleted', z.unknown(), signal));
+  },
+  async moveToTrash(ids) {
+    await sendOk('PUT', '/repo/files/delete', idList(ids));
+  },
+  async restore(ids, mode) {
+    const query = mode === undefined ? '' : `?overwriteMode=${mode}`;
+    const response = await send('PUT', `/repo/files/restore${query}`, idList(ids));
+    // 406 and 307 both mean "not the original folder, but home works"; 409 means clashes there.
+    if (response.ok) return 'restored';
+    if (response.status === 406 || response.status === 307) return 'home-available';
+    if (response.status === 409) return 'home-conflict';
+    throw new Error(`Restore failed (${response.status})`);
+  },
+  async deletePermanently(ids) {
+    await sendOk('PUT', '/repo/files/deletepermanent', idList(ids));
   },
 };

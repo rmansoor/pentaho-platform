@@ -1,40 +1,49 @@
-import { KIND_LABEL, type RepoItem } from '../../api/repo';
+import type { ReactNode } from 'react';
+import type { RepoItem } from '../../api/repo';
 
-export type SortKey = 'name' | 'kind' | 'modified' | 'size';
 export type SortDir = 'asc' | 'desc';
+
 export interface Sort {
-  key: SortKey;
+  key: string;
   dir: SortDir;
+}
+
+/** One table column: how it renders, how it sorts, and how wide it is. */
+export interface Column {
+  key: string;
+  label: string;
+  /** CSS grid track, e.g. "minmax(0,1fr)". */
+  track: string;
+  align?: 'start' | 'end';
+  render: (item: RepoItem) => ReactNode;
+  compare: (a: RepoItem, b: RepoItem) => number;
+  /** Direction of the first click; dates and sizes read best newest/largest first. */
+  firstDir?: SortDir;
 }
 
 export const DEFAULT_SORT: Sort = { key: 'name', dir: 'asc' };
 
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+export const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-function compareBy(key: SortKey, a: RepoItem, b: RepoItem): number {
-  switch (key) {
-    case 'name':
-      return collator.compare(a.title, b.title);
-    case 'kind':
-      return collator.compare(KIND_LABEL[a.kind], KIND_LABEL[b.kind]);
-    case 'modified':
-      return (a.modified?.getTime() ?? 0) - (b.modified?.getTime() ?? 0);
-    case 'size':
-      return (a.size ?? -1) - (b.size ?? -1);
-  }
-}
+const byTitle = (a: RepoItem, b: RepoItem) => collator.compare(a.title, b.title);
 
 /** Folders first (as in the GWT console), then by the chosen column; name breaks ties. */
-export function sortItems(items: readonly RepoItem[], sort: Sort): RepoItem[] {
+export function sortItems(items: readonly RepoItem[], sort: Sort, columns: readonly Column[]): RepoItem[] {
+  const column = columns.find((c) => c.key === sort.key);
+  const compare = column?.compare ?? byTitle;
   const dir = sort.dir === 'asc' ? 1 : -1;
   return [...items].sort((a, b) => {
     if (a.folder !== b.folder) return a.folder ? -1 : 1;
-    return dir * compareBy(sort.key, a, b) || collator.compare(a.title, b.title);
+    return dir * compare(a, b) || byTitle(a, b);
   });
 }
 
-/** First click sorts ascending (dates and sizes newest/largest first); a second click flips. */
-export function nextSort(current: Sort, key: SortKey): Sort {
-  if (current.key === key) return { key, dir: current.dir === 'asc' ? 'desc' : 'asc' };
-  return { key, dir: key === 'modified' || key === 'size' ? 'desc' : 'asc' };
+export function nextSort(current: Sort, column: Column): Sort {
+  if (current.key === column.key) return { key: column.key, dir: current.dir === 'asc' ? 'desc' : 'asc' };
+  return { key: column.key, dir: column.firstDir ?? 'asc' };
+}
+
+/** Folders by name, for the tree. */
+export function sortByName(items: readonly RepoItem[]): RepoItem[] {
+  return sortItems(items, DEFAULT_SORT, []);
 }

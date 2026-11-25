@@ -26,36 +26,102 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * GET a JSON resource and validate it. Same-origin session cookie; no tokens in storage.
- * The CSRF header for unsafe methods is added when the first mutation lands.
- */
-export async function getJson<T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal): Promise<T> {
-  const url = `${API_ROOT}${path}`;
+async function doFetch(url: string, init: RequestInit): Promise<Response> {
   let response: Response;
   try {
-    response = await fetch(url, {
-      method: 'GET',
-      credentials: 'same-origin',
-      cache: 'no-store',
-      headers: { Accept: 'application/json' },
-      signal,
-    });
+    response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...init });
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === 'AbortError') throw cause;
     throw new ApiError(0, url, 'Could not reach the Pentaho Server.');
   }
-  if (!response.ok) {
-    throw new ApiError(response.status, url, `${response.status} ${response.statusText}`.trim());
-  }
   // Without a session the server redirects to its login page and fetch follows the redirect,
   // so a signed-out call "succeeds" with HTML. Treat that as 401.
-  const type = response.headers.get('Content-Type') ?? '';
   if (response.redirected && /\/Login\b/i.test(response.url)) {
     throw new ApiError(401, url, 'Not signed in.');
   }
+  return response;
+}
+
+/** GET a JSON resource and validate it. Same-origin session cookie; no tokens in storage. */
+export async function getJson<T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal): Promise<T> {
+  const url = `${API_ROOT}${path}`;
+  const response = await doFetch(url, { method: 'GET', headers: { Accept: 'application/json' }, signal });
+  if (!response.ok) {
+    throw new ApiError(response.status, url, `${response.status} ${response.statusText}`.trim());
+  }
+  const type = response.headers.get('Content-Type') ?? '';
   if (!type.includes('json')) {
     throw new ApiError(response.status, url, `Expected JSON but got ${type || 'no content type'}.`);
   }
   return schema.parse(await response.json());
+}
+
+/*
+ * CSRF. With the Helix Security Web plugin installed, unsafe requests need a token header.
+ * GET /api/csrf/token?url=<absolute target> answers 204 with X-CSRF-HEADER (the header name)
+ * and X-CSRF-TOKEN; without the plugin it answers 204 with neither, and nothing is sent.
+ * The token is per session, so it is cached and refetched once if the server rejects it.
+ */
+let csrfCache: Promise<Record<string, string>> | null = null;
+
+async function fetchCsrfHeaders(targetUrl: string): Promise<Record<string, string>> {
+  const absolute = new URL(targetUrl, window.location.origin).href;
+  const response = await doFetch(`${API_ROOT}/csrf/token?url=${encodeURIComponent(absolute)}`, { method: 'GET' });
+  const header = response.headers.get('X-CSRF-HEADER');
+  const token = response.headers.get('X-CSRF-TOKEN');
+  return response.ok && header && token ? { [header]: token } : {};
+}
+
+function csrfHeaders(targetUrl: string, refresh = false): Promise<Record<string, string>> {
+  if (refresh || !csrfCache) {
+    csrfCache = fetchCsrfHeaders(targetUrl).catch((e: unknown) => {
+      csrfCache = null;
+      throw e;
+    });
+  }
+  return csrfCache;
+}
+
+/** Test seam: forget the cached token. */
+export function resetCsrfCache() {
+  csrfCache = null;
+}
+
+export interface SendOptions {
+  body?: string;
+  contentType?: string;
+}
+
+/**
+ * An unsafe request (PUT/POST/DELETE) with the CSRF header. Resolves with the response for any
+ * status the caller wants to interpret (the restore endpoint answers 406 and 409 meaningfully);
+ * throws ApiError for no response, a signed-out redirect, or a 5xx.
+ */
+export async function send(
+  method: 'PUT' | 'POST' | 'DELETE',
+  path: string,
+  { body, contentType = 'text/plain' }: SendOptions = {},
+): Promise<Response> {
+  const url = `${API_ROOT}${path}`;
+  const attempt = async (refresh: boolean) =>
+    doFetch(url, {
+      method,
+      body,
+      headers: { 'Content-Type': contentType, ...(await csrfHeaders(url, refresh)) },
+    });
+  let response = await attempt(false);
+  // A stale or missing token is rejected with 403; refetch it once.
+  if (response.status === 403) response = await attempt(true);
+  if (response.status === 401 || response.status >= 500) {
+    throw new ApiError(response.status, url, `${response.status} ${response.statusText}`.trim());
+  }
+  return response;
+}
+
+/** Like `send`, but any non-2xx is an error. */
+export async function sendOk(method: 'PUT' | 'POST' | 'DELETE', path: string, options?: SendOptions): Promise<void> {
+  const response = await send(method, path, options);
+  if (!response.ok) {
+    throw new ApiError(response.status, response.url || path, `${response.status} ${response.statusText}`.trim());
+  }
 }

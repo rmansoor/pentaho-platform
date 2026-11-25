@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { ChevronRight, LoaderCircle } from 'lucide-react';
+import { ChevronRight, LoaderCircle, Trash2 } from 'lucide-react';
 import { cn } from '@helix/ui';
 import { useFolder } from '../../api/repo-context';
 import { ancestorsOf, ROOT_FOLDERS } from './paths';
-import { DEFAULT_SORT, sortItems } from './sorting';
+import { sortByName } from './sorting';
+
+/** Tree id of the Trash entry; not a repository path. */
+export const TRASH_NODE = 'trash:';
 
 export interface FolderTreeProps {
-  /** The folder shown in the table. */
+  /** The folder shown in the table, or TRASH_NODE. */
   currentPath: string;
   onSelect: (path: string) => void;
+  onOpenTrash: () => void;
 }
 
 /**
@@ -16,7 +20,7 @@ export interface FolderTreeProps {
  * visible items, Right/Left expand and collapse, Enter or Space opens the folder.
  * Children load when a node is first expanded and share the cache with the file table.
  */
-export function FolderTree({ currentPath, onSelect }: FolderTreeProps) {
+export function FolderTree({ currentPath, onSelect, onOpenTrash }: FolderTreeProps) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(ancestorsOf(currentPath)));
   const [focusPath, setFocusPath] = useState(currentPath);
   const treeRef = useRef<HTMLUListElement>(null);
@@ -81,7 +85,8 @@ export function FolderTree({ currentPath, onSelect }: FolderTreeProps) {
         break;
       case 'Enter':
       case ' ':
-        onSelect(path);
+        if (path === TRASH_NODE) onOpenTrash();
+        else onSelect(path);
         break;
       default:
         return;
@@ -105,6 +110,31 @@ export function FolderTree({ currentPath, onSelect }: FolderTreeProps) {
           onFocusPath={setFocusPath}
         />
       ))}
+      <li
+        role="treeitem"
+        aria-level={1}
+        aria-selected={currentPath === TRASH_NODE}
+        data-path={TRASH_NODE}
+        tabIndex={focusPath === TRASH_NODE ? 0 : -1}
+        onFocus={(e) => {
+          if (e.target === e.currentTarget) setFocusPath(TRASH_NODE);
+        }}
+        className="group/item mt-1 border-t border-divider pt-1 outline-none"
+      >
+        <div
+          onClick={onOpenTrash}
+          className={cn(
+            'flex h-9 cursor-pointer items-center gap-1 rounded-[8px] pr-2.5 pl-1',
+            'group-focus-visible/item:outline-2 group-focus-visible/item:outline-focus',
+            currentPath === TRASH_NODE ? 'bg-accent-soft font-bold text-accent' : 'text-fg-soft hover:bg-bg',
+          )}
+        >
+          <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center">
+            <Trash2 size={14} />
+          </span>
+          <span>Trash</span>
+        </div>
+      </li>
     </ul>
   );
 }
@@ -126,7 +156,7 @@ function TreeNode(props: TreeNodeProps) {
   const { path, label, level, parent, currentPath, focusPath, expanded, setOpen, onSelect, onFocusPath } = props;
   const isOpen = expanded.has(path);
   const { data, isPending, isError } = useFolder(path, isOpen);
-  const subfolders = data ? sortItems(data.children.filter((c) => c.folder), DEFAULT_SORT) : [];
+  const subfolders = data ? sortByName(data.children.filter((c) => c.folder)) : [];
   // Until loaded we don't know whether a folder has subfolders, so it stays expandable.
   const isLeaf = data !== undefined && subfolders.length === 0;
   const selected = path === currentPath;

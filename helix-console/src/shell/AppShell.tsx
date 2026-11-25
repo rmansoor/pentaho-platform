@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { cn } from '@helix/ui';
+import { cn, Toaster } from '@helix/ui';
 import { useLayoutStore } from './layout-store';
 import { NAV_RAIL_ID, NavRail } from './NavRail';
 import { TopBar } from './TopBar';
@@ -75,6 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }

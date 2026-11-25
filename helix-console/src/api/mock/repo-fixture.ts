@@ -1,5 +1,4 @@
-import type { RepoSource } from '../repo';
-import { parseFolderResponse } from '../repo';
+import { OVERWRITE_MODE, parseFolderResponse, parseTrashResponse, type OverwriteMode, type RepoSource } from '../repo';
 
 /*
  * A small sample repository in the JSON shape the server returns, so the fixture exercises the
@@ -78,18 +77,12 @@ const TREE: Node = {
   ],
 };
 
-function find(path: string): Node | undefined {
-  const parts = path.split('/').filter(Boolean);
-  let node: Node | undefined = TREE;
-  for (const part of parts) node = node?.children?.find((c) => c.name === part);
-  return node;
-}
-
 // Same shape as a Pentaho 11.1 server: native booleans, folders with fileSize -1 and an empty
 // lastModifiedDate, dates as epoch-millisecond strings, and no owner in tree responses.
-function dto(node: Node, path: string) {
+function dto(node: Node, path: string, extra: Record<string, unknown> = {}) {
   const folder = node.children !== undefined;
   return {
+    id: `id:${path}`,
     name: node.name,
     path: path || '/',
     folder,
@@ -97,21 +90,116 @@ function dto(node: Node, path: string) {
     fileSize: folder ? -1 : (node.size ?? 0),
     createdDate: node.modified,
     lastModifiedDate: folder ? '' : node.modified,
+    ...extra,
   };
 }
 
-export function createFixtureRepoSource(options: { delayMs?: number } = {}): RepoSource {
+interface Trashed {
+  node: Node;
+  originalFolder: string;
+  deleted: string;
+}
+
+export interface FixtureOptions {
+  delayMs?: number;
+  /** Folders the signed-in user can't write to: restoring into them is refused, as on a real server. */
+  readOnlyFolders?: string[];
+  /** Items already in the trash: [repository path, deleted ISO date]. */
+  trash?: Array<[string, string]>;
+  /** Name of the signed-in user, for their home folder. */
+  user?: string;
+}
+
+/** An in-memory repository. Each call gets its own copy, so tests don't affect each other. */
+export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSource {
+  const root: Node = structuredClone(TREE);
+  const trash: Trashed[] = [];
+  const user = options.user ?? 'admin';
+  const wait = () => (options.delayMs ? new Promise((r) => setTimeout(r, options.delayMs)) : Promise.resolve());
+
+  const find = (path: string): Node | undefined => {
+    let node: Node | undefined = root;
+    for (const part of path.split('/').filter(Boolean)) node = node?.children?.find((c) => c.name === part);
+    return node;
+  };
+  const split = (path: string) => {
+    const at = path.lastIndexOf('/');
+    return { parent: path.slice(0, at) || '/', name: path.slice(at + 1) };
+  };
+  const pathOfId = (id: string) => id.replace(/^id:/, '');
+  const detach = (path: string): Node => {
+    const { parent, name } = split(path);
+    const folder = find(parent);
+    const index = folder?.children?.findIndex((c) => c.name === name) ?? -1;
+    if (!folder?.children || index < 0) throw new Error(`Nothing at ${path}`);
+    return folder.children.splice(index, 1)[0]!;
+  };
+  const attach = (folderPath: string, node: Node, mode: OverwriteMode) => {
+    const folder = find(folderPath);
+    if (!folder?.children) throw new Error(`No folder at ${folderPath}`);
+    const clash = folder.children.findIndex((c) => c.name === node.name);
+    if (clash >= 0) {
+      if (mode === OVERWRITE_MODE.skip) return;
+      if (mode === OVERWRITE_MODE.replace) folder.children.splice(clash, 1);
+      else node.name = node.name.replace(/(\.[^.]+)?$/, (ext) => ` (copy)${ext}`);
+    }
+    folder.children.push(node);
+  };
+  const trashedById = (id: string) => trash.findIndex((t) => `id:trash:${t.originalFolder}/${t.node.name}` === id);
+
+  for (const [path, deleted] of options.trash ?? []) {
+    trash.push({ node: detach(path), originalFolder: split(path).parent, deleted: day(deleted) });
+  }
+
   return {
     async listFolder(path) {
-      if (options.delayMs) await new Promise((r) => setTimeout(r, options.delayMs));
+      await wait();
       const node = find(path);
-      if (!node || node.children === undefined) {
-        throw new Error(`No folder at ${path}`);
-      }
+      if (!node || node.children === undefined) throw new Error(`No folder at ${path}`);
       const base = path === '/' ? '' : path;
       const children = node.children.map((c) => ({ file: dto(c, `${base}/${c.name}`) }));
-      const json = { file: dto(node, path), children };
-      return parseFolderResponse(json);
+      return parseFolderResponse({ file: dto(node, path), children });
+    },
+    async listTrash() {
+      await wait();
+      const files = trash.map((t) =>
+        dto(t.node, `/home/${user}/.trash/pho:x/${t.node.name}`, {
+          id: `id:trash:${t.originalFolder}/${t.node.name}`,
+          originalParentFolderPath: t.originalFolder,
+          deletedDate: t.deleted,
+        }),
+      );
+      return parseTrashResponse({ repositoryFileDto: files.length ? files : null });
+    },
+    async moveToTrash(ids) {
+      await wait();
+      for (const id of ids) {
+        const path = pathOfId(id);
+        trash.push({ node: detach(path), originalFolder: split(path).parent, deleted: String(Date.now()) });
+      }
+    },
+    async restore(ids, mode) {
+      await wait();
+      const items = ids.map((id) => trash[trashedById(id)]).filter((t): t is Trashed => !!t);
+      if (mode === undefined) {
+        if (items.some((t) => options.readOnlyFolders?.includes(t.originalFolder))) {
+          const home = find(`/home/${user}`);
+          const clash = items.some((t) => home?.children?.some((c) => c.name === t.node.name));
+          return clash ? 'home-conflict' : 'home-available';
+        }
+      }
+      for (const t of items) {
+        trash.splice(trash.indexOf(t), 1);
+        attach(mode === undefined ? t.originalFolder : `/home/${user}`, t.node, mode ?? OVERWRITE_MODE.keepBoth);
+      }
+      return 'restored';
+    },
+    async deletePermanently(ids) {
+      await wait();
+      for (const id of ids) {
+        const index = trashedById(id);
+        if (index >= 0) trash.splice(index, 1);
+      }
     },
   };
 }

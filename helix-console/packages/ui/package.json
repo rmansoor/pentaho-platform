@@ -9,6 +9,8 @@
     "./theme.css": "./src/theme.css"
   },
   "peerDependencies": {
-    "react": "^19.3.0"
+    "lucide-react": ">=1.80.0",
+    "react": "^19.3.0",
+    "zustand": "^5.1.0"
   }
 }

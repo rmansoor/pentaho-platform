@@ -42,6 +42,20 @@ folder can be bookmarked and survives a reload.
 - **Toolbar:** Open works for folders. Opening files, Share, Schedule and More are shown as in the design
   but disabled, with a tooltip saying why, until their screens exist.
 - **Errors:** an unreachable server and a missing or forbidden folder each get their own message and a retry.
+- **Move to trash:** from the More menu or the Delete key, with an Undo toast.
+
+## Trash
+
+`/files/trash` (Trash at the foot of the folder tree) lists deleted items with their original location
+and deletion date. Restore puts them back; if you can't write to the original folder the server says so
+(406), and the console offers your home folder instead, asking what to do with name clashes (409:
+replace, keep both or skip). Delete permanently and Empty trash ask first and say how many items go.
+
+## Changing data
+
+Unsafe requests go through `send()` in `src/api/http.ts`, which adds the CSRF header from
+`GET /api/csrf/token?url=…` (Helix Security Web plugin) and retries once with a fresh token on 403.
+Without the plugin the endpoint returns no token and nothing is added.
 
 The REST client tolerates the JAXB JSON quirks: booleans and numbers as strings, epoch-millisecond date
 strings, and a one-element `children` list sent as a bare object.

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { renderApp } from '../../test/render-app';
 import { ApiError } from '../../api/http';
 import type { RepoSource } from '../../api/repo';
+import { createFixtureRepoSource } from '../../api/mock/repo-fixture';
 
 const REPORTS = '/files?path=/public/Steel Wheels/Reports';
 
@@ -126,6 +127,7 @@ describe('Files', () => {
 
   it('explains when the server cannot be reached', async () => {
     const offline: RepoSource = {
+      ...createFixtureRepoSource(),
       listFolder: async () => {
         throw new ApiError(0, '/pentaho/api/repo', 'Could not reach the Pentaho Server.');
       },

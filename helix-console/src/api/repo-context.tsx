@@ -11,7 +11,17 @@ export function RepoSourceProvider({ source, children }: { source: RepoSource; c
 export const repoKeys = {
   all: ['repo'] as const,
   folder: (path: string) => ['repo', 'folder', path] as const,
+  trash: ['repo', 'trash'] as const,
 };
+
+export function useRepoSource(): RepoSource {
+  return useContext(RepoSourceContext);
+}
+
+export function useTrash() {
+  const source = useContext(RepoSourceContext);
+  return useQuery({ queryKey: repoKeys.trash, queryFn: ({ signal }) => source.listTrash(signal) });
+}
 
 /** One folder and its direct children. Shared by the folder tree and the file table. */
 export function useFolder(path: string, enabled = true) {

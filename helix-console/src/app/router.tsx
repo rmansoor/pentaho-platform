@@ -9,6 +9,7 @@ import {
 import { AppShell } from '../shell/AppShell';
 import { AreaPlaceholder } from '../features/placeholder/AreaPlaceholder';
 import { FilesPage } from '../features/files/FilesPage';
+import { TrashPage } from '../features/files/TrashPage';
 import { DEFAULT_FOLDER, normalizePath } from '../features/files/paths';
 
 const rootRoute = createRootRoute({
@@ -47,7 +48,22 @@ const filesRoute = createRoute({
   component: function FilesRoute() {
     const { path } = filesRoute.useSearch();
     const navigate = filesRoute.useNavigate();
-    return <FilesPage path={path} onNavigate={(next) => void navigate({ search: { path: next } })} />;
+    return (
+      <FilesPage
+        path={path}
+        onNavigate={(next) => void navigate({ search: { path: next } })}
+        onOpenTrash={() => void navigate({ to: '/files/trash' })}
+      />
+    );
+  },
+});
+
+const trashRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/files/trash',
+  component: function TrashRoute() {
+    const navigate = trashRoute.useNavigate();
+    return <TrashPage onOpenFolder={(path) => void navigate({ to: '/files', search: { path } })} />;
   },
 });
 
@@ -55,6 +71,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   area('/home', 'Home', 'Recents, favorites and create actions.'),
   filesRoute,
+  trashRoute,
   area('/schedules', 'Schedules', 'Schedule list, the new-schedule sheet and blockout times.'),
   area('/datasources', 'Data sources', 'JDBC, analysis and metadata sources, and the data source wizard.'),
   area('/admin', 'Administration', 'Users, roles, permissions, mail server and settings.'),
