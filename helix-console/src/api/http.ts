@@ -3,6 +3,9 @@ import type { z } from 'zod';
 /** Platform REST root. The console is served from /pentaho/console/, the API from /pentaho/api. */
 export const API_ROOT: string = import.meta.env.VITE_API_ROOT ?? '/pentaho/api';
 
+/** Plugin REST endpoints live under /pentaho/plugin/<id>/api, relative to the same root. */
+export const PLUGIN_ROOT = API_ROOT.replace(/\/api$/, '/plugin');
+
 /** Server login page; `?then=` is not supported by the platform, so the console link returns the user manually. */
 export const LOGIN_URL = API_ROOT.replace(/\/api$/, '/Login');
 
@@ -43,8 +46,10 @@ async function doFetch(url: string, init: RequestInit): Promise<Response> {
 }
 
 /** GET a JSON resource and validate it. Same-origin session cookie; no tokens in storage. */
+const resolve = (path: string) => (path.startsWith(PLUGIN_ROOT) ? path : `${API_ROOT}${path}`);
+
 export async function getJson<T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal): Promise<T> {
-  const url = `${API_ROOT}${path}`;
+  const url = resolve(path);
   const response = await doFetch(url, { method: 'GET', headers: { Accept: 'application/json' }, signal });
   if (!response.ok) {
     throw new ApiError(response.status, url, `${response.status} ${response.statusText}`.trim());
@@ -56,10 +61,10 @@ export async function getJson<T>(path: string, schema: z.ZodType<T>, signal?: Ab
   return schema.parse(await response.json());
 }
 
-/** GET a resource as text; '' for 204 No Content. */
-export async function getText(path: string, signal?: AbortSignal): Promise<string> {
-  const url = `${API_ROOT}${path}`;
-  const response = await doFetch(url, { method: 'GET', headers: { Accept: 'application/json' }, signal });
+/** GET a resource as text; '' for 204 No Content. Some endpoints only answer `text/plain`. */
+export async function getText(path: string, signal?: AbortSignal, accept = 'application/json'): Promise<string> {
+  const url = resolve(path);
+  const response = await doFetch(url, { method: 'GET', headers: { Accept: accept }, signal });
   if (!response.ok) {
     throw new ApiError(response.status, url, `${response.status} ${response.statusText}`.trim());
   }
@@ -100,6 +105,7 @@ export function resetCsrfCache() {
 export interface SendOptions {
   body?: string;
   contentType?: string;
+  accept?: string;
 }
 
 /**
@@ -110,14 +116,14 @@ export interface SendOptions {
 export async function send(
   method: 'PUT' | 'POST' | 'DELETE',
   path: string,
-  { body, contentType = 'text/plain' }: SendOptions = {},
+  { body, contentType = 'text/plain', accept }: SendOptions = {},
 ): Promise<Response> {
-  const url = `${API_ROOT}${path}`;
+  const url = resolve(path);
   const attempt = async (refresh: boolean) =>
     doFetch(url, {
       method,
       body,
-      headers: { 'Content-Type': contentType, ...(await csrfHeaders(url, refresh)) },
+      headers: { 'Content-Type': contentType, ...(accept ? { Accept: accept } : {}), ...(await csrfHeaders(url, refresh)) },
     });
   let response = await attempt(false);
   // A stale or missing token is rejected with 403; refetch it once.

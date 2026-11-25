@@ -76,6 +76,26 @@ ACL quirks on the server (`GET/PUT /repo/files/{id}/acl`):
 - The DTO's list setter resets `entriesInheriting` to false, so **to inherit, send no `aces` at all**;
   sending entries turns inheritance off. (`aclRequestBody` in `src/api/repo.ts`.)
 
+## Schedules
+
+`/schedules` lists every schedule the user can see, sorted by next run: the file it runs, the recurrence
+in plain words, next and last run, owner and state, with search and owner/state filters. Row actions:
+run now, pause/resume, delete (confirmed). A status pill shows whether the scheduler as a whole is
+running; administrators can pause or start it, and a banner warns while it is paused.
+
+It talks to the scheduler plugin's **v1** API (`/pentaho/plugin/scheduler-plugin/api/scheduler`).
+The server logs v1 as deprecated in favour of `/api/v2/scheduler`, but 11.1 doesn't ship v2 (404), so
+all scheduler calls live in `src/api/scheduler.ts` for a later switch. Live quirks:
+
+- `GET /state` answers only `Accept: text/plain` (406 otherwise).
+- On the EE scheduler, `POST /job` fails with `InvalidUserName` unless the request carries the
+  `ActionAdapterQuartzJob-ActionUser` job parameter (relevant for the create/edit wizard).
+- Known server bug: named days in cron strings are shifted one day earlier (`MON-FRI` is stored as
+  Quartz `1-5`, i.e. Sunday–Thursday). See `QuartzScheduler.parseDayOfWeekRecurrences` in
+  pentaho-scheduler-plugin.
+
+Creating and editing schedules (the recurrence wizard) and blockout times are not built yet.
+
 ## Changing data
 
 Unsafe requests go through `send()` in `src/api/http.ts`, which adds the CSRF header from

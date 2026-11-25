@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '../api/http';
 import { RepoSourceProvider } from '../api/repo-context';
 import { httpRepoSource, type RepoSource } from '../api/repo';
+import { SchedulerSourceProvider } from '../api/scheduler-context';
+import { httpSchedulerSource, type SchedulerSource } from '../api/scheduler';
 
 export function createQueryClient() {
   return new QueryClient({
@@ -22,15 +24,19 @@ export function createQueryClient() {
 export function AppProviders({
   queryClient,
   repoSource = httpRepoSource,
+  schedulerSource = httpSchedulerSource,
   children,
 }: {
   queryClient: QueryClient;
   repoSource?: RepoSource;
+  schedulerSource?: SchedulerSource;
   children: ReactNode;
 }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <RepoSourceProvider source={repoSource}>{children}</RepoSourceProvider>
+      <RepoSourceProvider source={repoSource}>
+        <SchedulerSourceProvider source={schedulerSource}>{children}</SchedulerSourceProvider>
+      </RepoSourceProvider>
     </QueryClientProvider>
   );
 }

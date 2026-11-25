@@ -11,6 +11,7 @@ import { AreaPlaceholder } from '../features/placeholder/AreaPlaceholder';
 import { FilesPage } from '../features/files/FilesPage';
 import { TrashPage } from '../features/files/TrashPage';
 import { HomePage } from '../features/home/HomePage';
+import { SchedulesPage } from '../features/schedules/SchedulesPage';
 import { DEFAULT_FOLDER, normalizePath } from '../features/files/paths';
 
 const rootRoute = createRootRoute({
@@ -77,12 +78,18 @@ const homeRoute = createRoute({
   },
 });
 
+const schedulesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/schedules',
+  component: SchedulesPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   homeRoute,
   filesRoute,
   trashRoute,
-  area('/schedules', 'Schedules', 'Schedule list, the new-schedule sheet and blockout times.'),
+  schedulesRoute,
   area('/datasources', 'Data sources', 'JDBC, analysis and metadata sources, and the data source wizard.'),
   area('/admin', 'Administration', 'Users, roles, permissions, mail server and settings.'),
 ]);

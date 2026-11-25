@@ -4,9 +4,15 @@ import { BASEPATH, createAppRouter } from '../app/router';
 import { AppProviders, createQueryClient } from '../app/providers';
 import { createFixtureRepoSource } from '../api/mock/repo-fixture';
 import type { RepoSource } from '../api/repo';
+import { createFixtureSchedulerSource } from '../api/mock/scheduler-fixture';
+import type { SchedulerSource } from '../api/scheduler';
 
 /** Renders the whole console at `path` (e.g. "/files?path=/public"), backed by the sample repository. */
-export async function renderApp(path: string, repoSource: RepoSource = createFixtureRepoSource()) {
+export async function renderApp(
+  path: string,
+  repoSource: RepoSource = createFixtureRepoSource(),
+  schedulerSource: SchedulerSource = createFixtureSchedulerSource(),
+) {
   const prefix = BASEPATH === '/' ? '' : BASEPATH;
   const history = createMemoryHistory({ initialEntries: [`${prefix}${path}`] });
   const router = createAppRouter(history);
@@ -14,7 +20,7 @@ export async function renderApp(path: string, repoSource: RepoSource = createFix
   queryClient.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
   await act(async () => {
     render(
-      <AppProviders queryClient={queryClient} repoSource={repoSource}>
+      <AppProviders queryClient={queryClient} repoSource={repoSource} schedulerSource={schedulerSource}>
         <RouterProvider router={router} />
       </AppProviders>,
     );
