@@ -99,8 +99,10 @@ These are not on Maven Central under these coordinates (to confirm when the Nexu
 GWT compile copies module `public/` resources into `mantle/messages/`, so this upstream jar
 is the true source of the "Pentaho User Console" strings.
 
-The interim regex step in `assemblies/pentaho-war/pom.xml` (`helix-rebrand-console-messages`)
-stays until we fork **pentaho-commons-gwt-modules**. That fork is the proper fix.
+**Resolved (R5):** the 12 bundles that carry the product name are now owned in
+`user-console/src/main/resources/org/pentaho/mantle/…/messages/`; GWT takes them over the jar's
+copies, so no fork of pentaho-commons-gwt-modules is needed for branding. The other bundles still
+come from the jar unchanged. `helix-check-console-messages` in `pentaho-war` guards against regressions.
 
 ## Suggested order
 

@@ -12,6 +12,7 @@ verified; every `.properties` diff is 1:1 with line endings preserved (incl. CRL
 | R2b | `c893632` | CJK stragglers + script hardening |
 | R3 | `2ad8a30` | `welcome.html`, mantle Community-Collaboration-Plugin HTML (`welcome/index.html`, `ccp_sub-*.html`), `DebugMantle.html`, repository `package.html` javadoc |
 | R4 | `b0df334` | `welcome/js/main.js` "Helix Live Chat" |
+| R5 | *(this)* | console bundles `mantleMessages*` / `MantleLoginMessages*` (12 files, all locales): page `<title>`, loading splash, About title, BA title, Solution Browser, pop-up warning. Upstream ships them in `org.pentaho:commons-gwt-widgets`; Helix now owns rebranded copies in `user-console/src/main/resources/org/pentaho/mantle/{public,login/public}/messages/`, which win on the GWT classpath. Guard `helix-check-console-messages` in `pentaho-war` fails the build if the upstream text comes back. |
 
 **~145 files, ~550 line edits.** The i18n message-bundle rebrand is essentially
 complete — remaining `Pentaho` in bundles is only `pentaho.xml` /

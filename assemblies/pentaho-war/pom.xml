@@ -1084,29 +1084,21 @@
           </execution>
           <execution>
             <!--
-              [helix] INTERIM rebrand of the console's message bundles.
-              mantle/messages/*.properties have no source in this repo: they arrive inside the
-              pentaho-user-console gwt jar (via pentaho-user-console-package), unpacked into the
-              prepared war by prepare-webapp above. Until Helix owns that artifact (step 4),
-              rewrite the product-name keys in place. Runs in prepare-package after the unpack
-              (maven-dependency-plugin is declared earlier in this pom) and before war:war.
-              Only the named keys are touched; descriptive text and wiki links are left alone.
-              The build fails if "Pentaho User Console" survives, so a changed upstream bundle
-              is caught rather than shipped.
+              [helix] Guard for the console's message bundles (mantle/messages/*.properties).
+              Upstream ships them inside org.pentaho:commons-gwt-widgets. Helix owns rebranded
+              copies in user-console/src/main/resources/org/pentaho/mantle/{public,login/public}/messages,
+              which the GWT compile picks over the jar's copies. This check fails the build if
+              the upstream text ever wins again (e.g. a new locale or a classpath-order change).
+              Runs in prepare-package after the console package is unpacked, before war:war.
             -->
-            <id>helix-rebrand-console-messages</id>
+            <id>helix-check-console-messages</id>
             <phase>prepare-package</phase>
             <goals>
               <goal>run</goal>
             </goals>
             <configuration>
               <target>
-                <replaceregexp byline="true" encoding="ISO-8859-1"
-                               match="^((productName|aboutDialogTitle|loadingConsole|pentahoBATitle|pentahoSolutionBrowser|popupWarning)\s*=.*?)Pentaho"
-                               replace="\1Helix">
-                  <fileset dir="${prepared.war.directory}/mantle/messages" includes="*.properties"/>
-                </replaceregexp>
-                <fail message="[helix] console message bundles still say 'Pentaho User Console' after rebrand">
+                <fail message="[helix] console message bundles say 'Pentaho User Console' (upstream copy won over user-console's)">
                   <condition>
                     <resourcecount when="greater" count="0">
                       <fileset dir="${prepared.war.directory}/mantle/messages" includes="*.properties">
