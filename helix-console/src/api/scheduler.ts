@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getJson, getText, PLUGIN_ROOT, sendOk } from './http';
+import { ApiError, getJson, getText, PLUGIN_ROOT, send, sendOk } from './http';
 
 /*
  * Scheduler plugin REST API (v1): /pentaho/plugin/scheduler-plugin/api/scheduler/...
@@ -27,8 +27,18 @@ export interface ScheduledJob {
   lastRun: Date | null;
   /** Plain-language recurrence ("Every day at 6:00 AM"). */
   recurrence: string;
-  /** Raw trigger fields kept for editing later. */
-  trigger: { type: string; uiPassParam?: string; cronString?: string; timeZone?: string };
+  /** Folder the output is written to, from the stream provider parameter. */
+  outputFolder?: string;
+  /** Raw trigger fields, for editing. */
+  trigger: {
+    type: string;
+    uiPassParam?: string;
+    cronString?: string;
+    timeZone?: string;
+    startTime?: Date | null;
+    endTime?: Date | null;
+    repeatInterval?: number;
+  };
 }
 
 const loose = z.union([z.string(), z.number()]).nullish();
@@ -122,6 +132,14 @@ export function describeRecurrence(trigger: z.output<typeof triggerSchema> | nul
   return '—';
 }
 
+/** "input file = /a/b.prpt:outputFile = /home/admin/Name.*" -> "/home/admin". */
+export function outputFolderOf(streamProvider: string | undefined): string | undefined {
+  const match = streamProvider ? /outputFile\s*=\s*(.+)$/.exec(streamProvider) : null;
+  if (!match) return undefined;
+  const out = match[1]!.trim();
+  return out.slice(0, out.lastIndexOf('/')) || '/';
+}
+
 /** Parses GET /getJobs. Exported for tests. */
 export function parseJobsResponse(json: unknown): ScheduledJob[] {
   return jobsSchema.parse(json).job.map((job) => {
@@ -140,11 +158,15 @@ export function parseJobsResponse(json: unknown): ScheduledJob[] {
       nextRun: asDate(job.nextRun),
       lastRun: asDate(job.lastRun),
       recurrence: describeRecurrence(job.jobTrigger),
+      outputFolder: outputFolderOf(param('ActionAdapterQuartzJob-StreamProvider')),
       trigger: {
         type: job.jobTrigger?.['@type'] ?? '',
         uiPassParam: job.jobTrigger?.uiPassParam ?? undefined,
         cronString: job.jobTrigger?.cronString ?? undefined,
         timeZone: job.jobTrigger?.timeZone ?? undefined,
+        startTime: asDate(job.jobTrigger?.startTime),
+        endTime: asDate(job.jobTrigger?.endTime),
+        repeatInterval: asNumber(job.jobTrigger?.repeatInterval),
       },
     };
   });
@@ -161,6 +183,16 @@ export interface SchedulerSource {
   status(signal?: AbortSignal): Promise<SchedulerStatus>;
   /** Pause or start the whole scheduler (administrators). */
   setStatus(running: boolean): Promise<void>;
+  /** POST /job; returns the new job id. */
+  createJob(request: object): Promise<string>;
+  /** POST /job/update; the request carries the jobId. Returns the (possibly new) job id. */
+  updateJob(request: object): Promise<string>;
+}
+
+async function postJob(path: string, request: object): Promise<string> {
+  const response = await send('POST', path, { body: JSON.stringify(request), contentType: 'application/json', accept: 'text/plain' });
+  if (!response.ok) throw new ApiError(response.status, path, `The server refused the schedule (${response.status}).`);
+  return (await response.text()).trim();
 }
 
 const jobBody = (id: string) => ({ body: JSON.stringify({ jobId: id }), contentType: 'application/json', accept: 'text/plain' });
@@ -178,4 +210,6 @@ export const httpSchedulerSource: SchedulerSource = {
     return text === 'RUNNING' ? 'running' : text === 'PAUSED' ? 'paused' : text === 'STOPPED' ? 'stopped' : 'unknown';
   },
   setStatus: (running) => sendOk('POST', `${BASE}/${running ? 'start' : 'pause'}`, { accept: 'text/plain' }),
+  createJob: (request) => postJob(`${BASE}/job`, request),
+  updateJob: (request) => postJob(`${BASE}/job/update`, request),
 };

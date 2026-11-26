@@ -328,6 +328,8 @@ export interface RepoSource {
   getSession(signal?: AbortSignal): Promise<Session>;
   /** Which file extensions open in the console, and how. */
   getOpeners(signal?: AbortSignal): Promise<Openers>;
+  /** Extensions the scheduler can run (GET /repos/executableTypes, canSchedule). */
+  getSchedulableExtensions(signal?: AbortSignal): Promise<string[]>;
   /** Creates a folder; ApiError 409 when the name is taken. */
   createFolder(path: string): Promise<void>;
 }
@@ -442,6 +444,16 @@ export const httpRepoSource: RepoSource = {
   },
   async setUserSetting(key, value) {
     await sendOk('POST', `/user-settings/${encodeURIComponent(key)}`, { body: value, contentType: 'text/plain' });
+  },
+  async getSchedulableExtensions(signal) {
+    const schema = z.object({
+      executableFileTypeDto: z
+        .union([z.object({ extension: z.string(), canSchedule: boolish }), z.array(z.object({ extension: z.string(), canSchedule: boolish }))])
+        .nullish()
+        .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
+    });
+    const types = (await getJson('/repos/executableTypes', schema, signal)).executableFileTypeDto;
+    return [...new Set(types.filter((t) => t.canSchedule).map((t) => t.extension.toLowerCase()))];
   },
   async createFolder(path) {
     const response = await send('PUT', `/repo/dirs/${toPathId(path)}`);

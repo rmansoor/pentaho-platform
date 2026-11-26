@@ -50,8 +50,8 @@ folder can be bookmarked and survives a reload.
   or Shift+arrow selects a range; Enter or double-click opens a folder.
 - **Tree:** follows the ARIA tree pattern (arrows, Home/End, Right/Left to expand or collapse). Children
   load on first expand and share the cache with the table.
-- **Toolbar:** Open (folders in Files, files in the viewer), Share, and More (Properties, favorites,
-  Move to trash). Schedule is shown but disabled until the schedule wizard exists.
+- **Toolbar:** Open (folders in Files, files in the viewer), Share, Schedule (schedulable types), and
+  More (Properties, favorites, Move to trash).
 - **Errors:** an unreachable server and a missing or forbidden folder each get their own message and a retry.
 - **Move to trash:** from the More menu or the Delete key, with an Undo toast.
 
@@ -111,11 +111,19 @@ all scheduler calls live in `src/api/scheduler.ts` for a later switch. Live quir
 - `GET /state` answers only `Accept: text/plain` (406 otherwise).
 - On the EE scheduler, `POST /job` fails with `InvalidUserName` unless the request carries the
   `ActionAdapterQuartzJob-ActionUser` job parameter (relevant for the create/edit wizard).
-- Known server bug: named days in cron strings are shifted one day earlier (`MON-FRI` is stored as
-  Quartz `1-5`, i.e. Sunday–Thursday). See `QuartzScheduler.parseDayOfWeekRecurrences` in
-  pentaho-scheduler-plugin.
+- Server bug (fixed on pentaho-scheduler-plugin branch `fix/cron-named-day-of-week`): named days in
+  cron strings were shifted one day earlier (`MON-FRI` stored as Quartz `1-5`, Sunday–Thursday).
 
-Creating and editing schedules (the recurrence wizard) and blockout times are not built yet.
+**Schedule wizard.** Schedule (Files toolbar or viewer, for types the server can schedule per
+`/api/repos/executableTypes`) and Edit (Schedules row) open a side sheet: name, output folder, repeat
+(once, every N minutes or hours, daily, weekly on chosen days, monthly on a day, or a cron expression),
+start date and time, optional end date, time zone, and a live summary. It posts the same
+`JobScheduleRequest` the GWT dialog does (`POST /job`, `POST /job/update` with `jobId`): simple
+triggers for once/minutes/hours/daily, `cronJobTrigger` for weekly/monthly/cron, with **numeric**
+Quartz days (`2-6`) so weekly schedules are right even on servers without the day-of-week fix, and the
+`ActionAdapterQuartzJob-ActionUser` parameter EE requires. When editing, start times are shown in the
+schedule's own time zone. Report parameters and email delivery in the wizard, and blockout times, are
+not built yet.
 
 ## Data sources
 

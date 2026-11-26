@@ -1,7 +1,9 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { CalendarPlus, Ellipsis, FolderOpen, Info, RefreshCw, Share2, Star, Trash2 } from 'lucide-react';
 import { Button, IconButton, Menu } from '@helix/ui';
-import { useFolder } from '../../api/repo-context';
+import { useFolder, useSchedulableExtensions } from '../../api/repo-context';
+import { extensionOfPath } from '../../api/repo';
+import { ScheduleSheet } from '../schedules/ScheduleSheet';
 import { usePickList, useToggleFavorite } from '../../api/pick-lists';
 import type { RepoItem } from '../../api/repo';
 import { FILE_COLUMNS } from './columns';
@@ -29,6 +31,7 @@ export function FilesPage({ path, onNavigate, onOpenTrash, onOpenFile }: FilesPa
   const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
   const [selection, setSelection] = useState<Selection & { path: string }>({ path, ...NO_SELECTION });
   const [properties, setProperties] = useState<{ item: RepoItem; tab: PropertiesTab } | null>(null);
+  const [scheduling, setScheduling] = useState<RepoItem | null>(null);
 
   // Selection belongs to one folder; moving to another clears it.
   const current = selection.path === path ? selection : NO_SELECTION;
@@ -63,6 +66,7 @@ export function FilesPage({ path, onNavigate, onOpenTrash, onOpenFile }: FilesPa
           onOpen={open}
           onTrash={() => trash(selectedItems)}
           onProperties={(item, tab) => setProperties({ item, tab })}
+          onSchedule={(item) => setScheduling(item)}
         />
       }
     >
@@ -90,6 +94,7 @@ export function FilesPage({ path, onNavigate, onOpenTrash, onOpenFile }: FilesPa
         />
       )}
       <PropertiesSheet item={properties?.item ?? null} initialTab={properties?.tab} onClose={() => setProperties(null)} />
+      <ScheduleSheet target={scheduling ? { kind: 'new', file: scheduling.path, title: scheduling.title } : null} onClose={() => setScheduling(null)} />
     </FilesLayout>
   );
 }
@@ -128,7 +133,6 @@ function Breadcrumb({ path, folderTitle, onNavigate }: { path: string; folderTit
   );
 }
 
-const NOT_YET = 'Coming with the next console milestone';
 const disabledLook = 'aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
 
 function Toolbar({
@@ -139,6 +143,7 @@ function Toolbar({
   onOpen,
   onTrash,
   onProperties,
+  onSchedule,
 }: {
   selected: RepoItem[];
   total?: number;
@@ -147,12 +152,22 @@ function Toolbar({
   onOpen: (item: RepoItem) => void;
   onTrash: () => void;
   onProperties: (item: RepoItem, tab: PropertiesTab) => void;
+  onSchedule: (item: RepoItem) => void;
 }) {
   const single = selected.length === 1 ? selected[0] : undefined;
   const canOpen = !!single;
   const favorites = usePickList('favorites');
   const toggleFavorite = useToggleFavorite();
   const isFavorite = !!single && !!favorites.data?.some((f) => f.fullPath === single.path);
+  const schedulable = useSchedulableExtensions();
+  const canSchedule = !!single && !single.folder && !!schedulable.data?.includes(extensionOfPath(single.path));
+  const scheduleReason = !single
+    ? 'Select one report or transformation to schedule it'
+    : single.folder
+      ? "Folders can't be scheduled"
+      : canSchedule
+        ? undefined
+        : "This type of file can't be scheduled";
   const openReason = !single ? 'Select one item to open it' : undefined;
 
   return (
@@ -183,7 +198,16 @@ function Toolbar({
       >
         Share
       </Button>
-      <PendingAction label="Schedule" icon={<CalendarPlus size={15} aria-hidden="true" />} />
+      <Button
+        size="sm"
+        icon={<CalendarPlus size={15} aria-hidden="true" />}
+        aria-disabled={!canSchedule}
+        title={scheduleReason}
+        onClick={() => canSchedule && single && onSchedule(single)}
+        className={disabledLook}
+      >
+        Schedule
+      </Button>
       <Menu
         items={[
           {
@@ -219,11 +243,3 @@ function Toolbar({
   );
 }
 
-/** Shown so the layout matches the design; explains itself instead of silently doing nothing. */
-function PendingAction({ label, icon }: { label: string; icon: ReactNode }) {
-  return (
-    <Button size="sm" icon={icon} aria-disabled="true" title={NOT_YET} className={disabledLook}>
-      {label}
-    </Button>
-  );
-}

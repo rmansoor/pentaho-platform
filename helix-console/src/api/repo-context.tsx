@@ -17,6 +17,7 @@ export const repoKeys = {
   recipients: ['repo', 'recipients'] as const,
   session: ['session'] as const,
   openers: ['openers'] as const,
+  schedulable: ['schedulable'] as const,
 };
 
 export function useRepoSource(): RepoSource {
@@ -66,4 +67,9 @@ export function useSession() {
 export function useOpeners() {
   const source = useContext(RepoSourceContext);
   return useQuery({ queryKey: repoKeys.openers, queryFn: ({ signal }) => source.getOpeners(signal), staleTime: Infinity });
+}
+
+export function useSchedulableExtensions() {
+  const source = useContext(RepoSourceContext);
+  return useQuery({ queryKey: repoKeys.schedulable, queryFn: ({ signal }) => source.getSchedulableExtensions(signal), staleTime: Infinity });
 }

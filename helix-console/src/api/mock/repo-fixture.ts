@@ -263,6 +263,9 @@ export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSourc
       await wait();
       settings.set(key, value);
     },
+    async getSchedulableExtensions() {
+      return ['kjb', 'ktr', 'prpt', 'xaction'];
+    },
     async createFolder(path) {
       await wait();
       const { parent, name } = split(path);

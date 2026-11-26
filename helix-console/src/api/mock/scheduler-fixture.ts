@@ -14,6 +14,7 @@ interface FixtureJob {
   trigger: Record<string, string>;
   nextRun?: string;
   lastRun?: string;
+  output?: string;
 }
 
 const SAMPLE: FixtureJob[] = [
@@ -53,10 +54,25 @@ export interface SchedulerFixtureOptions {
   status?: SchedulerStatus;
 }
 
-export function createFixtureSchedulerSource(options: SchedulerFixtureOptions = {}): SchedulerSource & { runs: string[] } {
+export function createFixtureSchedulerSource(
+  options: SchedulerFixtureOptions = {},
+): SchedulerSource & { runs: string[]; requests: Record<string, unknown>[] } {
   const jobs: FixtureJob[] = structuredClone(options.jobs ?? SAMPLE);
   let status: SchedulerStatus = options.status ?? 'running';
   const runs: string[] = [];
+  const requests: Record<string, unknown>[] = [];
+  let next = 100;
+  const toFixture = (r: Record<string, unknown>, id: string): FixtureJob => {
+    const simple = r.simpleJobTrigger as Record<string, unknown> | undefined;
+    const cron = r.cronJobTrigger as Record<string, unknown> | undefined;
+    const t = (simple ?? cron)!;
+    const start = new Date(Number(t.startYear) + 1900, Number(t.startMonth), Number(t.startDay), Number(t.startHour), Number(t.startMin));
+    const trigger: Record<string, string> = simple
+      ? { '@type': 'simpleJobTrigger', uiPassParam: String(simple.uiPassParam), repeatInterval: String(simple.repeatInterval), repeatCount: String(simple.repeatCount), startTime: start.toISOString() }
+      : { '@type': 'complexJobTrigger', uiPassParam: 'CRON', cronString: `${String(cron!.cronString)} *`, startTime: start.toISOString() };
+    if (r.timeZone) trigger.timeZone = String(r.timeZone);
+    return { id, name: String(r.jobName), owner: 'admin', state: 'NORMAL', input: String(r.inputFile), trigger, nextRun: start.toISOString(), output: String(r.outputFile) };
+  };
   const find = (id: string) => {
     const job = jobs.find((j) => j.id === id);
     if (!job) throw new Error(`No job ${id}`);
@@ -65,6 +81,23 @@ export function createFixtureSchedulerSource(options: SchedulerFixtureOptions = 
 
   return {
     runs,
+    requests,
+    async createJob(request) {
+      const r = request as Record<string, unknown>;
+      requests.push(r);
+      const id = `admin\t${String(r.jobName)}\t${next++}`;
+      jobs.push(toFixture(r, id));
+      return id;
+    },
+    async updateJob(request) {
+      const r = request as Record<string, unknown>;
+      requests.push(r);
+      const index = jobs.findIndex((j) => j.id === r.jobId);
+      if (index < 0) throw new Error(`No job ${String(r.jobId)}`);
+      const id = `admin\t${String(r.jobName)}\t${next++}`;
+      jobs[index] = toFixture(r, id);
+      return id;
+    },
     async listJobs() {
       return parseJobsResponse({
         job: jobs.map((j) => ({
@@ -79,6 +112,7 @@ export function createFixtureSchedulerSource(options: SchedulerFixtureOptions = 
             jobParams: [
               { name: 'ActionAdapterQuartzJob-StreamProvider-InputFile', value: j.input },
               { name: 'ActionAdapterQuartzJob-ActionUser', value: j.owner },
+              ...(j.output ? [{ name: 'ActionAdapterQuartzJob-StreamProvider', value: `input file = ${j.input}:outputFile = ${j.output}/${j.name}.*` }] : []),
             ],
           },
         })),

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, Pause, Play, RefreshCw, Search, Trash2, Zap } from 'lucide-react';
+import { CalendarClock, Pause, Pencil, Play, RefreshCw, Search, Trash2, Zap } from 'lucide-react';
 import { Button, Card, cn, Dialog, IconButton, toast } from '@helix/ui';
 import { schedulerKeys, useJobs, useSchedulerSource, useSchedulerStatus } from '../../api/scheduler-context';
 import { kindOf } from '../../api/repo';
@@ -9,6 +9,7 @@ import { FileKindIcon } from '../files/FileKindIcon';
 import { QueryError } from '../files/QueryError';
 import { formatDateTime } from '../files/format';
 import { displayFolder } from '../files/columns';
+import { ScheduleSheet } from './ScheduleSheet';
 
 const STATE_LABEL: Record<JobState, string> = {
   active: 'Active',
@@ -46,6 +47,7 @@ export function SchedulesPage() {
   const [owner, setOwner] = useState('');
   const [state, setState] = useState<'' | JobState>('');
   const [deleting, setDeleting] = useState<ScheduledJob | null>(null);
+  const [editing, setEditing] = useState<ScheduledJob | null>(null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: schedulerKeys.all });
   const act = useMutation({
@@ -253,6 +255,16 @@ export function SchedulesPage() {
                         <IconButton
                           size="sm"
                           variant="ghost"
+                          aria-label={`Edit ${job.name}`}
+                          title={job.inputFile ? 'Edit' : "This schedule's file is unknown"}
+                          aria-disabled={!job.inputFile}
+                          onClick={() => job.inputFile && setEditing(job)}
+                        >
+                          <Pencil size={16} aria-hidden="true" />
+                        </IconButton>
+                        <IconButton
+                          size="sm"
+                          variant="ghost"
                           aria-label={`Delete ${job.name}`}
                           title="Delete"
                           onClick={() => setDeleting(job)}
@@ -270,6 +282,7 @@ export function SchedulesPage() {
         )}
       </Card>
 
+      <ScheduleSheet target={editing ? { kind: 'edit', job: editing } : null} onClose={() => setEditing(null)} />
       <Dialog
         open={deleting !== null}
         onClose={() => !act.isPending && setDeleting(null)}

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Download, ExternalLink, Share2, Star } from 'lucide-react';
+import { CalendarPlus, Download, ExternalLink, Share2, Star } from 'lucide-react';
 import { Button, IconButton } from '@helix/ui';
-import { useOpeners, useRepoSource } from '../../api/repo-context';
+import { useOpeners, useRepoSource, useSchedulableExtensions } from '../../api/repo-context';
+import { ScheduleSheet } from '../schedules/ScheduleSheet';
 import { extensionOfPath, kindOf, openUrl, toPathId, type RepoItem } from '../../api/repo';
 import { parsePickList, recordRecent, serializePickList, usePickList, useToggleFavorite } from '../../api/pick-lists';
 import { API_ROOT } from '../../api/http';
@@ -33,6 +34,8 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
   const favorites = usePickList('favorites');
   const toggleFavorite = useToggleFavorite();
   const [sharing, setSharing] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const schedulable = useSchedulableExtensions();
   const recorded = useRef<string | null>(null);
 
   const folder = path.slice(0, path.lastIndexOf('/')) || '/';
@@ -89,6 +92,11 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
         <Button size="sm" icon={<Share2 size={15} aria-hidden="true" />} onClick={() => setSharing(true)}>
           Share
         </Button>
+        {schedulable.data?.includes(ext) && (
+          <Button size="sm" icon={<CalendarPlus size={15} aria-hidden="true" />} onClick={() => setScheduling(true)}>
+            Schedule
+          </Button>
+        )}
         {url && (
           <a
             href={url}
@@ -134,6 +142,7 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
       </div>
 
       <PropertiesSheet item={sharing ? item : null} initialTab="sharing" onClose={() => setSharing(false)} />
+      <ScheduleSheet target={scheduling ? { kind: 'new', file: path, title } : null} onClose={() => setScheduling(false)} />
     </div>
   );
 }
