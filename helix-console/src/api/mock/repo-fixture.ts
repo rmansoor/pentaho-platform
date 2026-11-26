@@ -263,6 +263,19 @@ export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSourc
       await wait();
       settings.set(key, value);
     },
+    async upload(folderPath, files, overwrite) {
+      await wait();
+      const folder = find(folderPath);
+      if (!folder?.children) return { ok: false, problem: 'No such folder.' };
+      if (files.some((f) => f.name.endsWith('.txt'))) return { ok: false, problem: "That type of file can't be stored in the repository." };
+      for (const file of files) {
+        const existing = folder.children.findIndex((c) => c.name === file.name);
+        if (existing >= 0 && !overwrite) continue;
+        if (existing >= 0) folder.children.splice(existing, 1);
+        folder.children.push({ name: file.name, owner: user, modified: String(Date.now()), size: file.size });
+      }
+      return { ok: true };
+    },
     async getSchedulableExtensions() {
       return ['kjb', 'ktr', 'prpt', 'xaction'];
     },

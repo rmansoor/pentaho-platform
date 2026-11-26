@@ -332,6 +332,25 @@ export interface RepoSource {
   getSchedulableExtensions(signal?: AbortSignal): Promise<string[]>;
   /** Creates a folder; ApiError 409 when the name is taken. */
   createFolder(path: string): Promise<void>;
+  /** Uploads files into a folder (zip archives are unpacked by the server). */
+  upload(folder: string, files: File[], overwrite: boolean): Promise<UploadResult>;
+}
+
+export interface UploadResult {
+  ok: boolean;
+  /** Why the server refused, in words. */
+  problem?: string;
+}
+
+/**
+ * The import endpoint answers 200 for everything and reports in the body: an HTML import log on
+ * success, "INVALID_MIME_TYPE" for types it won't store, or a log containing a stack trace.
+ */
+export function interpretImportResponse(text: string): UploadResult {
+  if (/INVALID_MIME_TYPE/.test(text)) return { ok: false, problem: "That type of file can't be stored in the repository." };
+  if (/PentahoAccessControlException|not authorized/i.test(text)) return { ok: false, problem: "You don't have permission to upload here." };
+  if (/Exception/.test(text)) return { ok: false, problem: 'The server could not import the file. It may be damaged or not a valid file of its type.' };
+  return { ok: true };
 }
 
 /** Characters the repository refuses in names (GET /repo/files/reservedCharacters). */
@@ -454,6 +473,19 @@ export const httpRepoSource: RepoSource = {
     });
     const types = (await getJson('/repos/executableTypes', schema, signal)).executableFileTypeDto;
     return [...new Set(types.filter((t) => t.canSchedule).map((t) => t.extension.toLowerCase()))];
+  },
+  async upload(folder, files, overwrite) {
+    const form = new FormData();
+    form.append('importDir', folder);
+    for (const file of files) form.append('fileUpload', file, file.name);
+    form.append('overwriteFile', String(overwrite));
+    form.append('logLevel', 'ERROR');
+    form.append('retainOwnership', 'true');
+    // Names travel separately, URI-encoded: the multipart file name is only reliable in ASCII.
+    form.append('fileNameOverride', files.map((f) => encodeURIComponent(f.name)).join(','));
+    const response = await send('POST', '/repo/files/import/multiple', { body: form, accept: 'text/html' });
+    if (!response.ok) return { ok: false, problem: `The upload failed (${response.status}).` };
+    return interpretImportResponse(await response.text());
   },
   async createFolder(path) {
     const response = await send('PUT', `/repo/dirs/${toPathId(path)}`);

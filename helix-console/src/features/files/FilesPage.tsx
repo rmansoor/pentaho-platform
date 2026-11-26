@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type DragEvent } from 'react';
 import { CalendarPlus, Ellipsis, FolderOpen, Info, RefreshCw, Share2, Star, Trash2 } from 'lucide-react';
 import { Button, IconButton, Menu } from '@helix/ui';
 import { useFolder, useSchedulableExtensions } from '../../api/repo-context';
 import { extensionOfPath } from '../../api/repo';
 import { ScheduleSheet } from '../schedules/ScheduleSheet';
+import { UploadDialog } from './UploadDialog';
 import { usePickList, useToggleFavorite } from '../../api/pick-lists';
 import type { RepoItem } from '../../api/repo';
 import { FILE_COLUMNS } from './columns';
@@ -32,6 +33,8 @@ export function FilesPage({ path, onNavigate, onOpenTrash, onOpenFile }: FilesPa
   const [selection, setSelection] = useState<Selection & { path: string }>({ path, ...NO_SELECTION });
   const [properties, setProperties] = useState<{ item: RepoItem; tab: PropertiesTab } | null>(null);
   const [scheduling, setScheduling] = useState<RepoItem | null>(null);
+  const [dropped, setDropped] = useState<File[] | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   // Selection belongs to one folder; moving to another clears it.
   const current = selection.path === path ? selection : NO_SELECTION;
@@ -49,7 +52,26 @@ export function FilesPage({ path, onNavigate, onOpenTrash, onOpenFile }: FilesPa
     moveToTrash.mutate(itemsToTrash, { onSuccess: () => setSelection({ path, ...NO_SELECTION }) });
   }
 
+  const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+
   return (
+    <div
+      onDragOver={(e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget === e.target) setDragOver(false);
+      }}
+      onDrop={(e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        setDragOver(false);
+        if (e.dataTransfer.files.length) setDropped(Array.from(e.dataTransfer.files));
+      }}
+      className={dragOver ? 'rounded-card outline-2 outline-dashed outline-accent outline-offset-4' : undefined}
+    >
     <FilesLayout
       eyebrow={<Breadcrumb path={path} folderTitle={folder.data?.folder.title} onNavigate={onNavigate} />}
       title={title}
@@ -95,7 +117,9 @@ export function FilesPage({ path, onNavigate, onOpenTrash, onOpenFile }: FilesPa
       )}
       <PropertiesSheet item={properties?.item ?? null} initialTab={properties?.tab} onClose={() => setProperties(null)} />
       <ScheduleSheet target={scheduling ? { kind: 'new', file: scheduling.path, title: scheduling.title } : null} onClose={() => setScheduling(null)} />
+      <UploadDialog open={dropped !== null} folder={path} initialFiles={dropped ?? undefined} onClose={() => setDropped(null)} />
     </FilesLayout>
+    </div>
   );
 }
 

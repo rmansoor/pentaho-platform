@@ -4,6 +4,7 @@ import { ChevronDown, Database, FolderPlus, Menu as MenuIcon, Plus, Search, Uplo
 import { Button, IconButton, Menu } from '@helix/ui';
 import { useSession } from '../api/repo-context';
 import { NewFolderDialog } from '../features/files/NewFolderDialog';
+import { UploadDialog } from '../features/files/UploadDialog';
 import { NAV_RAIL_ID } from './NavRail';
 import { useLayoutStore } from './layout-store';
 
@@ -19,6 +20,7 @@ export function TopBar({ onOpenDrawer, drawerOpen }: TopBarProps) {
   const navigate = useNavigate();
   const session = useSession();
   const [newFolder, setNewFolder] = useState(false);
+  const [uploading, setUploading] = useState(false);
   // New items go into the folder being browsed; elsewhere, into the user's home folder.
   const location = useRouterState({ select: (s) => s.location });
   const browsing = location.pathname.endsWith('/files') ? (location.search as { path?: string }).path : undefined;
@@ -51,13 +53,7 @@ export function TopBar({ onOpenDrawer, drawerOpen }: TopBarProps) {
       <Menu
         items={[
           { label: 'New folder', icon: <FolderPlus size={15} aria-hidden="true" />, onSelect: () => setNewFolder(true) },
-          {
-            label: 'Upload files',
-            icon: <Upload size={15} aria-hidden="true" />,
-            onSelect: () => {},
-            disabled: true,
-            reason: 'Coming with the next console milestone',
-          },
+          { label: 'Upload files', icon: <Upload size={15} aria-hidden="true" />, onSelect: () => setUploading(true) },
           {
             label: 'Data source',
             icon: <Database size={15} aria-hidden="true" />,
@@ -73,6 +69,7 @@ export function TopBar({ onOpenDrawer, drawerOpen }: TopBarProps) {
           </Button>
         )}
       />
+      <UploadDialog open={uploading} folder={target} onClose={() => setUploading(false)} />
       <NewFolderDialog
         open={newFolder}
         parent={target}

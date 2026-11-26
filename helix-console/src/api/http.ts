@@ -106,7 +106,8 @@ export function resetCsrfCache() {
 }
 
 export interface SendOptions {
-  body?: string;
+  /** A FormData body is sent as multipart; the browser sets its Content-Type and boundary. */
+  body?: string | FormData;
   contentType?: string;
   accept?: string;
 }
@@ -126,7 +127,11 @@ export async function send(
     doFetch(url, {
       method,
       body,
-      headers: { 'Content-Type': contentType, ...(accept ? { Accept: accept } : {}), ...(await csrfHeaders(url, refresh)) },
+      headers: {
+        ...(body instanceof FormData ? {} : { 'Content-Type': contentType }),
+        ...(accept ? { Accept: accept } : {}),
+        ...(await csrfHeaders(url, refresh)),
+      },
     });
   let response = await attempt(false);
   // A stale or missing token is rejected with 403; refetch it once.
