@@ -2,6 +2,7 @@ import { createContext, createElement, useContext, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { ApiError, getJson, send } from './http';
+import { t } from '../i18n';
 
 /*
  * Users and roles (/api/userroledao). Lists come back as {users: string | string[]} /
@@ -158,11 +159,11 @@ export const httpAdminSource: AdminSource = {
   getMailConfig: async (signal) => parseMailConfig(await getJson('/emailconfig/getEmailConfig', z.unknown(), signal)),
   async setMailConfig(config) {
     const response = await send('PUT', '/emailconfig/setEmailConfig', { body: mailConfigBody(config), contentType: 'application/json' });
-    if (!response.ok) throw new ApiError(response.status, '/emailconfig/setEmailConfig', `The settings were not saved (${response.status}).`);
+    if (!response.ok) throw new ApiError(response.status, '/emailconfig/setEmailConfig', t('common.errors.mailNotSaved', { status: response.status }));
   },
   async testMail(config) {
     const response = await send('PUT', '/emailconfig/sendEmailTest', { body: mailConfigBody(config), contentType: 'application/json', accept: 'text/plain' });
-    if (!response.ok) throw new ApiError(response.status, '/emailconfig/sendEmailTest', `The test could not run (${response.status}).`);
+    if (!response.ok) throw new ApiError(response.status, '/emailconfig/sendEmailTest', t('common.errors.mailTestFailed', { status: response.status }));
     return mailTestPassed(await response.text());
   },
 };

@@ -2,16 +2,16 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@helix/ui';
 import { repoKeys, useRepoSource } from '../../api/repo-context';
 import type { OverwriteMode, RepoItem } from '../../api/repo';
+import { t, type MessageKey } from '../../i18n';
 
-const count = (n: number, one: string) => (n === 1 ? `1 ${one}` : `${n} ${one}s`);
-const what = (items: RepoItem[]) => (items.length === 1 ? `"${items[0]!.title}"` : count(items.length, 'item'));
+const what = (items: RepoItem[]) => ({ count: items.length, name: items[0]?.title ?? '' });
 
 /** Moving to trash, restoring and deleting, with cache refresh and confirmation toasts. */
 export function useTrashActions() {
   const source = useRepoSource();
   const queryClient = useQueryClient();
   const refresh = () => queryClient.invalidateQueries({ queryKey: repoKeys.all });
-  const failed = (verb: string) => (e: Error) => toast(`Couldn't ${verb}: ${e.message}`, { tone: 'danger' });
+  const failed = (key: MessageKey) => (e: Error) => toast(t(key, { message: e.message }), { tone: 'danger' });
 
   const restore = useMutation({
     mutationFn: ({ items, mode }: { items: RepoItem[]; mode?: OverwriteMode }) =>
@@ -20,16 +20,16 @@ export function useTrashActions() {
         mode,
       ),
     onSettled: refresh,
-    onError: failed('restore'),
+    onError: failed('files.actions.restoreFailed'),
   });
 
   const moveToTrash = useMutation({
     mutationFn: (items: RepoItem[]) => source.moveToTrash(items.map((i) => i.id)),
     onSuccess: async (_, items) => {
       await refresh();
-      toast(`Moved ${what(items)} to trash`, {
+      toast(t('files.actions.movedToTrash', what(items)), {
         action: {
-          label: 'Undo',
+          label: t('files.undo'),
           // The trash knows these files by their ids; look them up so restore gets the trash entries.
           onClick: async () => {
             const trashed = await source.listTrash();
@@ -40,14 +40,14 @@ export function useTrashActions() {
         },
       });
     },
-    onError: failed('move to trash'),
+    onError: failed('files.actions.trashFailed'),
   });
 
   const deletePermanently = useMutation({
     mutationFn: (items: RepoItem[]) => source.deletePermanently(items.map((i) => i.id)),
-    onSuccess: (_, items) => toast(`Deleted ${what(items)} permanently`),
+    onSuccess: (_, items) => toast(t('files.actions.deleted', what(items))),
     onSettled: refresh,
-    onError: failed('delete'),
+    onError: failed('files.actions.deleteFailed'),
   });
 
   return { moveToTrash, restore, deletePermanently };

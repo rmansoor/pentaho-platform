@@ -213,6 +213,27 @@ SMTP password decrypted to administrators.
 removed afterwards because the finished job confuses `getContentCleanerJob`), and a daily automatic
 clean-up found from the job list.
 
+## Translations
+
+All text comes from message catalogs in `src/i18n`: English (`en/`, the source) and German (`de/`).
+Messages are ICU MessageFormat via `intl-messageformat`, so plurals and selections follow each
+language's rules (`{count, plural, one {# item} other {# items}}`). Call `t('area.key', values)` at
+render time (never at module load, before the language is known). Dates, times, numbers, relative
+times, day names and lists use `Intl` with the current locale, so they need no catalog entries.
+
+The language is the user's Pentaho locale (`GET /api/system/locale`), read once before the first
+render; without a server (`dev:mock`) the browser's language. **Account menu › Language** saves the
+choice with `POST /api/system/locale` (as PUC's language menu does) and reloads, so content the server
+renders (report prompts, embedded GWT pages) switches too. Unsupported locales fall back to English.
+
+To add a language: copy `src/i18n/de` to the new code, translate it, and add the code to `LANGUAGES`
+and the loaders in `src/i18n/index.ts`. The `Catalog` type fails the build on a missing or extra key,
+and `i18n.test.ts` fails if a message doesn't parse or uses different placeholders than English.
+Each language is its own chunk, loaded only when used.
+
+What stays in the server's language: report and parameter names, permission names (the server
+localizes them), and the browser's own date and time pickers.
+
 ## Changing data
 
 Unsafe requests go through `send()` in `src/api/http.ts`, which adds the CSRF header from

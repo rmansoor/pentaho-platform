@@ -7,6 +7,7 @@ import { contentCleanerRequest, findScheduledCleaner } from '../../api/scheduler
 import { useSession } from '../../api/repo-context';
 import { formatDateTime } from '../files/format';
 import { QueryError } from '../files/QueryError';
+import { t } from '../../i18n';
 
 const inputClass = 'h-10 rounded-control border border-border-strong bg-surface px-3 text-fg';
 
@@ -36,10 +37,10 @@ export function SettingsTab() {
     },
     onSuccess: () => {
       setConfirming(false);
-      toast(`Deleting generated files older than ${days} days`);
+      toast(t('admin.settings.deleting', { count: days }));
     },
     onSettled: refresh,
-    onError: (e: Error) => toast(`Couldn't start the clean-up: ${e.message}`, { tone: 'danger' }),
+    onError: (e: Error) => toast(t('admin.settings.startFailed', { message: e.message }), { tone: 'danger' }),
   });
 
   const turnOn = useMutation({
@@ -49,16 +50,16 @@ export function SettingsTab() {
       start.setDate(start.getDate() + 1);
       return scheduler.createJob(contentCleanerRequest(autoDays, owner, { hour, minute, start }));
     },
-    onSuccess: () => toast(`Generated files older than ${autoDays} days will be deleted every day at ${time}`),
+    onSuccess: () => toast(t('admin.settings.turnedOn', { count: autoDays, time })),
     onSettled: refresh,
-    onError: (e: Error) => toast(`Couldn't turn on the clean-up: ${e.message}`, { tone: 'danger' }),
+    onError: (e: Error) => toast(t('admin.settings.turnOnFailed', { message: e.message }), { tone: 'danger' }),
   });
 
   const turnOff = useMutation({
     mutationFn: (id: string) => scheduler.removeJob(id),
-    onSuccess: () => toast('Automatic clean-up turned off'),
+    onSuccess: () => toast(t('admin.settings.turnedOff')),
     onSettled: refresh,
-    onError: (e: Error) => toast(`Couldn't turn off the clean-up: ${e.message}`, { tone: 'danger' }),
+    onError: (e: Error) => toast(t('admin.settings.turnOffFailed', { message: e.message }), { tone: 'danger' }),
   });
 
   if (jobs.isError) return <QueryError error={jobs.error} onRetry={() => void jobs.refetch()} />;
@@ -67,49 +68,51 @@ export function SettingsTab() {
     <div className="flex max-w-[720px] flex-col gap-5">
       <Card className="flex flex-col gap-4 p-6">
         <div>
-          <h2 className="m-0 text-[17px] font-extrabold">Delete generated files</h2>
-          <p className="m-0 mt-1 text-fg-muted">Removes output that reports and schedules produced: background runs and scheduled output, not the reports themselves.</p>
+          <h2 className="m-0 text-[17px] font-extrabold">{t('admin.settings.deleteTitle')}</h2>
+          <p className="m-0 mt-1 text-fg-muted">{t('admin.settings.deleteIntro')}</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label htmlFor={daysId} className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-semibold text-fg-soft">Older than (days)</span>
+            <span className="text-[13px] font-semibold text-fg-soft">{t('admin.settings.olderThan')}</span>
             <input id={daysId} type="number" min={1} value={days} onChange={(e) => setDays(Number(e.target.value))} className={`${inputClass} w-32`} />
           </label>
           <Button size="sm" variant="danger-outline" icon={<Eraser size={15} aria-hidden="true" />} aria-disabled={!(days >= 1)} onClick={() => days >= 1 && setConfirming(true)}>
-            Delete now
+            {t('admin.settings.deleteNow')}
           </Button>
         </div>
       </Card>
 
       <Card className="flex flex-col gap-4 p-6">
         <div>
-          <h2 className="m-0 text-[17px] font-extrabold">Automatic clean-up</h2>
-          <p className="m-0 mt-1 text-fg-muted">Runs every day and deletes generated files older than the age you set.</p>
+          <h2 className="m-0 text-[17px] font-extrabold">{t('admin.settings.autoTitle')}</h2>
+          <p className="m-0 mt-1 text-fg-muted">{t('admin.settings.autoIntro')}</p>
         </div>
         {jobs.isPending ? (
-          <p className="m-0 text-fg-muted">Checking…</p>
+          <p className="m-0 text-fg-muted">{t('admin.settings.checking')}</p>
         ) : scheduled ? (
           <div role="status" className="flex flex-wrap items-center gap-3 rounded-card bg-accent-soft px-4 py-3">
             <span className="flex-1">
-              <strong>On.</strong> Deletes files older than {scheduled.olderThanDays} days, every day
-              {scheduled.job.nextRun ? `; next run ${formatDateTime(scheduled.job.nextRun)}` : ''}.
+              <strong>{t('admin.settings.on')}</strong>{' '}
+              {scheduled.job.nextRun
+                ? t('admin.settings.onDetailNext', { count: scheduled.olderThanDays, when: formatDateTime(scheduled.job.nextRun) })
+                : t('admin.settings.onDetail', { count: scheduled.olderThanDays })}
             </span>
             <Button size="sm" onClick={() => turnOff.mutate(scheduled.job.id)} aria-disabled={turnOff.isPending}>
-              Turn off
+              {t('admin.settings.turnOff')}
             </Button>
           </div>
         ) : (
           <div className="flex flex-wrap items-end gap-3">
             <label htmlFor={autoDaysId} className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-semibold text-fg-soft">Older than (days)</span>
+              <span className="text-[13px] font-semibold text-fg-soft">{t('admin.settings.olderThan')}</span>
               <input id={autoDaysId} type="number" min={1} value={autoDays} onChange={(e) => setAutoDays(Number(e.target.value))} className={`${inputClass} w-32`} />
             </label>
             <label htmlFor={timeId} className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-semibold text-fg-soft">Every day at</span>
+              <span className="text-[13px] font-semibold text-fg-soft">{t('admin.settings.everyDayAt')}</span>
               <input id={timeId} type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`${inputClass} w-36`} />
             </label>
             <Button size="sm" variant="primary" aria-disabled={!(autoDays >= 1) || turnOn.isPending} onClick={() => autoDays >= 1 && !turnOn.isPending && turnOn.mutate()}>
-              Turn on
+              {t('admin.settings.turnOn')}
             </Button>
           </div>
         )}
@@ -118,15 +121,15 @@ export function SettingsTab() {
       <Dialog
         open={confirming}
         onClose={() => !deleteNow.isPending && setConfirming(false)}
-        title={`Delete generated files older than ${days} days?`}
-        description="Output older than that is removed from every user's folders. This can't be undone."
+        title={t('admin.settings.confirmTitle', { count: days })}
+        description={t('admin.settings.confirmDescription')}
         actions={
           <>
             <Button size="sm" onClick={() => setConfirming(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button size="sm" variant="danger" aria-disabled={deleteNow.isPending} onClick={() => !deleteNow.isPending && deleteNow.mutate()}>
-              {deleteNow.isPending ? 'Starting…' : 'Delete'}
+              {deleteNow.isPending ? t('admin.settings.starting') : t('common.delete')}
             </Button>
           </>
         }

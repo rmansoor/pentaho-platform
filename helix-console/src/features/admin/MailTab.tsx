@@ -4,6 +4,7 @@ import { Send } from 'lucide-react';
 import { Button, Card, Checkbox, toast } from '@helix/ui';
 import { adminKeys, useAdminSource, useMailConfig, type MailConfig } from '../../api/admin';
 import { QueryError } from '../files/QueryError';
+import { t } from '../../i18n';
 
 const inputClass = 'h-10 w-full rounded-control border border-border-strong bg-surface px-3 text-fg';
 
@@ -36,7 +37,7 @@ export function MailTab() {
     mutationFn: (config: MailConfig) => source.setMailConfig(config),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: adminKeys.mail });
-      toast('Mail server settings saved');
+      toast(t('admin.mail.saved'));
     },
     onError: (e: Error) => toast(e.message, { tone: 'danger' }),
   });
@@ -44,23 +45,23 @@ export function MailTab() {
     mutationFn: (config: MailConfig) => source.testMail(config),
     onSuccess: (passed) =>
       passed
-        ? toast('Test email sent. Check the From address’s inbox.')
-        : toast("The test email couldn't be sent. Check the server, port, security and sign-in settings.", { tone: 'danger' }),
+        ? toast(t('admin.mail.testSent'))
+        : toast(t('admin.mail.testFailed'), { tone: 'danger' }),
     onError: (e: Error) => toast(e.message, { tone: 'danger' }),
   });
 
   if (saved.isError) return <QueryError error={saved.error} onRetry={() => void saved.refetch()} />;
-  if (!form) return <p className="m-0 text-fg-muted">Loading mail settings…</p>;
+  if (!form) return <p className="m-0 text-fg-muted">{t('admin.mail.loading')}</p>;
 
   const set = <K extends keyof MailConfig>(key: K, value: MailConfig[K]) => setForm({ ...form, [key]: value });
   const problem = !form.smtpHost.trim()
-    ? 'Enter the mail server'
+    ? t('admin.mail.problems.host')
     : !(form.smtpPort > 0 && form.smtpPort < 65536)
-      ? 'Enter a port between 1 and 65535'
+      ? t('admin.mail.problems.port')
       : !/^\S+@\S+\.\S+$/.test(form.defaultFrom)
-        ? 'Enter the address mail is sent from'
+        ? t('admin.mail.problems.from')
         : form.authenticate && !form.userId.trim()
-          ? 'Enter the user name for signing in'
+          ? t('admin.mail.problems.user')
           : null;
   const dirty = JSON.stringify(form) !== JSON.stringify(saved.data);
 
@@ -73,14 +74,14 @@ export function MailTab() {
     <Card className="max-w-[720px] p-6">
       <form id={formId} onSubmit={submit} className="flex flex-col gap-5">
         <div className="grid grid-cols-[minmax(0,1fr)_120px] gap-3">
-          <Field label="Mail server (SMTP host)">
+          <Field label={t('admin.mail.host')}>
             {(id) => <input id={id} value={form.smtpHost} onChange={(e) => set('smtpHost', e.target.value)} placeholder="smtp.example.com" className={inputClass} />}
           </Field>
-          <Field label="Port">
+          <Field label={t('admin.mail.port')}>
             {(id) => <input id={id} type="number" value={form.smtpPort} onChange={(e) => set('smtpPort', Number(e.target.value))} className={inputClass} />}
           </Field>
         </div>
-        <Field label="Protocol">
+        <Field label={t('admin.mail.protocol')}>
           {(id) => (
             <select id={id} value={form.smtpProtocol} onChange={(e) => set('smtpProtocol', e.target.value)} className={`${inputClass} w-48`}>
               <option value="smtp">SMTP</option>
@@ -89,19 +90,19 @@ export function MailTab() {
           )}
         </Field>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <Checkbox label="Use SSL" checked={form.useSsl} onChange={(v) => set('useSsl', v)} />
-          <Checkbox label="Use STARTTLS" checked={form.useStartTls} onChange={(v) => set('useStartTls', v)} />
+          <Checkbox label={t('admin.mail.useSsl')} checked={form.useSsl} onChange={(v) => set('useSsl', v)} />
+          <Checkbox label={t('admin.mail.useStartTls')} checked={form.useStartTls} onChange={(v) => set('useStartTls', v)} />
         </div>
 
         <fieldset className="m-0 flex flex-col gap-3 border-0 border-t border-divider p-0 pt-5">
-          <legend className="sr-only">Sign-in</legend>
-          <Checkbox label="The server requires signing in" checked={form.authenticate} onChange={(v) => set('authenticate', v)} />
+          <legend className="sr-only">{t('admin.mail.signIn')}</legend>
+          <Checkbox label={t('admin.mail.authenticate')} checked={form.authenticate} onChange={(v) => set('authenticate', v)} />
           {form.authenticate && (
             <div className="grid grid-cols-2 gap-3">
-              <Field label="User name">
+              <Field label={t('admin.mail.user')}>
                 {(id) => <input id={id} value={form.userId} autoComplete="off" onChange={(e) => set('userId', e.target.value)} className={inputClass} />}
               </Field>
-              <Field label="Password">
+              <Field label={t('admin.mail.password')}>
                 {(id) => <input id={id} type="password" value={form.password} autoComplete="new-password" onChange={(e) => set('password', e.target.value)} className={inputClass} />}
               </Field>
             </div>
@@ -109,10 +110,10 @@ export function MailTab() {
         </fieldset>
 
         <div className="grid grid-cols-2 gap-3 border-t border-divider pt-5">
-          <Field label="From address">
+          <Field label={t('admin.mail.from')}>
             {(id) => <input id={id} type="email" value={form.defaultFrom} onChange={(e) => set('defaultFrom', e.target.value)} className={inputClass} />}
           </Field>
-          <Field label="From name">
+          <Field label={t('admin.mail.fromName')}>
             {(id) => <input id={id} value={form.fromName} onChange={(e) => set('fromName', e.target.value)} className={inputClass} />}
           </Field>
         </div>
@@ -123,13 +124,13 @@ export function MailTab() {
             size="sm"
             icon={<Send size={15} aria-hidden="true" />}
             aria-disabled={!!problem || test.isPending}
-            title={problem ?? 'Sends a test message to the From address with these settings'}
+            title={problem ?? t('admin.mail.testHint')}
             onClick={() => !problem && !test.isPending && test.mutate(form)}
           >
-            {test.isPending ? 'Sending…' : 'Send test email'}
+            {test.isPending ? t('admin.mail.sending') : t('admin.mail.sendTest')}
           </Button>
-          <Button size="sm" variant="primary" type="submit" form={formId} aria-disabled={!!problem || !dirty || save.isPending} title={problem ?? (dirty ? undefined : 'No changes to save')}>
-            {save.isPending ? 'Saving…' : 'Save'}
+          <Button size="sm" variant="primary" type="submit" form={formId} aria-disabled={!!problem || !dirty || save.isPending} title={problem ?? (dirty ? undefined : t('files.props.noChanges'))}>
+            {save.isPending ? t('common.saving') : t('common.save')}
           </Button>
         </div>
       </form>

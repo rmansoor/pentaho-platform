@@ -1,4 +1,5 @@
 import type { ScheduledJob } from '../../api/scheduler';
+import { currentLocale, t } from '../../i18n';
 
 /*
  * The schedule wizard's state and its translation to the scheduler plugin's JobScheduleRequest.
@@ -141,15 +142,21 @@ export interface ScheduleForm {
 /** The "when" part of a schedule, shared with blockout times. */
 export type Recurrence = Pick<ScheduleForm, 'repeat' | 'interval' | 'weekdays' | 'dayOfMonth' | 'cron' | 'startDate' | 'startTime' | 'endDate' | 'timeZone'>;
 
-export const WEEKDAYS: { value: number; short: string; long: string }[] = [
-  { value: 2, short: 'Mon', long: 'Monday' },
-  { value: 3, short: 'Tue', long: 'Tuesday' },
-  { value: 4, short: 'Wed', long: 'Wednesday' },
-  { value: 5, short: 'Thu', long: 'Thursday' },
-  { value: 6, short: 'Fri', long: 'Friday' },
-  { value: 7, short: 'Sat', long: 'Saturday' },
-  { value: 1, short: 'Sun', long: 'Sunday' },
-];
+/** Day names in the console's language: 2026-11-01 was a Sunday, so Quartz day d is 2026-11-(d). */
+const dayName = (quartzDay: number, weekday: 'short' | 'long') =>
+  new Intl.DateTimeFormat(currentLocale(), { weekday, timeZone: 'UTC' }).format(Date.UTC(2026, 10, quartzDay));
+const weekday = (value: number) => ({
+  value,
+  get short() {
+    return dayName(value, 'short');
+  },
+  get long() {
+    return dayName(value, 'long');
+  },
+});
+
+/** Monday first, as the GWT dialog lists them. */
+export const WEEKDAYS: { value: number; readonly short: string; readonly long: string }[] = [2, 3, 4, 5, 6, 7, 1].map(weekday);
 
 const pad = (n: number) => String(n).padStart(2, '0');
 export const localDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -181,28 +188,28 @@ export function newScheduleForm(file: string, home: string, now = new Date(), ti
 
 /** Why the form can't be saved yet, or null. */
 export function scheduleFormProblem(form: ScheduleForm): string | null {
-  if (!form.name.trim()) return 'Give the schedule a name';
-  if (/[\\/\t]/.test(form.name)) return 'Names can\'t contain "/", "\\" or tabs';
-  if (!form.outputFolder.startsWith('/')) return 'Choose a folder for the output';
+  if (!form.name.trim()) return t('schedules.form.problems.name');
+  if (/[\\/\t]/.test(form.name)) return t('schedules.form.problems.nameCharacters');
+  if (!form.outputFolder.startsWith('/')) return t('schedules.form.problems.folder');
   return recurrenceProblem(form) ?? emailProblem(form.email);
 }
 
 /** Why a recurrence isn't complete yet, or null. */
 export function recurrenceProblem(form: Recurrence): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(form.startDate) || !/^\d{2}:\d{2}$/.test(form.startTime)) return 'Choose when it starts';
-  if ((form.repeat === 'minutes' || form.repeat === 'hours') && !(form.interval >= 1)) return 'Enter how often it repeats';
-  if (form.repeat === 'weekly' && form.weekdays.length === 0) return 'Choose at least one day';
-  if (form.repeat === 'monthly' && !(form.dayOfMonth >= 1 && form.dayOfMonth <= 31)) return 'Choose a day of the month';
-  if (form.repeat === 'cron' && form.cron.trim().split(/\s+/).length < 6) return 'A cron expression has at least six fields';
-  if (form.endDate && form.endDate < form.startDate) return 'The end date is before the start date';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(form.startDate) || !/^\d{2}:\d{2}$/.test(form.startTime)) return t('schedules.form.problems.start');
+  if ((form.repeat === 'minutes' || form.repeat === 'hours') && !(form.interval >= 1)) return t('schedules.form.problems.interval');
+  if (form.repeat === 'weekly' && form.weekdays.length === 0) return t('schedules.form.problems.day');
+  if (form.repeat === 'monthly' && !(form.dayOfMonth >= 1 && form.dayOfMonth <= 31)) return t('schedules.form.problems.dayOfMonth');
+  if (form.repeat === 'cron' && form.cron.trim().split(/\s+/).length < 6) return t('schedules.form.problems.cron');
+  if (form.endDate && form.endDate < form.startDate) return t('schedules.form.problems.endBeforeStart');
   return null;
 }
 
 function emailProblem(email: ScheduleEmail): string | null {
   if (!email.enabled) return null;
-  if (addressProblem(email.to, false)) return 'Enter valid email addresses to send to';
-  if (addressProblem(email.cc, true) || addressProblem(email.bcc, true)) return 'Check the Cc and Bcc addresses';
-  if (!email.attachmentName.trim()) return 'Name the attachment';
+  if (addressProblem(email.to, false)) return t('schedules.form.problems.emailTo');
+  if (addressProblem(email.cc, true) || addressProblem(email.bcc, true)) return t('schedules.form.problems.emailCc');
+  if (!email.attachmentName.trim()) return t('schedules.form.problems.attachment');
   return null;
 }
 
@@ -267,23 +274,27 @@ export function describeForm(form: Recurrence): string {
   const at = form.startTime;
   switch (form.repeat) {
     case 'once':
-      return `Once, on ${form.startDate} at ${at}`;
+      return t('schedules.describe.once', { date: form.startDate, time: at });
     case 'minutes':
-      return form.interval === 1 ? 'Every minute' : `Every ${form.interval} minutes`;
+      return t('schedules.describe.minutes', { count: form.interval });
     case 'hours':
-      return form.interval === 1 ? 'Every hour' : `Every ${form.interval} hours`;
+      return t('schedules.describe.hours', { count: form.interval });
     case 'daily':
-      return `Every day at ${at}`;
-    case 'weekly': {
-      const names = WEEKDAYS.filter((d) => form.weekdays.includes(d.value)).map((d) => d.short);
-      const weekdaysOnly = weekdaysToCron(form.weekdays) === '2-6';
-      return `${weekdaysOnly ? 'Weekdays' : names.join(', ') || 'No days'} at ${at}`;
-    }
+      return t('schedules.describe.daily', { time: at });
+    case 'weekly':
+      return t('schedules.describe.weekly', { days: describeWeekdays(form.weekdays), time: at });
     case 'monthly':
-      return `Monthly on day ${form.dayOfMonth} at ${at}`;
+      return t('schedules.describe.monthly', { day: form.dayOfMonth, time: at });
     case 'cron':
-      return `Cron: ${form.cron.trim()}`;
+      return t('schedules.describe.cron', { cron: form.cron.trim() });
   }
+}
+
+/** "Weekdays", or the chosen days' short names in the console's language. */
+export function describeWeekdays(days: number[]): string {
+  if (weekdaysToCron(days) === '2-6') return t('schedules.describe.weekdays');
+  const names = WEEKDAYS.filter((d) => days.includes(d.value)).map((d) => d.short);
+  return names.length ? new Intl.ListFormat(currentLocale(), { style: 'short', type: 'unit' }).format(names) : t('schedules.describe.noDays');
 }
 
 /** Date and time of `date` as seen in `timeZone` ("2026-11-26", "06:30"). */

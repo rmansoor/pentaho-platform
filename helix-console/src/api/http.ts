@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { t } from '../i18n';
 
 /** Platform REST root. The console is served from /pentaho/console/, the API from /pentaho/api. */
 export const API_ROOT: string = import.meta.env.VITE_API_ROOT ?? '/pentaho/api';
@@ -38,12 +39,12 @@ async function doFetch(url: string, init: RequestInit): Promise<Response> {
     response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...init });
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === 'AbortError') throw cause;
-    throw new ApiError(0, url, 'Could not reach the Pentaho Server.');
+    throw new ApiError(0, url, t('common.errors.serverUnreachable'));
   }
   // Without a session the server redirects to its login page and fetch follows the redirect,
   // so a signed-out call "succeeds" with HTML. Treat that as 401.
   if (response.redirected && /\/Login\b/i.test(response.url)) {
-    throw new ApiError(401, url, 'Not signed in.');
+    throw new ApiError(401, url, t('common.errors.notSignedIn'));
   }
   return response;
 }

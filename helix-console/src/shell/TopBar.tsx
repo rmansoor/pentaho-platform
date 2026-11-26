@@ -8,6 +8,7 @@ import { UploadDialog } from '../features/files/UploadDialog';
 import { ConnectionSheet } from '../features/datasources/ConnectionSheet';
 import { NAV_RAIL_ID } from './NavRail';
 import { useLayoutStore } from './layout-store';
+import { t } from '../i18n';
 
 export interface TopBarProps {
   onOpenDrawer: () => void;
@@ -31,7 +32,7 @@ export function TopBar({ onOpenDrawer, drawerOpen }: TopBarProps) {
     <header className="flex h-topbar shrink-0 items-center gap-3 px-4 md:px-8">
       <IconButton
         variant="ghost"
-        aria-label="Open menu"
+        aria-label={t('shell.openMenu')}
         aria-controls={`${NAV_RAIL_ID}-drawer`}
         aria-expanded={drawerOpen}
         onClick={onOpenDrawer}
@@ -49,22 +50,22 @@ export function TopBar({ onOpenDrawer, drawerOpen }: TopBarProps) {
         className="hidden h-[42px] w-[300px] max-w-full items-center gap-2 rounded-[12px] border border-border bg-surface px-3.5 text-left text-fg-muted sm:flex"
       >
         <Search size={16} strokeWidth={2} aria-hidden="true" />
-        <span className="flex-1">Search Helix</span>
+        <span className="flex-1">{t('shell.search')}</span>
         <kbd className="font-mono text-[11px]">{mac ? '⌘K' : 'Ctrl K'}</kbd>
       </button>
       <Menu
         items={[
-          { label: 'New folder', icon: <FolderPlus size={15} aria-hidden="true" />, onSelect: () => setNewFolder(true) },
-          { label: 'Upload files', icon: <Upload size={15} aria-hidden="true" />, onSelect: () => setUploading(true) },
+          { label: t('shell.newFolder'), icon: <FolderPlus size={15} aria-hidden="true" />, onSelect: () => setNewFolder(true) },
+          { label: t('shell.uploadFiles'), icon: <Upload size={15} aria-hidden="true" />, onSelect: () => setUploading(true) },
           {
-            label: 'Database connection',
+            label: t('shell.databaseConnection'),
             icon: <Database size={15} aria-hidden="true" />,
             onSelect: () => setConnection(true),
           },
         ]}
         trigger={(props) => (
           <Button variant="primary" icon={<Plus size={16} strokeWidth={2.4} aria-hidden="true" />} {...props}>
-            New
+            {t('shell.new')}
             <ChevronDown size={14} aria-hidden="true" />
           </Button>
         )}

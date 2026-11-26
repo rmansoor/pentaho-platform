@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { toast } from '@helix/ui';
 import { useRepoSource } from './repo-context';
 import { kindOf, type FileKind } from './repo';
+import { t } from '../i18n';
 
 /*
  * Favorites and recents, stored as per-user settings in the same JSON the GWT console writes
@@ -93,7 +94,7 @@ export function useToggleFavorite() {
     },
     onSuccess: ({ next, added }, { title }) => {
       queryClient.setQueryData(queryKey, next);
-      toast(added ? `Added "${title}" to favorites` : `Removed "${title}" from favorites`);
+      toast(t(added ? 'common.favoriteAdded' : 'common.favoriteRemoved', { name: title }));
     },
     onError: (e: Error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);

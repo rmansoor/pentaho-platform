@@ -36,7 +36,7 @@ export function toast(message: string, options: Omit<Toast, 'id' | 'message'> = 
 
 const DURATION_MS = 6000;
 
-function ToastItem({ t }: { t: Toast }) {
+function ToastItem({ t, dismissLabel }: { t: Toast; dismissLabel: string }) {
   const dismiss = useToasts((s) => s.dismiss);
   useEffect(() => {
     const timer = setTimeout(() => dismiss(t.id), DURATION_MS);
@@ -65,7 +65,7 @@ function ToastItem({ t }: { t: Toast }) {
       )}
       <button
         type="button"
-        aria-label="Dismiss"
+        aria-label={dismissLabel}
         onClick={() => dismiss(t.id)}
         className="grid size-8 place-items-center rounded-[8px] hover:bg-rail-hover"
       >
@@ -76,7 +76,8 @@ function ToastItem({ t }: { t: Toast }) {
 }
 
 /** Mount once in the shell. Announced politely to screen readers. */
-export function Toaster() {
+/** `dismissLabel` is the close button's accessible name, in the app's language. */
+export function Toaster({ dismissLabel = 'Dismiss' }: { dismissLabel?: string }) {
   const toasts = useToasts((s) => s.toasts);
   return (
     <div
@@ -85,7 +86,7 @@ export function Toaster() {
       className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex flex-col items-center gap-2 px-4"
     >
       {toasts.map((t) => (
-        <ToastItem key={t.id} t={t} />
+        <ToastItem key={t.id} t={t} dismissLabel={dismissLabel} />
       ))}
     </div>
   );

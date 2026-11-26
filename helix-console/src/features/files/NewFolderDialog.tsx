@@ -4,6 +4,7 @@ import { Button, Dialog, toast } from '@helix/ui';
 import { repoKeys, useRepoSource } from '../../api/repo-context';
 import { RESERVED_NAME_CHARACTERS } from '../../api/repo';
 import { displayFolder } from './columns';
+import { t } from '../../i18n';
 
 export interface NewFolderDialogProps {
   open: boolean;
@@ -16,10 +17,10 @@ export interface NewFolderDialogProps {
 /** Explains a name the repository will refuse, or null when it's fine. */
 export function folderNameProblem(name: string): string | null {
   const trimmed = name.trim();
-  if (!trimmed) return 'Enter a name';
-  if (trimmed === '.' || trimmed === '..') return 'That name is reserved';
+  if (!trimmed) return t('files.newFolder.enterName');
+  if (trimmed === '.' || trimmed === '..') return t('files.newFolder.reserved');
   const bad = RESERVED_NAME_CHARACTERS.find((c) => trimmed.includes(c));
-  if (bad) return `Names can't contain ${bad === '\t' ? 'tabs' : `"${bad}"`}`;
+  if (bad) return bad === '\t' ? t('files.newFolder.noTabs') : t('files.newFolder.badCharacter', { character: bad });
   return null;
 }
 
@@ -37,7 +38,7 @@ export function NewFolderDialog({ open, parent, onClose, onCreated }: NewFolderD
     mutationFn: (path: string) => source.createFolder(path),
     onSuccess: async (_, path) => {
       await queryClient.invalidateQueries({ queryKey: repoKeys.folder(parent) });
-      toast(`Created folder "${name.trim()}"`, onCreated ? { action: { label: 'Open', onClick: () => onCreated(path) } } : {});
+      toast(t('files.newFolder.created', { name: name.trim() }), onCreated ? { action: { label: t('files.open'), onClick: () => onCreated(path) } } : {});
       onClose();
     },
     onError: (e: Error) => toast(e.message, { tone: 'danger' }),
@@ -54,22 +55,22 @@ export function NewFolderDialog({ open, parent, onClose, onCreated }: NewFolderD
     <Dialog
       open={open}
       onClose={onClose}
-      title="New folder"
-      description={`In ${displayFolder(parent)}`}
+      title={t('files.newFolder.title')}
+      description={t('files.newFolder.in', { folder: displayFolder(parent) })}
       actions={
         <>
           <Button size="sm" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button size="sm" variant="primary" type="submit" form={formId} aria-disabled={!!problem || create.isPending} title={problem ?? undefined}>
-            Create
+            {t('files.newFolder.create')}
           </Button>
         </>
       }
     >
       <form id={formId} onSubmit={submit} className="flex flex-col gap-1.5">
         <label htmlFor={inputId} className="text-[13px] font-semibold text-fg-soft">
-          Name
+          {t('files.newFolder.name')}
         </label>
         <input
           id={inputId}

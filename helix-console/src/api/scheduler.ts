@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ApiError, getJson, getText, PLUGIN_ROOT, send, sendOk } from './http';
 import { toPathId } from './repo';
+import { currentLocale, t, type MessageKey } from '../i18n';
 
 /*
  * Scheduler plugin REST API (v1): /pentaho/plugin/scheduler-plugin/api/scheduler/...
@@ -105,42 +106,66 @@ const STATE: Record<string, JobState> = {
   BLOCKED: 'blocked',
 };
 
-const timeFormat = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
-const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+const timeFormat = () => new Intl.DateTimeFormat(currentLocale(), { hour: 'numeric', minute: '2-digit' });
+const dateFormat = () => new Intl.DateTimeFormat(currentLocale(), { dateStyle: 'medium', timeStyle: 'short' });
 
-const UNIT: Record<number, [string, string]> = {
-  1: ['second', 'seconds'],
-  60: ['minute', 'minutes'],
-  3600: ['hour', 'hours'],
-  86400: ['day', 'days'],
-  604800: ['week', 'weeks'],
+const UNIT: Record<number, MessageKey> = {
+  1: 'schedules.describe.seconds',
+  60: 'schedules.describe.minutes',
+  3600: 'schedules.describe.hours',
+  86400: 'schedules.describe.days',
+  604800: 'schedules.describe.weeks',
 };
+
+const DAY_NAMES = (days: number[]) =>
+  new Intl.ListFormat(currentLocale(), { style: 'short', type: 'unit' }).format(
+    days.map((d) => new Intl.DateTimeFormat(currentLocale(), { weekday: 'short', timeZone: 'UTC' }).format(Date.UTC(2026, 10, d))),
+  );
+
+/** The weekly and monthly cron expressions the console writes, described in the console's language. */
+function describeCron(cron: string): string | null {
+  const pad = (n: string) => n.padStart(2, '0');
+  const weekly = /^0 (\d+) (\d+) \? \* ([\d,-]+)(?: \*)?$/.exec(cron.trim());
+  if (weekly) {
+    const days = weekly[3]!.split(',').flatMap((part) => {
+      const [a, b] = part.split('-').map(Number) as [number, number | undefined];
+      return b === undefined ? [a] : Array.from({ length: b - a + 1 }, (_, i) => a + i);
+    });
+    const sorted = [...days.filter((d) => d !== 1), ...days.filter((d) => d === 1)];
+    const names = weekly[3] === '2-6' ? t('schedules.describe.weekdays') : DAY_NAMES(sorted);
+    return t('schedules.describe.weekly', { days: names, time: `${pad(weekly[2]!)}:${pad(weekly[1]!)}` });
+  }
+  const monthly = /^0 (\d+) (\d+) (\d+) \* \?(?: \*)?$/.exec(cron.trim());
+  if (monthly) return t('schedules.describe.monthly', { day: Number(monthly[3]), time: `${pad(monthly[2]!)}:${pad(monthly[1]!)}` });
+  return null;
+}
 
 /** A schedule's recurrence in plain words, from the fields the server sends. */
 export function describeRecurrence(trigger: z.output<typeof triggerSchema> | null | undefined): string {
   if (!trigger) return '—';
   const start = asDate(trigger.startTime);
-  const at = start ? ` at ${timeFormat.format(start)}` : '';
   const type = trigger['@type'] ?? '';
   const count = asNumber(trigger.repeatCount);
   const interval = asNumber(trigger.repeatInterval) ?? 0;
 
   if (trigger.uiPassParam === 'RUN_ONCE' || (type === 'simpleJobTrigger' && count === 0)) {
-    return start ? `Once, ${dateFormat.format(start)}` : 'Once';
+    return start ? t('schedules.describe.onceAt', { when: dateFormat().format(start) }) : t('schedules.describe.onceBare');
   }
   if (type === 'simpleJobTrigger' && interval > 0) {
     // Largest unit that divides the interval evenly: 86400 -> "day", 7200 -> "2 hours".
     const size = [604800, 86400, 3600, 60, 1].find((s) => interval % s === 0) ?? 1;
     const n = interval / size;
-    const [one, many] = UNIT[size]!;
-    const every = n === 1 ? `Every ${one}` : `Every ${n} ${many}`;
-    return size >= 86400 ? `${every}${at}` : every;
+    const every = t(UNIT[size]!, { count: n });
+    return size >= 86400 && start ? t('schedules.describe.atTime', { every, time: timeFormat().format(start) }) : every;
   }
-  if (trigger.cronDescription) {
+  const own = trigger.cronString ? describeCron(trigger.cronString) : null;
+  if (own) return own;
+  // The server describes other expressions in English only.
+  if (trigger.cronDescription && currentLocale().startsWith('en')) {
     const text = trigger.cronDescription.trim();
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
-  if (trigger.cronString) return `Cron: ${trigger.cronString}`;
+  if (trigger.cronString) return t('schedules.describe.cron', { cron: trigger.cronString });
   return '—';
 }
 
@@ -230,7 +255,7 @@ export interface SchedulerSource {
 
 async function postJob(path: string, request: object): Promise<string> {
   const response = await send('POST', path, { body: JSON.stringify(request), contentType: 'application/json', accept: 'text/plain' });
-  if (!response.ok) throw new ApiError(response.status, path, `The server refused the schedule (${response.status}).`);
+  if (!response.ok) throw new ApiError(response.status, path, t('common.errors.scheduleRefused', { status: response.status }));
   return (await response.text()).trim();
 }
 
@@ -270,7 +295,7 @@ export const httpSchedulerSource: SchedulerSource = {
   async blockStatus(request) {
     const path = `${BASE}/blockout/blockstatus`;
     const response = await send('POST', path, { body: JSON.stringify(request), contentType: 'application/json', accept: 'application/json' });
-    if (!response.ok) throw new ApiError(response.status, path, `The server couldn't check blockouts (${response.status}).`);
+    if (!response.ok) throw new ApiError(response.status, path, t('common.errors.blockoutCheck', { status: response.status }));
     const json = (await response.json()) as { totallyBlocked?: unknown; partiallyBlocked?: unknown };
     return { totallyBlocked: String(json.totallyBlocked) === 'true', partiallyBlocked: String(json.partiallyBlocked) === 'true' };
   },

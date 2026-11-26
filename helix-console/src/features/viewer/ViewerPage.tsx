@@ -10,6 +10,7 @@ import { API_ROOT } from '../../api/http';
 import { displayFolder } from '../files/columns';
 import { PropertiesSheet } from '../files/PropertiesSheet';
 import { ContentFrame } from './ContentFrame';
+import { t } from '../../i18n';
 
 export interface ViewerPageProps {
   path: string;
@@ -66,7 +67,7 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
     <div className="-mx-4 -mb-6 flex h-[calc(100dvh-var(--hx-topbar-h))] flex-col md:-mx-8">
       <header className="flex flex-wrap items-center gap-3 px-4 pb-3 md:px-8">
         <div className="min-w-0 flex-1">
-          <nav aria-label="Breadcrumb" className="text-[13px] text-fg-muted">
+          <nav aria-label={t('files.breadcrumb')} className="text-[13px] text-fg-muted">
             <a
               href={`?path=${encodeURIComponent(folder)}`}
               onClick={(e) => {
@@ -83,19 +84,19 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
         <IconButton
           size="sm"
           variant="ghost"
-          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          aria-label={isFavorite ? t('files.removeFavorite') : t('files.addFavorite')}
           aria-pressed={isFavorite}
-          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          title={isFavorite ? t('files.removeFavorite') : t('files.addFavorite')}
           onClick={() => toggleFavorite.mutate({ path, title, kind: item.kind })}
         >
           <Star size={16} aria-hidden="true" className={isFavorite ? 'fill-highlight text-highlight' : undefined} />
         </IconButton>
         <Button size="sm" icon={<Share2 size={15} aria-hidden="true" />} onClick={() => setSharing(true)}>
-          Share
+          {t('files.share')}
         </Button>
         {schedulable.data?.includes(ext) && (
           <Button size="sm" icon={<CalendarPlus size={15} aria-hidden="true" />} onClick={() => setScheduling(true)}>
-            Schedule
+            {t('files.schedule')}
           </Button>
         )}
         {url && (
@@ -106,14 +107,14 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
             className="inline-flex h-9 items-center gap-2 rounded-control border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-fg no-underline hover:bg-accent-soft"
           >
             <ExternalLink size={15} aria-hidden="true" />
-            Open in new window
+            {t('files.viewer.newWindow')}
           </a>
         )}
       </header>
 
       <div className="min-h-0 flex-1 border-t border-divider bg-surface">
         {openers.isPending ? (
-          <p className="m-0 p-8 text-fg-muted">Loading…</p>
+          <p className="m-0 p-8 text-fg-muted">{t('common.loading')}</p>
         ) : url ? (
           <ContentFrame
             key={url}
@@ -122,16 +123,16 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
           />
         ) : (
           <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-            <p className="m-0 font-bold">No viewer for {ext ? `.${ext}` : 'this'} files</p>
+            <p className="m-0 font-bold">{ext ? t('files.viewer.noViewer', { ext }) : t('files.viewer.noViewerUnknown')}</p>
             <p className="m-0 max-w-[50ch] text-fg-muted">
-              None of the installed plugins opens this type of file. You can download it instead.
+              {t('files.viewer.noViewerHint')}
             </p>
             <a
               href={`${API_ROOT}/repo/files/${toPathId(path)}/download`}
               className="inline-flex h-9 items-center gap-2 rounded-control bg-accent px-3.5 text-[13px] font-bold text-accent-ink no-underline hover:bg-accent-hover"
             >
               <Download size={15} aria-hidden="true" />
-              Download
+              {t('files.viewer.download')}
             </a>
           </div>
         )}

@@ -2,6 +2,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'reac
 import { API_ROOT } from '../../api/http';
 import { toPathId } from '../../api/repo';
 import { toJobParameters, type JobParameter } from './schedule-form';
+import { t } from '../../i18n';
 
 /*
  * The content's own parameter prompt (GET /api/repos/{id}/parameterUi), hosted the way the GWT
@@ -122,11 +123,11 @@ export function ReportParameters({
 
   return (
     <div className="relative overflow-hidden rounded-card border border-border bg-white">
-      {!loaded && <p className="absolute inset-0 m-0 grid place-items-center text-fg-muted">Loading the report's parameters…</p>}
+      {!loaded && <p className="absolute inset-0 m-0 grid place-items-center text-fg-muted">{t('schedules.sheet.loadingParameters')}</p>}
       <iframe
         ref={frame}
         id="schedulerParamsFrame"
-        title="Report parameters"
+        title={t('schedules.sheet.reportParameters')}
         src={src}
         onLoad={onLoad}
         style={{ height }}

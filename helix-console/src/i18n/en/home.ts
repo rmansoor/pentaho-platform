@@ -1,0 +1,17 @@
+export const home = {
+  title: 'Home',
+  quickActions: 'Quick actions',
+  browse: 'Browse files',
+  browseDetail: 'Reports, dashboards and folders',
+  schedulesDetail: 'Scheduled reports and their output',
+  datasourcesDetail: 'Connections and models',
+  trashDetail: 'Restore deleted items',
+  favorites: 'Favorites',
+  favoritesEmpty: 'Star a file or folder in Files to keep it here.',
+  recent: 'Recent',
+  recentEmpty: 'Files you open appear here.',
+  addFavorite: 'Add {name} to favorites',
+  removeFavorite: 'Remove {name} from favorites',
+  open: 'Open {name}',
+  justNow: 'just now',
+};

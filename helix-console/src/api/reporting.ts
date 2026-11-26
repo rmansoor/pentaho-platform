@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ApiError, PLUGIN_ROOT, send } from './http';
+import { t } from '../i18n';
 
 /**
  * Moves a report that is already rendering in the report viewer to the background
@@ -11,6 +12,6 @@ export async function scheduleRunningReport(jobId: string, folderId: string, nam
   const query = new URLSearchParams({ confirm: 'true', folderId, newName: name, recalculateFinished });
   const path = `${PLUGIN_ROOT}/reporting/api/jobs/${encodeURIComponent(jobId)}/schedule?${query}`;
   const response = await send('POST', path, { body: '', contentType: 'application/json', accept: 'application/json' });
-  if (!response.ok) throw new ApiError(response.status, path, `The report could not be moved to the background (${response.status}).`);
+  if (!response.ok) throw new ApiError(response.status, path, t('common.errors.backgroundFailed', { status: response.status }));
   return z.object({ uuid: z.string() }).parse(await response.json()).uuid;
 }

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 /*
  * Compatibility layer for plugin pages written for the GWT console (Mantle).
  *
@@ -249,7 +250,7 @@ export function createMantleBridge(deps: BridgeDeps) {
       deps.showMessage(title, message);
     },
     mantle_showConfirmDlg(title: string, message: string, okTxt: string, cancelTxt: string, callback?: { onOk?: () => void; onCancel?: () => void }) {
-      void deps.confirm(title, message, okTxt || 'OK', cancelTxt || 'Cancel').then((ok) => (ok ? callback?.onOk?.() : callback?.onCancel?.()));
+      void deps.confirm(title, message, okTxt || t('common.ok'), cancelTxt || t('common.cancel')).then((ok) => (ok ? callback?.onOk?.() : callback?.onCancel?.()));
     },
 
     authenticate(callback?: { loginCallback?: () => void } | (() => void)) {

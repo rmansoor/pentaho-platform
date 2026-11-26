@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ApiError, getJson, getText, send, sendOk } from './http';
+import { t } from '../i18n';
 
 /*
  * Repository browsing over the platform REST API:
@@ -125,18 +126,8 @@ const KIND_BY_EXTENSION: Record<string, FileKind> = {
   url: 'link',
 };
 
-export const KIND_LABEL: Record<FileKind, string> = {
-  folder: 'Folder',
-  report: 'Report',
-  'interactive-report': 'Interactive report',
-  analysis: 'Analysis',
-  dashboard: 'Dashboard',
-  transformation: 'Transformation',
-  job: 'Job',
-  action: 'Action sequence',
-  link: 'Link',
-  file: 'File',
-};
+/** "Report", "Folder"…, in the console's language. */
+export const kindLabel = (kind: FileKind): string => t(`files.kind.${kind}`);
 
 function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.');
@@ -347,9 +338,9 @@ export interface UploadResult {
  * success, "INVALID_MIME_TYPE" for types it won't store, or a log containing a stack trace.
  */
 export function interpretImportResponse(text: string): UploadResult {
-  if (/INVALID_MIME_TYPE/.test(text)) return { ok: false, problem: "That type of file can't be stored in the repository." };
-  if (/PentahoAccessControlException|not authorized/i.test(text)) return { ok: false, problem: "You don't have permission to upload here." };
-  if (/Exception/.test(text)) return { ok: false, problem: 'The server could not import the file. It may be damaged or not a valid file of its type.' };
+  if (/INVALID_MIME_TYPE/.test(text)) return { ok: false, problem: t('common.errors.uploadType') };
+  if (/PentahoAccessControlException|not authorized/i.test(text)) return { ok: false, problem: t('common.errors.uploadDenied') };
+  if (/Exception/.test(text)) return { ok: false, problem: t('common.errors.uploadDamaged') };
   return { ok: true };
 }
 
@@ -424,7 +415,7 @@ export const httpRepoSource: RepoSource = {
     if (response.ok) return 'restored';
     if (response.status === 406 || response.status === 307) return 'home-available';
     if (response.status === 409) return 'home-conflict';
-    throw new Error(`Restore failed (${response.status})`);
+    throw new Error(t('common.errors.restoreFailed', { status: response.status }));
   },
   async deletePermanently(ids) {
     await sendOk('PUT', '/repo/files/deletepermanent', idList(ids));
@@ -484,13 +475,13 @@ export const httpRepoSource: RepoSource = {
     // Names travel separately, URI-encoded: the multipart file name is only reliable in ASCII.
     form.append('fileNameOverride', files.map((f) => encodeURIComponent(f.name)).join(','));
     const response = await send('POST', '/repo/files/import/multiple', { body: form, accept: 'text/html' });
-    if (!response.ok) return { ok: false, problem: `The upload failed (${response.status}).` };
+    if (!response.ok) return { ok: false, problem: t('common.errors.uploadFailed', { status: response.status }) };
     return interpretImportResponse(await response.text());
   },
   async createFolder(path) {
     const response = await send('PUT', `/repo/dirs/${toPathId(path)}`);
-    if (response.status === 409) throw new ApiError(409, path, 'A file or folder with that name already exists here.');
-    if (!response.ok) throw new ApiError(response.status, path, `Couldn't create the folder (${response.status}).`);
+    if (response.status === 409) throw new ApiError(409, path, t('common.errors.nameTaken'));
+    if (!response.ok) throw new ApiError(response.status, path, t('common.errors.folderFailed', { status: response.status }));
   },
   async getOpeners(signal) {
     return parseOpeners(await getJson('/mantle/settings', z.unknown(), signal));

@@ -18,6 +18,7 @@ import {
   specFromRecurrence,
   type BlockoutForm,
 } from './blockouts';
+import { t } from '../../i18n';
 
 export type BlockoutTarget = { kind: 'new' } | { kind: 'edit'; job: ScheduledJob };
 
@@ -28,8 +29,8 @@ export function BlockoutSheet({ target, onClose }: { target: BlockoutTarget | nu
       variant="sheet"
       open={target !== null}
       onClose={onClose}
-      title={target?.kind === 'edit' ? 'Edit blockout time' : 'New blockout time'}
-      description="No schedule runs during a blockout. Runs that fall inside one are skipped."
+      title={target?.kind === 'edit' ? t('schedules.blockouts.sheetEdit') : t('schedules.blockouts.sheetNew')}
+      description={t('schedules.blockouts.sheetDescription')}
       actions={null}
     >
       {target && <BlockoutBody key={target.kind === 'edit' ? target.job.id : 'new'} target={target} onClose={onClose} />}
@@ -68,10 +69,10 @@ function BlockoutBody({ target, onClose }: { target: BlockoutTarget; onClose: ()
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: schedulerKeys.all });
-      toast(target.kind === 'edit' ? 'Saved the blockout time' : `Added a blockout: ${describeBlockout(form.recurrence, duration)}`);
+      toast(target.kind === 'edit' ? t('schedules.blockouts.saved') : t('schedules.blockouts.added', { what: describeBlockout(form.recurrence, duration) }));
       onClose();
     },
-    onError: (e: Error) => toast(`Couldn't save the blockout: ${e.message}`, { tone: 'danger' }),
+    onError: (e: Error) => toast(t('schedules.blockouts.saveFailed', { message: e.message }), { tone: 'danger' }),
   });
 
   const submit = (e: FormEvent) => {
@@ -86,22 +87,22 @@ function BlockoutBody({ target, onClose }: { target: BlockoutTarget; onClose: ()
         <RecurrenceFields
           value={form.recurrence}
           onChange={(patch) => setForm((f) => ({ ...f, recurrence: { ...f.recurrence, ...patch } }))}
-          labels={{ starting: 'Starting', at: 'From' }}
+          labels={{ starting: t('schedules.form.starting'), at: t('schedules.form.from') }}
         />
 
         <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-          <legend className="mb-2 p-0 text-[13px] font-semibold text-fg-soft">Lasts</legend>
+          <legend className="mb-2 p-0 text-[13px] font-semibold text-fg-soft">{t('schedules.blockouts.lasts')}</legend>
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-2">
               <input
                 type="number"
                 min={0}
-                aria-label="Hours"
+                aria-label={t('schedules.blockouts.hours')}
                 value={form.hours}
                 onChange={(e) => setDuration('hours', e.target.value)}
                 className={cn(inputClass, 'w-24')}
               />
-              <span className="text-fg-soft">hours</span>
+              <span className="text-fg-soft">{t('schedules.blockouts.hoursUnit')}</span>
             </label>
             <label className="flex items-center gap-2">
               <input
@@ -109,12 +110,12 @@ function BlockoutBody({ target, onClose }: { target: BlockoutTarget; onClose: ()
                 min={0}
                 max={59}
                 step={5}
-                aria-label="Minutes"
+                aria-label={t('schedules.blockouts.minutes')}
                 value={form.minutes}
                 onChange={(e) => setDuration('minutes', e.target.value)}
                 className={cn(inputClass, 'w-24')}
               />
-              <span className="text-fg-soft">minutes</span>
+              <span className="text-fg-soft">{t('schedules.blockouts.minutesUnit')}</span>
             </label>
           </div>
         </fieldset>
@@ -123,18 +124,26 @@ function BlockoutBody({ target, onClose }: { target: BlockoutTarget; onClose: ()
           <span className="flex items-center gap-3">
             <Ban size={18} className="shrink-0 text-accent" aria-hidden="true" />
             <span>
-              <strong>{problem ? 'Not complete yet' : describeBlockout(form.recurrence, duration)}</strong>
+              <strong>{problem ? t('schedules.blockouts.incomplete') : describeBlockout(form.recurrence, duration)}</strong>
               {!problem && <span className="text-fg-soft"> · {form.recurrence.timeZone.replace(/_/g, ' ')}</span>}
             </span>
           </span>
           {affected && (
             <span className="text-[13px] text-fg-soft">
               {affected.length === 0
-                ? `No current schedule runs during it in the next ${HORIZON_DAYS / 7} weeks.`
-                : `In the next ${HORIZON_DAYS / 7} weeks it skips ${affected
-                    .slice(0, 3)
-                    .map((a) => `${a.blocked === a.runs ? 'every run' : `${a.blocked} ${a.blocked === 1 ? 'run' : 'runs'}`} of "${a.job.name}"`)
-                    .join(', ')}${affected.length > 3 ? ` and ${affected.length - 3} more` : ''}.`}
+                ? t('schedules.blockouts.affectsNone', { weeks: HORIZON_DAYS / 7 })
+                : t(affected.length > 3 ? 'schedules.blockouts.affectsMore' : 'schedules.blockouts.affects', {
+                    weeks: HORIZON_DAYS / 7,
+                    more: affected.length - 3,
+                    list: affected
+                      .slice(0, 3)
+                      .map((a) =>
+                        a.blocked === a.runs
+                          ? t('schedules.blockouts.affectedAll', { name: a.job.name })
+                          : t('schedules.blockouts.affectedSome', { count: a.blocked, name: a.job.name }),
+                      )
+                      .join(', '),
+                  })}
             </span>
           )}
         </div>
@@ -143,7 +152,7 @@ function BlockoutBody({ target, onClose }: { target: BlockoutTarget; onClose: ()
       <div className="sticky bottom-0 -mx-6 mt-auto -mb-5 flex items-center justify-end gap-2 border-t border-divider bg-surface px-6 py-4">
         {problem && <span className="mr-auto text-[13px] text-fg-muted">{problem}</span>}
         <Button size="sm" onClick={onClose}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button
           size="sm"
@@ -154,7 +163,7 @@ function BlockoutBody({ target, onClose }: { target: BlockoutTarget; onClose: ()
           aria-disabled={!!problem || save.isPending}
           title={problem ?? undefined}
         >
-          {save.isPending ? 'Saving…' : target.kind === 'edit' ? 'Save changes' : 'Add blockout'}
+          {save.isPending ? t('common.saving') : target.kind === 'edit' ? t('common.saveChanges') : t('schedules.blockouts.addBlockout')}
         </Button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Card } from '@helix/ui';
 import { FolderTree } from './FolderTree';
+import { t } from '../../i18n';
 
 export interface FilesLayoutProps {
   /** Breadcrumb or other line above the title. */
@@ -44,7 +45,7 @@ export function FilesLayout({ eyebrow, title, treePath, onOpenFolder, onOpenTras
 export function SelectionCount({ selected, total }: { selected: number; total?: number }) {
   return (
     <span className="font-bold" aria-live="polite">
-      {selected > 0 ? `${selected} selected` : total === undefined ? '' : `${total} ${total === 1 ? 'item' : 'items'}`}
+      {selected > 0 ? t('files.selected', { count: selected }) : total === undefined ? '' : t('files.itemCount', { count: total })}
     </span>
   );
 }

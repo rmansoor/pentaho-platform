@@ -1,8 +1,10 @@
+import { t } from '../../i18n';
+
 export const DEFAULT_FOLDER = '/public';
 
 export const ROOT_FOLDERS = [
-  { path: '/home', label: 'Home' },
-  { path: '/public', label: 'Public' },
+  { path: '/home', get label() { return t('files.roots.home'); } },
+  { path: '/public', get label() { return t('files.roots.public'); } },
 ] as const;
 
 /** Normalises a user-supplied path: leading slash, no trailing slash, no empty segments. */

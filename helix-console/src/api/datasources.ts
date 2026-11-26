@@ -2,6 +2,7 @@ import { createContext, useContext, type ReactNode, createElement } from 'react'
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { getJson, PLUGIN_ROOT, send } from './http';
+import { t } from '../i18n';
 
 /*
  * Data sources from the data-access plugin (/pentaho/plugin/data-access/api/datasource):
@@ -15,12 +16,8 @@ const BASE = `${PLUGIN_ROOT}/data-access/api/datasource`;
 
 export type DataSourceKind = 'jdbc' | 'analysis' | 'metadata' | 'dsw';
 
-export const DATA_SOURCE_LABEL: Record<DataSourceKind, string> = {
-  jdbc: 'Database connection',
-  analysis: 'Analysis',
-  metadata: 'Metadata',
-  dsw: 'Data source wizard',
-};
+/** "Database connection", "Analysis"…, in the console's language. */
+export const dataSourceLabel = (kind: DataSourceKind): string => t(`datasources.kind.${kind}`);
 
 export interface DataSource {
   kind: DataSourceKind;
@@ -50,7 +47,7 @@ const connectionSchema = z.object({
 /** "Hypersonic · localhost:9001/SampleData (JNDI)". Exported for tests. */
 export function describeConnection(json: unknown): string {
   const c = connectionSchema.parse(json);
-  const type = c.databaseType?.name ?? c.databaseType?.shortName ?? 'Database';
+  const type = c.databaseType?.name ?? c.databaseType?.shortName ?? t('common.database');
   const where = [c.hostname, c.databasePort].filter(Boolean).join(':');
   const target = [where, c.databaseName].filter(Boolean).join('/');
   const access = c.accessType && c.accessType !== 'NATIVE' ? ` (${c.accessType})` : '';
@@ -178,16 +175,16 @@ export const httpDataSourceSource: DataSourceSource = {
     const response = await send('PUT', `${PLUGIN_ROOT}/data-access/api/connection/test`, { body, contentType: 'application/json', accept: 'text/plain' });
     const text = (await response.text()).trim();
     // Success is a sentence; failure is the server's generic HTML error page.
-    return response.ok ? { ok: true, message: text || 'Connected.' } : { ok: false, message: '' };
+    return response.ok ? { ok: true, message: text || t('common.connected') } : { ok: false, message: '' };
   },
   async saveConnection(name, body) {
     const response = await send('PUT', `${BASE}/jdbc/connection/${enc(name)}`, { body, contentType: 'application/json' });
-    if (!response.ok) throw new Error(response.status === 304 ? 'Nothing changed.' : `The connection was not saved (${response.status}).`);
+    if (!response.ok) throw new Error(response.status === 304 ? t('common.errors.nothingChanged') : t('common.errors.connectionNotSaved', { status: response.status }));
   },
   async remove(source) {
     const response = await send('DELETE', `${BASE}/${PATHS[source.kind]}/${enc(source.id)}`);
     // JDBC answers 304 when nothing was removed.
-    if (!response.ok) throw new Error(response.status === 304 ? 'Nothing was removed' : `Delete failed (${response.status})`);
+    if (!response.ok) throw new Error(response.status === 304 ? t('common.errors.nothingRemoved') : t('common.errors.deleteFailed', { status: response.status }));
   },
 };
 

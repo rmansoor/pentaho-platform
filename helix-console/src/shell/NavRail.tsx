@@ -4,6 +4,7 @@ import { cn, HelixMark } from '@helix/ui';
 import { NAV_ITEMS } from './nav-items';
 import { UserMenu } from './UserMenu';
 import { useSession } from '../api/repo-context';
+import { t } from '../i18n';
 
 export const NAV_RAIL_ID = 'helix-nav-rail';
 
@@ -37,7 +38,7 @@ export function NavRail({
   return (
     <nav
       id={id}
-      aria-label="Areas"
+      aria-label={t('shell.areas')}
       data-collapsed={collapsed}
       className={cn(
         'flex h-full flex-col gap-1 bg-rail px-3.5 py-5 text-rail-fg-strong',
@@ -51,7 +52,9 @@ export function NavRail({
       </div>
 
       <ul className="flex flex-col gap-1" role="list">
-        {items.map(({ to, label, icon: Icon }) => (
+        {items.map(({ to, label: key, icon: Icon }) => {
+          const label = t(key);
+          return (
           <li key={to}>
             <Link
               to={to}
@@ -68,7 +71,8 @@ export function NavRail({
               <span className={cn(collapsed && 'sr-only')}>{label}</span>
             </Link>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       <div className="mt-auto flex flex-col gap-2 border-t border-rail-divider pt-3">
@@ -78,7 +82,7 @@ export function NavRail({
             onClick={onToggleCollapsed}
             aria-controls={id}
             aria-expanded={!collapsed}
-            title={`${collapsed ? 'Expand' : 'Collapse'} menu (Ctrl+B)`}
+            title={t('shell.toggleMenuHint', { action: t(collapsed ? 'shell.expandMenu' : 'shell.collapseMenu') })}
             className={cn(
               'flex h-10 items-center gap-3 rounded-control text-[13px] text-rail-fg',
               'hover:bg-rail-hover hover:text-rail-fg-strong',
@@ -90,7 +94,7 @@ export function NavRail({
             ) : (
               <PanelLeftClose size={18} strokeWidth={1.8} aria-hidden="true" />
             )}
-            <span className={cn(collapsed && 'sr-only')}>{collapsed ? 'Expand menu' : 'Collapse menu'}</span>
+            <span className={cn(collapsed && 'sr-only')}>{t(collapsed ? 'shell.expandMenu' : 'shell.collapseMenu')}</span>
           </button>
         )}
         <UserMenu collapsed={collapsed} />

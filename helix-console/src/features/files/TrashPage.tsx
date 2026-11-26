@@ -10,6 +10,7 @@ import { TRASH_NODE } from './FolderTree';
 import { QueryError } from './QueryError';
 import { nextSort, sortItems, type Sort } from './sorting';
 import { useTrashActions } from './use-trash-actions';
+import { t } from '../../i18n';
 
 export interface TrashPageProps {
   onOpenFolder: (path: string) => void;
@@ -22,8 +23,6 @@ type Pending =
   | { kind: 'empty'; items: RepoItem[] }
   | { kind: 'home-available'; items: RepoItem[] }
   | { kind: 'home-conflict'; items: RepoItem[] };
-
-const itemsWord = (n: number) => (n === 1 ? '1 item' : `${n} items`);
 
 /** Deleted files: restore them, delete them permanently, or empty the trash. */
 export function TrashPage({ onOpenFolder }: TrashPageProps) {
@@ -46,9 +45,9 @@ export function TrashPage({ onOpenFolder }: TrashPageProps) {
           if (outcome === 'restored') {
             clear();
             const first = toRestore[0]!;
-            toast(toRestore.length === 1 ? `Restored "${first.title}"` : `Restored ${itemsWord(toRestore.length)}`, {
+            toast(t('files.actions.restored', { count: toRestore.length, name: first.title }), {
               action: first.originalFolder
-                ? { label: 'Show', onClick: () => onOpenFolder(first.originalFolder!) }
+                ? { label: t('files.show'), onClick: () => onOpenFolder(first.originalFolder!) }
                 : undefined,
             });
           } else {
@@ -68,7 +67,7 @@ export function TrashPage({ onOpenFolder }: TrashPageProps) {
         onSuccess: () => {
           setPending(null);
           clear();
-          toast(`Restored ${itemsWord(toRestore.length)} to your home folder`);
+          toast(t('files.actions.restoredHome', { count: toRestore.length }));
         },
       },
     );
@@ -89,8 +88,8 @@ export function TrashPage({ onOpenFolder }: TrashPageProps) {
 
   return (
     <FilesLayout
-      eyebrow={<p className="m-0 text-[13px] text-fg-muted">Files</p>}
-      title="Trash"
+      eyebrow={<p className="m-0 text-[13px] text-fg-muted">{t('files.title')}</p>}
+      title={t('files.trash')}
       treePath={TRASH_NODE}
       onOpenFolder={onOpenFolder}
       onOpenTrash={() => {}}
@@ -99,7 +98,7 @@ export function TrashPage({ onOpenFolder }: TrashPageProps) {
         <>
           <SelectionCount selected={selectedItems.length} total={trash.data?.length} />
           <div className="flex-1" />
-          <IconButton size="sm" variant="ghost" aria-label="Refresh" title="Refresh" onClick={() => void trash.refetch()}>
+          <IconButton size="sm" variant="ghost" aria-label={t('common.refresh')} title={t('common.refresh')} onClick={() => void trash.refetch()}>
             <RefreshCw size={16} aria-hidden="true" />
           </IconButton>
           <Button
@@ -107,32 +106,32 @@ export function TrashPage({ onOpenFolder }: TrashPageProps) {
             variant="primary"
             icon={<RotateCcw size={15} aria-hidden="true" />}
             aria-disabled={!selectedItems.length || working}
-            title={selectedItems.length ? undefined : 'Select items to restore them'}
+            title={selectedItems.length ? undefined : t('files.trashPage.restoreReason')}
             onClick={() => !working && startRestore(selectedItems)}
             className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
           >
-            Restore
+            {t('files.trashPage.restore')}
           </Button>
           <Button
             size="sm"
             variant="danger-outline"
             icon={<Trash2 size={15} aria-hidden="true" />}
             aria-disabled={!selectedItems.length || working}
-            title={selectedItems.length ? undefined : 'Select items to delete them permanently'}
+            title={selectedItems.length ? undefined : t('files.trashPage.deleteReason')}
             onClick={() => selectedItems.length && !working && setPending({ kind: 'delete', items: selectedItems })}
             className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
           >
-            Delete permanently
+            {t('files.trashPage.deletePermanently')}
           </Button>
           <Button
             size="sm"
             variant="ghost"
             aria-disabled={!items.length || working}
-            title={items.length ? undefined : 'The trash is already empty'}
+            title={items.length ? undefined : t('files.trashPage.emptyReason')}
             onClick={() => items.length && !working && setPending({ kind: 'empty', items })}
             className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
           >
-            Empty trash
+            {t('files.trashPage.emptyTrash')}
           </Button>
         </>
       }
@@ -144,12 +143,12 @@ export function TrashPage({ onOpenFolder }: TrashPageProps) {
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-[18px] py-14 text-center">
           <Trash2 size={28} className="text-fg-muted" aria-hidden="true" />
-          <p className="m-0 font-bold">The trash is empty</p>
-          <p className="m-0 text-fg-muted">Items you move to trash stay here until you delete them permanently.</p>
+          <p className="m-0 font-bold">{t('files.trashPage.empty')}</p>
+          <p className="m-0 text-fg-muted">{t('files.trashPage.emptyHint')}</p>
         </div>
       ) : (
         <FileTable
-          label="Items in trash"
+          label={t('files.trashPage.items')}
           columns={TRASH_COLUMNS}
           items={items}
           sort={sort}
@@ -165,19 +164,19 @@ export function TrashPage({ onOpenFolder }: TrashPageProps) {
         open={pending?.kind === 'delete' || pending?.kind === 'empty'}
         onClose={closeDialog}
         dismissible={!working}
-        title={pending?.kind === 'empty' ? 'Empty the trash?' : `Delete ${itemsWord(pending?.items.length ?? 0)} permanently?`}
+        title={pending?.kind === 'empty' ? t('files.trashPage.emptyTitle') : t('files.trashPage.deleteTitle', { count: pending?.items.length ?? 0 })}
         description={
           pending?.kind === 'empty'
-            ? `All ${itemsWord(pending.items.length)} in the trash will be deleted. This can't be undone.`
-            : "They'll be removed from the repository. This can't be undone."
+            ? t('files.trashPage.emptyDescription', { count: pending.items.length })
+            : t('files.trashPage.deleteDescription')
         }
         actions={
           <>
             <Button size="sm" onClick={closeDialog} aria-disabled={working}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button size="sm" variant="danger" onClick={confirmDelete} aria-disabled={working}>
-              {pending?.kind === 'empty' ? 'Empty trash' : 'Delete permanently'}
+              {pending?.kind === 'empty' ? t('files.trashPage.emptyTrash') : t('files.trashPage.deletePermanently')}
             </Button>
           </>
         }
@@ -187,15 +186,15 @@ export function TrashPage({ onOpenFolder }: TrashPageProps) {
         open={pending?.kind === 'home-available'}
         onClose={closeDialog}
         dismissible={!working}
-        title="Restore to your home folder?"
-        description="You don't have permission to put these items back where they were. They can go to your home folder instead."
+        title={t('files.trashPage.homeTitle')}
+        description={t('files.trashPage.homeDescription')}
         actions={
           <>
             <Button size="sm" onClick={closeDialog}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button size="sm" variant="primary" onClick={() => restoreHome(OVERWRITE_MODE.keepBoth)} aria-disabled={working}>
-              Restore to home folder
+              {t('files.trashPage.restoreHome')}
             </Button>
           </>
         }
@@ -205,21 +204,21 @@ export function TrashPage({ onOpenFolder }: TrashPageProps) {
         open={pending?.kind === 'home-conflict'}
         onClose={closeDialog}
         dismissible={!working}
-        title="Some names are already taken"
-        description="You can't put these items back where they were, and your home folder already has items with the same names. What should happen to those?"
+        title={t('files.trashPage.conflictTitle')}
+        description={t('files.trashPage.conflictDescription')}
         actions={
           <>
             <Button size="sm" onClick={closeDialog}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button size="sm" onClick={() => restoreHome(OVERWRITE_MODE.skip)} aria-disabled={working}>
-              Skip them
+              {t('files.trashPage.skip')}
             </Button>
             <Button size="sm" onClick={() => restoreHome(OVERWRITE_MODE.replace)} aria-disabled={working}>
-              Replace
+              {t('files.trashPage.replace')}
             </Button>
             <Button size="sm" variant="primary" onClick={() => restoreHome(OVERWRITE_MODE.keepBoth)} aria-disabled={working}>
-              Keep both
+              {t('files.trashPage.keepBoth')}
             </Button>
           </>
         }

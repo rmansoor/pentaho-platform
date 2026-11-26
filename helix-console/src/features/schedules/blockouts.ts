@@ -1,4 +1,5 @@
 import type { ScheduledJob } from '../../api/scheduler';
+import { t } from '../../i18n';
 import { browserTimeZone, buildTrigger, cronFor, describeForm, recurrenceFromJob, recurrenceProblem, type Recurrence } from './schedule-form';
 
 /*
@@ -260,10 +261,11 @@ export function conflictsFor(spec: RunSpec, blockouts: Array<Pick<Blockout, 'spe
 /** The sentence the schedule sheet shows, or null when nothing is blocked. */
 export function describeConflict(c: Conflict): string | null {
   if (!c.blocked) return null;
+  const weeks = HORIZON_DAYS / 7;
   if (c.blocked === c.runs) {
-    return c.runs === 1 ? 'This run falls in a blockout time, so it would be skipped.' : `Every run in the next ${HORIZON_DAYS / 7} weeks falls in a blockout time, so none of them would run.`;
+    return c.runs === 1 ? t('schedules.blockouts.conflict.single') : t('schedules.blockouts.conflict.all', { weeks });
   }
-  return `${c.blocked} of the ${c.runs} runs in the next ${HORIZON_DAYS / 7} weeks fall in a blockout time and will be skipped.`;
+  return t('schedules.blockouts.conflict.some', { blocked: c.blocked, runs: c.runs, weeks });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -308,11 +310,11 @@ export function blockoutFormFromJob(job: ScheduledJob): BlockoutForm {
 export function blockoutProblem(form: BlockoutForm): string | null {
   const problem = recurrenceProblem(form.recurrence);
   if (problem) return problem;
-  if (!(form.hours >= 0) || !(form.minutes >= 0) || form.minutes > 59) return 'Enter how long it lasts';
+  if (!(form.hours >= 0) || !(form.minutes >= 0) || form.minutes > 59) return t('schedules.blockouts.problems.duration');
   const duration = durationOf(form);
-  if (duration <= 0) return 'Enter how long it lasts';
+  if (duration <= 0) return t('schedules.blockouts.problems.duration');
   const spec = specFromRecurrence(form.recurrence);
-  if (spec?.kind === 'simple' && duration >= spec.interval) return 'It lasts as long as it repeats, so nothing would ever run';
+  if (spec?.kind === 'simple' && duration >= spec.interval) return t('schedules.blockouts.problems.tooLong');
   return null;
 }
 
@@ -330,8 +332,12 @@ export function buildBlockoutRequest(form: BlockoutForm) {
 export function formatDuration(ms: number): string {
   const total = Math.round(ms / 60_000);
   const [d, h, m] = [Math.floor(total / 1440), Math.floor((total % 1440) / 60), total % 60];
-  const part = (n: number, one: string) => (n ? `${n} ${one}${n === 1 ? '' : 's'}` : '');
-  return [part(d, 'day'), part(h, 'hour'), part(m, 'minute')].filter(Boolean).join(' ') || '0 minutes';
+  const parts = [
+    d ? t('schedules.blockouts.duration.days', { count: d }) : '',
+    h ? t('schedules.blockouts.duration.hours', { count: h }) : '',
+    m ? t('schedules.blockouts.duration.minutes', { count: m }) : '',
+  ].filter(Boolean);
+  return parts.join(' ') || t('schedules.blockouts.duration.minutes', { count: 0 });
 }
 
 /** "Weekdays at 22:00 for 4 hours, until 02:00 the next day". */
@@ -342,6 +348,10 @@ export function describeBlockout(rec: Recurrence, duration: number): string {
   const days = Math.floor(endMinutes / 1440);
   const until = `${pad(Math.floor((endMinutes % 1440) / 60))}:${pad(endMinutes % 60)}`;
   const minutesOrHours = rec.repeat === 'minutes' || rec.repeat === 'hours' || rec.repeat === 'cron';
-  const tail = minutesOrHours ? '' : `, until ${until}${days === 1 ? ' the next day' : days > 1 ? ` ${days} days later` : ''}`;
-  return `${what} for ${formatDuration(duration)}${tail}`;
+  const values = { what, duration: formatDuration(duration), time: until, days };
+  if (minutesOrHours) return t('schedules.blockouts.describe', values);
+  return t(
+    days === 0 ? 'schedules.blockouts.describeUntil' : days === 1 ? 'schedules.blockouts.describeUntilNextDay' : 'schedules.blockouts.describeUntilLater',
+    values,
+  );
 }

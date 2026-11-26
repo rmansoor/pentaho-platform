@@ -1,14 +1,17 @@
-import { KIND_LABEL, type RepoItem } from '../../api/repo';
+import { kindLabel, type RepoItem } from '../../api/repo';
 import { FileKindIcon } from './FileKindIcon';
 import { formatDate, formatDateTime, formatSize } from './format';
 import { rootLabel } from './paths';
 import { collator, type Column } from './sorting';
+import { t } from '../../i18n';
 
 const time = (d: Date | null | undefined) => d?.getTime() ?? 0;
 
 export const nameColumn: Column = {
   key: 'name',
-  label: 'Name',
+  get label() {
+    return t('files.columns.name');
+  },
   track: 'minmax(0,2.6fr)',
   compare: (a, b) => collator.compare(a.title, b.title),
   render: (item) => (
@@ -23,15 +26,19 @@ export const nameColumn: Column = {
 
 export const kindColumn: Column = {
   key: 'kind',
-  label: 'Type',
+  get label() {
+    return t('files.columns.type');
+  },
   track: 'minmax(0,1fr)',
-  compare: (a, b) => collator.compare(KIND_LABEL[a.kind], KIND_LABEL[b.kind]),
-  render: (item) => <span className="truncate text-fg-muted">{KIND_LABEL[item.kind]}</span>,
+  compare: (a, b) => collator.compare(kindLabel(a.kind), kindLabel(b.kind)),
+  render: (item) => <span className="truncate text-fg-muted">{kindLabel(item.kind)}</span>,
 };
 
 export const modifiedColumn: Column = {
   key: 'modified',
-  label: 'Modified',
+  get label() {
+    return t('files.columns.modified');
+  },
   track: 'minmax(0,1fr)',
   firstDir: 'desc',
   compare: (a, b) => time(a.modified) - time(b.modified),
@@ -44,7 +51,9 @@ export const modifiedColumn: Column = {
 
 export const sizeColumn: Column = {
   key: 'size',
-  label: 'Size',
+  get label() {
+    return t('files.columns.size');
+  },
   track: 'minmax(0,0.6fr)',
   align: 'end',
   firstDir: 'desc',
@@ -54,14 +63,16 @@ export const sizeColumn: Column = {
 
 /** "/public/Steel Wheels/Reports" shown as "Public / Steel Wheels / Reports". */
 export function displayFolder(path: string | undefined): string {
-  if (!path) return '—';
+  if (!path) return t('common.none');
   const parts = path.split('/').filter(Boolean);
   return parts.map((p, i) => (i === 0 ? (rootLabel(`/${p}`) ?? p) : p)).join(' / ');
 }
 
 export const originalFolderColumn: Column = {
   key: 'origin',
-  label: 'Original location',
+  get label() {
+    return t('files.columns.originalLocation');
+  },
   track: 'minmax(0,1.6fr)',
   compare: (a, b) => collator.compare(a.originalFolder ?? '', b.originalFolder ?? ''),
   render: (item) => (
@@ -73,7 +84,9 @@ export const originalFolderColumn: Column = {
 
 export const deletedColumn: Column = {
   key: 'deleted',
-  label: 'Deleted',
+  get label() {
+    return t('files.columns.deleted');
+  },
   track: 'minmax(0,1fr)',
   firstDir: 'desc',
   compare: (a, b) => time(a.deleted) - time(b.deleted),

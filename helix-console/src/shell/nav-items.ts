@@ -1,9 +1,11 @@
 import type { LucideIcon } from 'lucide-react';
+import type { MessageKey } from '../i18n';
 import { CalendarClock, Database, FolderClosed, House, Settings } from 'lucide-react';
 
 export interface NavItem {
   to: '/home' | '/files' | '/schedules' | '/datasources' | '/admin';
-  label: string;
+  /** Message key of the label; call t() at render time. */
+  label: MessageKey;
   icon: LucideIcon;
 }
 
@@ -13,9 +15,9 @@ export interface NavItem {
  * bootstrap endpoint; until then every area is listed.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { to: '/home', label: 'Home', icon: House },
-  { to: '/files', label: 'Files', icon: FolderClosed },
-  { to: '/schedules', label: 'Schedules', icon: CalendarClock },
-  { to: '/datasources', label: 'Data sources', icon: Database },
-  { to: '/admin', label: 'Administration', icon: Settings },
+  { to: '/home', label: 'shell.nav.home', icon: House },
+  { to: '/files', label: 'shell.nav.files', icon: FolderClosed },
+  { to: '/schedules', label: 'shell.nav.schedules', icon: CalendarClock },
+  { to: '/datasources', label: 'shell.nav.datasources', icon: Database },
+  { to: '/admin', label: 'shell.nav.admin', icon: Settings },
 ];

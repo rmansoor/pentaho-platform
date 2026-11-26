@@ -3,10 +3,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Shield, Users, User, X } from 'lucide-react';
 import { Button, Checkbox, Dialog, IconButton, Switch, Tabs, toast } from '@helix/ui';
 import { repoKeys, useAcl, useFlags, useRecipients, useRepoSource } from '../../api/repo-context';
-import { KIND_LABEL, PERMISSIONS, type AclEntry, type FileAcl, type FileFlags, type Permission, type RepoItem } from '../../api/repo';
+import { kindLabel, PERMISSIONS, type AclEntry, type FileAcl, type FileFlags, type Permission, type RepoItem } from '../../api/repo';
 import { displayFolder } from './columns';
 import { formatDateTime, formatSize } from './format';
 import { QueryError } from './QueryError';
+import { t } from '../../i18n';
 
 export type PropertiesTab = 'general' | 'sharing';
 
@@ -16,7 +17,7 @@ export interface PropertiesSheetProps {
   onClose: () => void;
 }
 
-const PERMISSION_LABEL: Record<Permission, string> = { read: 'Read', write: 'Write', delete: 'Delete', manage: 'Manage' };
+const permissionLabel = (p: Permission) => t(`files.props.permission.${p}`);
 
 /**
  * Ticking a permission ticks the ones it needs (Manage needs Delete, Delete needs Write, Write
@@ -55,7 +56,7 @@ export function PropertiesSheet({ item, initialTab = 'general', onClose }: Prope
       open={item !== null}
       onClose={onClose}
       title={item?.title ?? ''}
-      description={item ? `${KIND_LABEL[item.kind]} · ${displayFolder(item.path.slice(0, item.path.lastIndexOf('/')))}` : undefined}
+      description={item ? `${kindLabel(item.kind)} · ${displayFolder(item.path.slice(0, item.path.lastIndexOf('/')))}` : undefined}
       actions={null}
     >
       {item && <PropertiesBody key={item.id} item={item} initialTab={initialTab} onClose={onClose} />}
@@ -94,19 +95,19 @@ function PropertiesBody({ item, initialTab, onClose }: { item: RepoItem; initial
         queryClient.invalidateQueries({ queryKey: repoKeys.flags(item.path) }),
         queryClient.invalidateQueries({ queryKey: ['repo', 'folder'] }),
       ]);
-      toast(`Saved changes to "${item.title}"`);
+      toast(t('files.props.saved', { name: item.title }));
       onClose();
     },
-    onError: (e: Error) => toast(`Couldn't save: ${e.message}`, { tone: 'danger' }),
+    onError: (e: Error) => toast(t('files.props.saveFailed', { message: e.message }), { tone: 'danger' }),
   });
 
   return (
     <div className="flex h-full flex-col gap-5">
       <Tabs
-        label="Properties"
+        label={t('files.props.label')}
         tabs={[
-          { id: 'general', label: 'General' },
-          { id: 'sharing', label: 'Sharing' },
+          { id: 'general', label: t('files.props.general') },
+          { id: 'sharing', label: t('files.props.sharing') },
         ]}
         value={tab}
         onChange={setTab}
@@ -117,7 +118,7 @@ function PropertiesBody({ item, initialTab, onClose }: { item: RepoItem; initial
           ) : acl.isError ? (
             <QueryError error={acl.error} onRetry={() => void acl.refetch()} />
           ) : !draftAcl ? (
-            <p className="m-0 text-fg-muted">Loading permissions…</p>
+            <p className="m-0 text-fg-muted">{t('files.props.loadingPermissions')}</p>
           ) : (
             <SharingTab item={item} acl={draftAcl} inheritedFrom={acl.data} onChange={setDraftAcl} />
           )
@@ -126,17 +127,17 @@ function PropertiesBody({ item, initialTab, onClose }: { item: RepoItem; initial
       {/* The sheet's own footer is unused so the actions sit inside the form's state. */}
       <div className="sticky bottom-0 -mx-6 mt-auto -mb-5 flex justify-end gap-2 border-t border-divider bg-surface px-6 py-4">
         <Button size="sm" onClick={onClose}>
-          {flagsDirty || aclDirty ? 'Cancel' : 'Close'}
+          {flagsDirty || aclDirty ? t('common.cancel') : t('common.close')}
         </Button>
         <Button
           size="sm"
           variant="primary"
           aria-disabled={!(flagsDirty || aclDirty) || save.isPending}
-          title={flagsDirty || aclDirty ? undefined : 'No changes to save'}
+          title={flagsDirty || aclDirty ? undefined : t('files.props.noChanges')}
           onClick={() => (flagsDirty || aclDirty) && !save.isPending && save.mutate()}
           className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
         >
-          {save.isPending ? 'Saving…' : 'Save'}
+          {save.isPending ? t('common.saving') : t('common.save')}
         </Button>
       </div>
     </div>
@@ -159,13 +160,13 @@ function GeneralTab({
   onRetry: () => void;
 }) {
   const rows: [string, string | undefined][] = [
-    ['Name', item.name],
-    ['Type', KIND_LABEL[item.kind]],
-    ['Location', item.path],
-    ['Owner', owner],
-    ['Size', item.folder ? undefined : formatSize(item.size)],
-    ['Created', formatDateTime(item.created)],
-    ['Modified', formatDateTime(item.modified)],
+    [t('files.props.name'), item.name],
+    [t('files.props.type'), kindLabel(item.kind)],
+    [t('files.props.location'), item.path],
+    [t('files.props.owner'), owner],
+    [t('files.props.size'), item.folder ? undefined : formatSize(item.size)],
+    [t('files.props.created'), formatDateTime(item.created)],
+    [t('files.props.modified'), formatDateTime(item.modified)],
   ];
   return (
     <div className="flex flex-col gap-6">
@@ -180,27 +181,27 @@ function GeneralTab({
           ))}
         {item.description && (
           <div className="contents">
-            <dt className="text-fg-muted">Description</dt>
+            <dt className="text-fg-muted">{t('files.props.description')}</dt>
             <dd className="m-0 leading-relaxed">{item.description}</dd>
           </div>
         )}
       </dl>
       <fieldset className="m-0 flex flex-col gap-3 border-0 border-t border-divider p-0 pt-5">
-        <legend className="sr-only">Options</legend>
+        <legend className="sr-only">{t('files.props.options')}</legend>
         {error ? (
           <QueryError error={error} onRetry={onRetry} />
         ) : !flags ? (
-          <p className="m-0 text-fg-muted">Loading options…</p>
+          <p className="m-0 text-fg-muted">{t('files.props.loadingOptions')}</p>
         ) : (
           <>
             <Checkbox
-              label="Hidden"
+              label={t('files.props.hidden')}
               checked={flags.hidden}
               onChange={(hidden) => onFlags({ ...flags, hidden })}
             />
             {!item.folder && (
               <Checkbox
-                label="Allow scheduling"
+                label={t('files.props.allowScheduling')}
                 checked={flags.schedulable}
                 onChange={(schedulable) => onFlags({ ...flags, schedulable })}
               />
@@ -228,8 +229,8 @@ function SharingTab({
   const present = new Set(acl.entries.map((e) => `${e.kind}:${e.recipient}`));
   const options = useMemo(
     () => [
-      ...(recipients.data?.users ?? []).map((name) => ({ value: `user:${name}`, label: name, group: 'Users' })),
-      ...(recipients.data?.roles ?? []).map((name) => ({ value: `role:${name}`, label: name, group: 'Roles' })),
+      ...(recipients.data?.users ?? []).map((name) => ({ value: `user:${name}`, label: name, group: 'users' })),
+      ...(recipients.data?.roles ?? []).map((name) => ({ value: `role:${name}`, label: name, group: 'roles' })),
     ].filter((o) => !present.has(o.value)),
     [recipients.data, acl.entries],
   );
@@ -263,24 +264,24 @@ function SharingTab({
       <Switch
         checked={acl.inheriting}
         onChange={setInheriting}
-        label="Use the folder's permissions"
+        label={t('files.props.inherit')}
         description={
           acl.inheriting
-            ? `This ${item.folder ? 'folder' : 'file'} has the same access as the folder it's in. Turn this off to set its own.`
-            : 'Only the people and roles below have access.'
+            ? t(item.folder ? 'files.props.inheritingFolder' : 'files.props.inheritingFile')
+            : t('files.props.explicit')
         }
       />
 
-      <div role="table" aria-label="Who has access" className="flex flex-col">
+      <div role="table" aria-label={t('files.props.whoHasAccess')} className="flex flex-col">
         <div role="row" className="grid grid-cols-[minmax(0,1fr)_repeat(4,56px)_36px] items-end gap-1 pb-2 text-[12px] font-semibold text-fg-muted">
-          <span role="columnheader">Who</span>
+          <span role="columnheader">{t('files.props.who')}</span>
           {PERMISSIONS.map((p) => (
             <span key={p} role="columnheader" className="text-center">
-              {PERMISSION_LABEL[p]}
+              {permissionLabel(p)}
             </span>
           ))}
           <span role="columnheader" className="sr-only">
-            Remove
+            {t('common.remove')}
           </span>
         </div>
         {acl.entries.map((entry) => {
@@ -298,14 +299,14 @@ function SharingTab({
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate font-semibold">{entry.recipient}</span>
                   <span className="text-[12px] text-fg-muted">
-                    {entry.modifiable ? (entry.kind === 'role' ? 'Role' : 'User') : 'Always has full access'}
+                    {entry.modifiable ? t(entry.kind === 'role' ? 'files.props.role' : 'files.props.user') : t('files.props.fullAccess')}
                   </span>
                 </span>
               </span>
               {PERMISSIONS.map((p) => (
                 <span key={p} role="cell" className="flex justify-center">
                   <Checkbox
-                    aria-label={`${PERMISSION_LABEL[p]} for ${entry.recipient}`}
+                    aria-label={t('files.props.permissionFor', { permission: permissionLabel(p), recipient: entry.recipient })}
                     checked={entry.permissions.has(p)}
                     disabled={disabled}
                     onChange={(on) => updateEntry(entry, togglePermission(entry.permissions, p, on))}
@@ -317,7 +318,7 @@ function SharingTab({
                   <IconButton
                     size="sm"
                     variant="ghost"
-                    aria-label={`Remove ${entry.recipient}`}
+                    aria-label={t('files.props.removeRecipient', { recipient: entry.recipient })}
                     onClick={() => onChange({ ...acl, entries: acl.entries.filter((e) => e !== entry) })}
                     className="size-8"
                   >
@@ -333,16 +334,16 @@ function SharingTab({
       {!locked && (
         <div className="flex items-end gap-2">
           <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <span className="text-[12.5px] font-semibold text-fg-muted">Add a user or role</span>
+            <span className="text-[12.5px] font-semibold text-fg-muted">{t('files.props.addRecipient')}</span>
             <select
               value={adding}
               onChange={(e) => setAdding(e.target.value)}
               disabled={!recipients.data}
               className="h-9 rounded-control border border-border-strong bg-surface px-2.5 text-fg"
             >
-              <option value="">{recipients.isPending ? 'Loading…' : 'Choose…'}</option>
-              {(['Users', 'Roles'] as const).map((group) => (
-                <optgroup key={group} label={group}>
+              <option value="">{recipients.isPending ? t('common.loading') : t('files.props.choose')}</option>
+              {(['users', 'roles'] as const).map((group) => (
+                <optgroup key={group} label={t(`files.props.${group}`)}>
                   {options
                     .filter((o) => o.group === group)
                     .map((o) => (
@@ -355,7 +356,7 @@ function SharingTab({
             </select>
           </label>
           <Button size="sm" icon={<Plus size={15} aria-hidden="true" />} aria-disabled={!adding} onClick={add} className="aria-disabled:opacity-50">
-            Add
+            {t('files.props.add')}
           </Button>
         </div>
       )}

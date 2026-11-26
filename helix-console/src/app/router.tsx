@@ -17,6 +17,7 @@ import { AdminPage } from '../features/admin/AdminPage';
 import { ViewerPage } from '../features/viewer/ViewerPage';
 import { ContentPage } from '../features/viewer/ContentPage';
 import { DEFAULT_FOLDER, normalizePath } from '../features/files/paths';
+import { t } from '../i18n';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -25,7 +26,7 @@ const rootRoute = createRootRoute({
     </AppShell>
   ),
   notFoundComponent: () => (
-    <AreaPlaceholder title="Page not found" description="This address doesn't match any part of the console." />
+    <AreaPlaceholder title={t('shell.notFound')} description={t('shell.notFoundHint')} />
   ),
 });
 

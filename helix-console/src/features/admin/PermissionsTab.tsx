@@ -3,6 +3,7 @@ import { Lock } from 'lucide-react';
 import { Card, Checkbox, toast } from '@helix/ui';
 import { adminKeys, useAdminSource, useRolePermissions, type RolePermissions } from '../../api/admin';
 import { QueryError } from '../files/QueryError';
+import { t } from '../../i18n';
 
 /**
  * What each role may do in the platform (the GWT "System Roles" panel): a roles × permissions
@@ -26,30 +27,30 @@ export function PermissionsTab() {
       }
       return { previous };
     },
-    onSuccess: (_, { role }) => toast(`Saved permissions for ${role}`),
+    onSuccess: (_, { role }) => toast(t('admin.permissions.saved', { role })),
     onError: (e: Error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(adminKeys.permissions, context.previous);
-      toast(`Couldn't save: ${e.message}`, { tone: 'danger' });
+      toast(t('admin.permissions.saveFailed', { message: e.message }), { tone: 'danger' });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: adminKeys.permissions }),
   });
 
   if (data.isError) return <QueryError error={data.error} onRetry={() => void data.refetch()} />;
-  if (data.isPending) return <p className="m-0 text-fg-muted">Loading permissions…</p>;
+  if (data.isPending) return <p className="m-0 text-fg-muted">{t('admin.permissions.loading')}</p>;
   const { permissions, roles } = data.data;
 
   return (
     <Card className="overflow-hidden">
       <p className="m-0 border-b border-divider px-[18px] py-3.5 text-fg-muted">
-        What members of each role may do. Changes apply the next time a user signs in.
+        {t('admin.permissions.intro')}
       </p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] border-collapse text-left">
-          <caption className="sr-only">Permissions by role</caption>
+          <caption className="sr-only">{t('admin.permissions.caption')}</caption>
           <thead>
             <tr className="text-[12px] text-fg-muted">
               <th scope="col" className="px-[18px] py-2.5 font-semibold">
-                Role
+                {t('admin.permissions.role')}
               </th>
               {permissions.map((p) => (
                 <th key={p.id} scope="col" className="px-2 py-2.5 text-center font-semibold">
@@ -63,7 +64,7 @@ export function PermissionsTab() {
               <tr key={role.name} className="border-t border-divider hover:bg-bg">
                 <th scope="row" className="px-[18px] py-2.5 text-left font-semibold">
                   <span className="flex items-center gap-2">
-                    {role.immutable && <Lock size={13} className="text-fg-muted" aria-label="Can't be changed" />}
+                    {role.immutable && <Lock size={13} className="text-fg-muted" aria-label={t('admin.permissions.locked')} />}
                     {role.name}
                   </span>
                 </th>
@@ -72,7 +73,7 @@ export function PermissionsTab() {
                   return (
                     <td key={p.id} className="px-2 py-2.5 text-center">
                       <Checkbox
-                        aria-label={`${p.label} for ${role.name}`}
+                        aria-label={t('admin.permissions.permissionFor', { permission: p.label, role: role.name })}
                         checked={on}
                         disabled={role.immutable || save.isPending}
                         onChange={(checked) =>

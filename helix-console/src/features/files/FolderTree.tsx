@@ -3,6 +3,7 @@ import { ChevronRight, LoaderCircle, Trash2 } from 'lucide-react';
 import { cn } from '@helix/ui';
 import { useFolder } from '../../api/repo-context';
 import { ancestorsOf, ROOT_FOLDERS } from './paths';
+import { t } from '../../i18n';
 import { sortByName } from './sorting';
 
 /** Tree id of the Trash entry; not a repository path. */
@@ -95,7 +96,7 @@ export function FolderTree({ currentPath, onSelect, onOpenTrash }: FolderTreePro
   }
 
   return (
-    <ul ref={treeRef} role="tree" aria-label="Folders" className="m-0 flex list-none flex-col gap-0.5 p-0" onKeyDown={onKeyDown}>
+    <ul ref={treeRef} role="tree" aria-label={t('files.folders')} className="m-0 flex list-none flex-col gap-0.5 p-0" onKeyDown={onKeyDown}>
       {ROOT_FOLDERS.map((root) => (
         <TreeNode
           key={root.path}
@@ -132,7 +133,7 @@ export function FolderTree({ currentPath, onSelect, onOpenTrash }: FolderTreePro
           <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center">
             <Trash2 size={14} />
           </span>
-          <span>Trash</span>
+          <span>{t('files.trash')}</span>
         </div>
       </li>
     </ul>
@@ -219,7 +220,7 @@ function TreeNode(props: TreeNodeProps) {
       )}
       {isOpen && isError && (
         <div style={{ paddingLeft: 32 + (level - 1) * 16 }} className="py-1 text-[12.5px] text-danger-fg">
-          Couldn't load folders
+          {t('files.foldersFailed')}
         </div>
       )}
     </li>

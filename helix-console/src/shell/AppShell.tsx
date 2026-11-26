@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { cn, Toaster } from '@helix/ui';
+import { t } from '../i18n';
 import { useLayoutStore } from './layout-store';
 import { NAV_RAIL_ID, NavRail } from './NavRail';
 import { TopBar } from './TopBar';
@@ -45,7 +46,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-control focus:bg-surface focus:px-3 focus:py-2"
       >
-        Skip to content
+        {t('common.skipToContent')}
       </a>
 
       <div className="hidden shrink-0 md:block">
@@ -56,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-40 md:hidden">
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label={t('shell.closeMenu')}
             className="absolute inset-0 bg-[rgb(15_18_48/0.5)]"
             onClick={() => setDrawerOpen(false)}
           />
@@ -81,7 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
-      <Toaster />
+      <Toaster dismissLabel={t('common.dismiss')} />
       <CommandPalette />
       <BridgeHost />
     </div>

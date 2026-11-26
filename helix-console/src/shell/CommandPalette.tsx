@@ -6,6 +6,7 @@ import { usePickList } from '../api/pick-lists';
 import { useSession } from '../api/repo-context';
 import { useLayoutStore } from './layout-store';
 import { NAV_ITEMS } from './nav-items';
+import { t } from '../i18n';
 
 interface Command {
   id: string;
@@ -46,24 +47,24 @@ export function CommandPalette() {
     const go = (to: string, search?: Record<string, string>) => () => void navigate({ to, search } as never);
     const areas = NAV_ITEMS.filter((n) => n.to !== '/admin' || session.data?.isAdministrator !== false).map((n) => ({
       id: `go:${n.to}`,
-      label: `Go to ${n.label}`,
-      group: 'Areas',
+      label: t('shell.palette.goTo', { area: t(n.label) }),
+      group: t('shell.areas'),
       icon: <n.icon size={16} aria-hidden="true" />,
       run: go(n.to),
     }));
     const favs = (favorites.data ?? []).map((f) => ({
       id: `fav:${f.fullPath}`,
       label: f.title,
-      group: 'Favorites',
+      group: t('shell.palette.favorites'),
       keywords: f.fullPath,
       icon: <Star size={16} aria-hidden="true" />,
       run: f.kind === 'folder' ? go('/files', { path: f.fullPath }) : go('/view', { path: f.fullPath, title: f.title }),
     }));
     return [
       ...areas,
-      { id: 'go:trash', label: 'Go to Trash', group: 'Areas', icon: <Trash2 size={16} aria-hidden="true" />, run: go('/files/trash') },
+      { id: 'go:trash', label: t('shell.palette.goToTrash'), group: t('shell.areas'), icon: <Trash2 size={16} aria-hidden="true" />, run: go('/files/trash') },
       ...favs,
-      { id: 'rail', label: 'Collapse or expand the menu', group: 'View', keywords: 'sidebar rail', icon: <PanelLeft size={16} aria-hidden="true" />, run: toggleRail },
+      { id: 'rail', label: t('shell.palette.toggleRail'), group: t('shell.palette.view'), keywords: 'sidebar rail', icon: <PanelLeft size={16} aria-hidden="true" />, run: toggleRail },
     ];
   }, [favorites.data, session.data, navigate, toggleRail]);
 
@@ -90,7 +91,7 @@ export function CommandPalette() {
   return (
     <dialog
       ref={dialogRef}
-      aria-label="Command palette"
+      aria-label={t('shell.palette.label')}
       onCancel={(e) => {
         e.preventDefault();
         setOpen(false);
@@ -108,8 +109,8 @@ export function CommandPalette() {
               aria-expanded="true"
               aria-controls={listId}
               aria-activedescendant={results[active] ? `${listId}-${results[active].id}` : undefined}
-              aria-label="Search commands"
-              placeholder="Go to, open a favorite, or run a command"
+              aria-label={t('shell.palette.search')}
+              placeholder={t('shell.palette.placeholder')}
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -120,8 +121,8 @@ export function CommandPalette() {
             />
             <kbd className="font-mono text-[11px] text-fg-muted">Esc</kbd>
           </div>
-          <ul id={listId} role="listbox" aria-label="Commands" className="m-0 max-h-[50vh] list-none overflow-y-auto p-1.5">
-            {results.length === 0 && <li className="px-3 py-6 text-center text-fg-muted">No matching commands</li>}
+          <ul id={listId} role="listbox" aria-label={t('shell.palette.commands')} className="m-0 max-h-[50vh] list-none overflow-y-auto p-1.5">
+            {results.length === 0 && <li className="px-3 py-6 text-center text-fg-muted">{t('shell.palette.empty')}</li>}
             {results.map((command, index) => {
               const header = command.group !== lastGroup ? command.group : null;
               lastGroup = command.group;

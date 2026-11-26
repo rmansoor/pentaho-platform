@@ -10,6 +10,7 @@ import {
   type ConnectionForm,
 } from '../../api/datasources';
 import { QueryError } from '../files/QueryError';
+import { t } from '../../i18n';
 
 export type ConnectionTarget = { kind: 'new' } | { kind: 'edit'; name: string };
 
@@ -34,8 +35,8 @@ export function ConnectionSheet({ target, onClose }: { target: ConnectionTarget 
       variant="sheet"
       open={target !== null}
       onClose={onClose}
-      title={target?.kind === 'edit' ? `Edit "${target.name}"` : 'New database connection'}
-      description="Reports, models and analyses use this to reach the database."
+      title={target?.kind === 'edit' ? t('datasources.connection.edit', { name: target.name }) : t('datasources.newConnection')}
+      description={t('datasources.connection.description')}
       actions={null}
     >
       {target && <ConnectionBody key={target.kind === 'edit' ? target.name : 'new'} target={target} onClose={onClose} />}
@@ -76,15 +77,15 @@ function ConnectionBody({ target, onClose }: { target: ConnectionTarget; onClose
     mutationFn: ({ name, body }: { name: string; body: string }) => source.saveConnection(name, body),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({ queryKey: dataSourceKeys.all });
-      toast(target.kind === 'edit' ? `Saved connection "${name}"` : `Created connection "${name}"`);
+      toast(t(target.kind === 'edit' ? 'datasources.connection.saved' : 'datasources.connection.created', { name }));
       onClose();
     },
-    onError: (e: Error) => toast(`Couldn't save: ${e.message}`, { tone: 'danger' }),
+    onError: (e: Error) => toast(t('datasources.connection.saveFailed', { message: e.message }), { tone: 'danger' }),
   });
 
   if (existing.isError) return <QueryError error={existing.error} onRetry={() => void existing.refetch()} />;
   if (types.isError) return <QueryError error={types.error} onRetry={() => void types.refetch()} />;
-  if (!form || !types.data) return <p className="m-0 text-fg-muted">Loading…</p>;
+  if (!form || !types.data) return <p className="m-0 text-fg-muted">{t('common.loading')}</p>;
 
   const type = types.data.find((t) => t.shortName === form.typeShortName);
   const accessTypes = type?.accessTypes.length ? type.accessTypes : ['NATIVE', 'JNDI'];
@@ -94,15 +95,15 @@ function ConnectionBody({ target, onClose }: { target: ConnectionTarget; onClose
   };
   const native = form.access === 'NATIVE';
   const problem = !form.name.trim()
-    ? 'Give the connection a name'
+    ? t('datasources.connection.problems.name')
     : /[/\\:]/.test(form.name)
-      ? 'Names can\'t contain "/", "\\" or ":"'
+      ? t('datasources.connection.problems.nameCharacters')
       : native && !form.host.trim()
-        ? 'Enter the database server'
+        ? t('datasources.connection.problems.host')
         : !form.database.trim()
           ? native
-            ? 'Enter the database name'
-            : 'Enter the JNDI name'
+            ? t('datasources.connection.problems.database')
+            : t('datasources.connection.problems.jndi')
           : null;
   const body = () => connectionBody(form, types.data);
 
@@ -114,10 +115,10 @@ function ConnectionBody({ target, onClose }: { target: ConnectionTarget; onClose
   return (
     <div className="flex h-full flex-col">
       <form id={formId} onSubmit={submit} className="flex flex-col gap-5">
-        <Field label="Connection name">
+        <Field label={t('datasources.connection.name')}>
           {(id) => <input id={id} value={form.name} disabled={target.kind === 'edit'} onChange={(e) => set('name', e.target.value)} className={inputClass} />}
         </Field>
-        <Field label="Database type">
+        <Field label={t('datasources.connection.type')}>
           {(id) => (
             <select
               id={id}
@@ -144,7 +145,7 @@ function ConnectionBody({ target, onClose }: { target: ConnectionTarget; onClose
         </Field>
 
         <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-          <legend className="mb-2 p-0 text-[13px] font-semibold text-fg-soft">Connect using</legend>
+          <legend className="mb-2 p-0 text-[13px] font-semibold text-fg-soft">{t('datasources.connection.connectUsing')}</legend>
           <div className="flex flex-wrap gap-1.5">
             {accessTypes.map((a) => (
               <label
@@ -155,7 +156,7 @@ function ConnectionBody({ target, onClose }: { target: ConnectionTarget; onClose
                 )}
               >
                 <input type="radio" name="access" value={a} checked={form.access === a} onChange={() => set('access', a as 'NATIVE' | 'JNDI')} className="sr-only" />
-                {a === 'NATIVE' ? 'Native (JDBC)' : 'JNDI'}
+                {a === 'NATIVE' ? t('datasources.connection.native') : t('datasources.connection.jndi')}
               </label>
             ))}
           </div>
@@ -164,27 +165,27 @@ function ConnectionBody({ target, onClose }: { target: ConnectionTarget; onClose
         {native ? (
           <>
             <div className="grid grid-cols-[minmax(0,1fr)_120px] gap-3">
-              <Field label="Server (host name)">
+              <Field label={t('datasources.connection.host')}>
                 {(id) => <input id={id} value={form.host} onChange={(e) => set('host', e.target.value)} className={inputClass} />}
               </Field>
-              <Field label="Port">
+              <Field label={t('datasources.connection.port')}>
                 {(id) => <input id={id} inputMode="numeric" value={form.port} onChange={(e) => set('port', e.target.value)} className={inputClass} />}
               </Field>
             </div>
-            <Field label="Database name">
+            <Field label={t('datasources.connection.database')}>
               {(id) => <input id={id} value={form.database} onChange={(e) => set('database', e.target.value)} className={inputClass} />}
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="User name">
+              <Field label={t('datasources.connection.user')}>
                 {(id) => <input id={id} value={form.username} autoComplete="off" onChange={(e) => set('username', e.target.value)} className={inputClass} />}
               </Field>
-              <Field label="Password" hint={target.kind === 'edit' ? 'Leave blank to keep the saved password.' : undefined}>
+              <Field label={t('datasources.connection.password')} hint={target.kind === 'edit' ? t('datasources.connection.keepPassword') : undefined}>
                 {(id) => <input id={id} type="password" value={form.password} autoComplete="new-password" onChange={(e) => set('password', e.target.value)} className={inputClass} />}
               </Field>
             </div>
           </>
         ) : (
-          <Field label="JNDI name" hint="The name of a data source defined in the application server.">
+          <Field label={t('datasources.connection.jndiName')} hint={t('datasources.connection.jndiHint')}>
             {(id) => <input id={id} value={form.database} onChange={(e) => set('database', e.target.value)} className={cn(inputClass, 'font-mono text-[13px]')} />}
           </Field>
         )}
@@ -195,7 +196,7 @@ function ConnectionBody({ target, onClose }: { target: ConnectionTarget; onClose
             className={cn('flex items-center gap-3 rounded-card px-4 py-3', result.ok ? 'bg-success-bg text-success-fg' : 'bg-danger-bg text-danger-fg')}
           >
             {result.ok ? <CheckCircle2 size={18} aria-hidden="true" /> : <XCircle size={18} aria-hidden="true" />}
-            <span>{result.ok ? result.message : "Couldn't connect. Check the server, port, database name and sign-in details."}</span>
+            <span>{result.ok ? result.message : t('datasources.connection.failed')}</span>
           </div>
         )}
       </form>
@@ -208,10 +209,10 @@ function ConnectionBody({ target, onClose }: { target: ConnectionTarget; onClose
           aria-disabled={!!problem || test.isPending}
           onClick={() => !problem && !test.isPending && test.mutate(body())}
         >
-          {test.isPending ? 'Testing…' : 'Test connection'}
+          {test.isPending ? t('datasources.connection.testing') : t('datasources.connection.test')}
         </Button>
         <Button size="sm" variant="primary" type="submit" form={formId} aria-disabled={!!problem || save.isPending} title={problem ?? undefined}>
-          {save.isPending ? 'Saving…' : target.kind === 'edit' ? 'Save' : 'Create connection'}
+          {save.isPending ? t('common.saving') : target.kind === 'edit' ? t('common.save') : t('datasources.connection.create')}
         </Button>
       </div>
     </div>

@@ -15,6 +15,7 @@ import { PropertiesSheet, type PropertiesTab } from './PropertiesSheet';
 import { QueryError } from './QueryError';
 import { DEFAULT_SORT, nextSort, sortItems, type Sort } from './sorting';
 import { useTrashActions } from './use-trash-actions';
+import { t } from '../../i18n';
 
 export interface FilesPageProps {
   path: string;
@@ -98,13 +99,13 @@ export function FilesPage({ path, onNavigate, onOpenTrash, onOpenFile }: FilesPa
         <QueryError
           error={folder.error}
           onRetry={() => void folder.refetch()}
-          secondary={{ label: 'Go to Public', onClick: () => onNavigate(DEFAULT_FOLDER) }}
+          secondary={{ label: t('files.goToPublic'), onClick: () => onNavigate(DEFAULT_FOLDER) }}
         />
       ) : items.length === 0 ? (
-        <p className="m-0 px-[18px] py-12 text-center text-fg-muted">This folder is empty.</p>
+        <p className="m-0 px-[18px] py-12 text-center text-fg-muted">{t('files.empty')}</p>
       ) : (
         <FileTable
-          label={`Files in ${title}`}
+          label={t('files.filesIn', { folder: title })}
           columns={FILE_COLUMNS}
           items={items}
           sort={sort}
@@ -126,9 +127,9 @@ export function FilesPage({ path, onNavigate, onOpenTrash, onOpenFile }: FilesPa
 function Breadcrumb({ path, folderTitle, onNavigate }: { path: string; folderTitle?: string; onNavigate: (path: string) => void }) {
   const crumbs = ancestorsOf(path);
   return (
-    <nav aria-label="Breadcrumb">
+    <nav aria-label={t('files.breadcrumb')}>
       <ol className="m-0 flex list-none flex-wrap items-center gap-1 p-0 text-[13px] text-fg-muted">
-        <li>Files</li>
+        <li>{t('files.title')}</li>
         {crumbs.map((crumb, i) => {
           const last = i === crumbs.length - 1;
           const label = rootLabel(crumb) ?? (last && folderTitle ? folderTitle : lastSegment(crumb));
@@ -186,19 +187,19 @@ function Toolbar({
   const schedulable = useSchedulableExtensions();
   const canSchedule = !!single && !single.folder && !!schedulable.data?.includes(extensionOfPath(single.path));
   const scheduleReason = !single
-    ? 'Select one report or transformation to schedule it'
+    ? t('files.reasons.scheduleSelect')
     : single.folder
-      ? "Folders can't be scheduled"
+      ? t('files.reasons.scheduleFolder')
       : canSchedule
         ? undefined
-        : "This type of file can't be scheduled";
-  const openReason = !single ? 'Select one item to open it' : undefined;
+        : t('files.reasons.scheduleType');
+  const openReason = !single ? t('files.reasons.open') : undefined;
 
   return (
     <>
       <SelectionCount selected={selected.length} total={total} />
       <div className="flex-1" />
-      <IconButton size="sm" variant="ghost" aria-label="Refresh" title="Refresh" onClick={onRefresh}>
+      <IconButton size="sm" variant="ghost" aria-label={t('common.refresh')} title={t('common.refresh')} onClick={onRefresh}>
         <RefreshCw size={16} aria-hidden="true" className={refreshing ? 'animate-spin motion-reduce:animate-none' : undefined} />
       </IconButton>
       <Button
@@ -210,17 +211,17 @@ function Toolbar({
         onClick={() => canOpen && single && onOpen(single)}
         className={disabledLook}
       >
-        Open
+        {t('files.open')}
       </Button>
       <Button
         size="sm"
         icon={<Share2 size={15} aria-hidden="true" />}
         aria-disabled={!single}
-        title={single ? undefined : 'Select one item to share it'}
+        title={single ? undefined : t('files.reasons.share')}
         onClick={() => single && onProperties(single, 'sharing')}
         className={disabledLook}
       >
-        Share
+        {t('files.share')}
       </Button>
       <Button
         size="sm"
@@ -230,35 +231,35 @@ function Toolbar({
         onClick={() => canSchedule && single && onSchedule(single)}
         className={disabledLook}
       >
-        Schedule
+        {t('files.schedule')}
       </Button>
       <Menu
         items={[
           {
-            label: 'Properties',
+            label: t('files.properties'),
             icon: <Info size={15} aria-hidden="true" />,
             onSelect: () => single && onProperties(single, 'general'),
             disabled: !single,
-            reason: 'Select one item to see its properties',
+            reason: t('files.reasons.properties'),
           },
           {
-            label: isFavorite ? 'Remove from favorites' : 'Add to favorites',
+            label: isFavorite ? t('files.removeFavorite') : t('files.addFavorite'),
             icon: <Star size={15} aria-hidden="true" />,
             onSelect: () => single && toggleFavorite.mutate({ path: single.path, title: single.title, kind: single.kind }),
             disabled: !single,
-            reason: 'Select one item to add it to favorites',
+            reason: t('files.reasons.favorite'),
           },
           {
-            label: selected.length > 1 ? `Move ${selected.length} items to trash` : 'Move to trash',
+            label: t('files.moveToTrash', { count: selected.length }),
             icon: <Trash2 size={15} aria-hidden="true" />,
             onSelect: onTrash,
             disabled: selected.length === 0,
-            reason: 'Select items to move them to trash',
+            reason: t('files.reasons.trash'),
             tone: 'danger',
           },
         ]}
         trigger={(props) => (
-          <IconButton size="sm" aria-label="More actions" title="More actions" {...props}>
+          <IconButton size="sm" aria-label={t('files.moreActions')} title={t('files.moreActions')} {...props}>
             <Ellipsis size={16} aria-hidden="true" />
           </IconButton>
         )}

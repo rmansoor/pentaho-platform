@@ -11,15 +11,9 @@ import { formatDateTime } from '../files/format';
 import { displayFolder } from '../files/columns';
 import { ScheduleSheet } from './ScheduleSheet';
 import { BlockoutsCard } from './BlockoutsCard';
+import { t } from '../../i18n';
 
-const STATE_LABEL: Record<JobState, string> = {
-  active: 'Active',
-  paused: 'Paused',
-  complete: 'Finished',
-  error: 'Error',
-  blocked: 'Blocked',
-  unknown: 'Unknown',
-};
+const stateLabel = (state: JobState) => t(`schedules.state.${state}`);
 
 const STATE_TONE: Record<JobState, string> = {
   active: 'bg-success-bg text-success-fg',
@@ -59,19 +53,18 @@ export function SchedulesPage() {
       else await source.removeJob(job.id);
     },
     onSuccess: (_, { job, action }) => {
-      const verb = { pause: 'Paused', resume: 'Resumed', run: 'Started', delete: 'Deleted' }[action];
-      toast(`${verb} "${job.name}"`);
+      toast(t(`schedules.done.${action}`, { name: job.name }));
       if (action === 'delete') setDeleting(null);
     },
     onSettled: refresh,
-    onError: (e: Error) => toast(`Couldn't update the schedule: ${e.message}`, { tone: 'danger' }),
+    onError: (e: Error) => toast(t('schedules.updateFailed', { message: e.message }), { tone: 'danger' }),
   });
 
   const setScheduler = useMutation({
     mutationFn: (running: boolean) => source.setStatus(running),
-    onSuccess: (_, running) => toast(running ? 'Scheduler started' : 'Scheduler paused; no schedules will run'),
+    onSuccess: (_, running) => toast(running ? t('schedules.scheduler.started') : t('schedules.scheduler.pausedToast')),
     onSettled: refresh,
-    onError: (e: Error) => toast(`Couldn't change the scheduler: ${e.message}`, { tone: 'danger' }),
+    onError: (e: Error) => toast(t('schedules.scheduler.failed', { message: e.message }), { tone: 'danger' }),
   });
 
   const owners = useMemo(() => [...new Set(jobs.data?.map((j) => j.owner))].sort(), [jobs.data]);
@@ -90,7 +83,7 @@ export function SchedulesPage() {
     <div className="flex flex-col gap-5 pt-1">
       <header className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">Schedules</h1>
+          <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">{t('schedules.title')}</h1>
         </div>
         {status.data && (
           <div className="flex items-center gap-2">
@@ -101,7 +94,7 @@ export function SchedulesPage() {
               )}
             >
               <span aria-hidden="true" className={cn('size-1.5 rounded-full', paused ? 'bg-danger-fg' : 'bg-success-fg')} />
-              Scheduler {paused ? 'paused' : 'running'}
+              {paused ? t('schedules.scheduler.paused') : t('schedules.scheduler.running')}
             </span>
             <Button
               size="sm"
@@ -109,7 +102,7 @@ export function SchedulesPage() {
               onClick={() => setScheduler.mutate(paused)}
               aria-disabled={setScheduler.isPending}
             >
-              {paused ? 'Start scheduler' : 'Pause scheduler'}
+              {paused ? t('schedules.scheduler.start') : t('schedules.scheduler.pause')}
             </Button>
           </div>
         )}
@@ -117,7 +110,7 @@ export function SchedulesPage() {
 
       {paused && (
         <div role="status" className="rounded-card bg-danger-bg px-[18px] py-3 text-danger-fg">
-          <strong>The scheduler is paused.</strong> No schedules will run until it's started again.
+          <strong>{t('schedules.scheduler.pausedBanner')}</strong> {t('schedules.scheduler.pausedBannerDetail')}
         </div>
       )}
 
@@ -125,19 +118,19 @@ export function SchedulesPage() {
         <div className="flex flex-wrap items-center gap-2 border-b border-divider px-[18px] py-3.5">
           <label className="flex h-9 min-w-[200px] flex-1 items-center gap-2 rounded-control border border-border bg-surface px-3 sm:max-w-[320px]">
             <Search size={15} className="text-fg-muted" aria-hidden="true" />
-            <span className="sr-only">Search schedules</span>
+            <span className="sr-only">{t('schedules.search')}</span>
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name or file"
+              placeholder={t('schedules.searchPlaceholder')}
               className="min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:text-fg-muted"
             />
           </label>
           <label className="flex items-center gap-2 text-[13px] text-fg-muted">
-            Owner
+            {t('schedules.owner')}
             <select value={owner} onChange={(e) => setOwner(e.target.value)} className="h-9 rounded-control border border-border-strong bg-surface px-2 text-fg">
-              <option value="">Anyone</option>
+              <option value="">{t('schedules.anyone')}</option>
               {owners.map((o) => (
                 <option key={o} value={o}>
                   {o}
@@ -146,52 +139,52 @@ export function SchedulesPage() {
             </select>
           </label>
           <label className="flex items-center gap-2 text-[13px] text-fg-muted">
-            State
+            {t('schedules.stateFilter')}
             <select
               value={state}
               onChange={(e) => setState(e.target.value as '' | JobState)}
               className="h-9 rounded-control border border-border-strong bg-surface px-2 text-fg"
             >
-              <option value="">Any</option>
+              <option value="">{t('schedules.any')}</option>
               {(['active', 'paused', 'complete', 'error'] as const).map((s) => (
                 <option key={s} value={s}>
-                  {STATE_LABEL[s]}
+                  {stateLabel(s)}
                 </option>
               ))}
             </select>
           </label>
           <div className="flex-1" />
-          <IconButton size="sm" variant="ghost" aria-label="Refresh" title="Refresh" onClick={() => void refresh()}>
+          <IconButton size="sm" variant="ghost" aria-label={t('common.refresh')} title={t('common.refresh')} onClick={() => void refresh()}>
             <RefreshCw size={16} aria-hidden="true" className={jobs.isFetching ? 'animate-spin motion-reduce:animate-none' : undefined} />
           </IconButton>
         </div>
 
         {jobs.isPending ? (
-          <p className="m-0 px-[18px] py-10 text-fg-muted">Loading schedules…</p>
+          <p className="m-0 px-[18px] py-10 text-fg-muted">{t('schedules.loading')}</p>
         ) : jobs.isError ? (
           <QueryError error={jobs.error} onRetry={() => void jobs.refetch()} />
         ) : visible.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-[18px] py-14 text-center">
             <CalendarClock size={28} className="text-fg-muted" aria-hidden="true" />
-            <p className="m-0 font-bold">{jobs.data.length ? 'No schedules match' : 'No schedules yet'}</p>
+            <p className="m-0 font-bold">{jobs.data.length ? t('schedules.noMatch') : t('schedules.none')}</p>
             <p className="m-0 text-fg-muted">
-              {jobs.data.length ? 'Try a different search or filter.' : 'Schedules you create from a report appear here.'}
+              {jobs.data.length ? t('schedules.noMatchHint') : t('schedules.noneHint')}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[880px] border-collapse text-left">
-              <caption className="sr-only">Schedules</caption>
+              <caption className="sr-only">{t('schedules.title')}</caption>
               <thead>
                 <tr className="text-[12.5px] font-semibold text-fg-muted">
-                  <th scope="col" className="px-[18px] py-2.5 font-semibold">Schedule</th>
-                  <th scope="col" className="px-3 py-2.5 font-semibold">Repeats</th>
-                  <th scope="col" className="px-3 py-2.5 font-semibold">Next run</th>
-                  <th scope="col" className="px-3 py-2.5 font-semibold">Last run</th>
-                  <th scope="col" className="px-3 py-2.5 font-semibold">Owner</th>
-                  <th scope="col" className="px-3 py-2.5 font-semibold">State</th>
+                  <th scope="col" className="px-[18px] py-2.5 font-semibold">{t('schedules.columns.schedule')}</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">{t('schedules.columns.repeats')}</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">{t('schedules.columns.nextRun')}</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">{t('schedules.columns.lastRun')}</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">{t('schedules.columns.owner')}</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">{t('schedules.columns.state')}</th>
                   <th scope="col" className="px-[18px] py-2.5 text-right font-semibold">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t('schedules.columns.actions')}</span>
                   </th>
                 </tr>
               </thead>
@@ -211,11 +204,11 @@ export function SchedulesPage() {
                     </th>
                     <td className="px-3 py-2.5">{job.recurrence}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap text-fg-soft">{job.state === 'paused' ? '—' : (formatDateTime(job.nextRun) ?? '—')}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap text-fg-muted">{formatDateTime(job.lastRun) ?? 'Not yet'}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-fg-muted">{formatDateTime(job.lastRun) ?? t('schedules.notYet')}</td>
                     <td className="px-3 py-2.5 text-fg-soft">{job.owner}</td>
                     <td className="px-3 py-2.5">
                       <span className={cn('inline-flex h-6 items-center rounded-full px-2.5 text-[12px] font-bold', STATE_TONE[job.state])}>
-                        {STATE_LABEL[job.state]}
+                        {stateLabel(job.state)}
                       </span>
                     </td>
                     <td className="px-[18px] py-2.5">
@@ -223,8 +216,8 @@ export function SchedulesPage() {
                         <IconButton
                           size="sm"
                           variant="ghost"
-                          aria-label={`Run ${job.name} now`}
-                          title="Run now"
+                          aria-label={t('schedules.runNamed', { name: job.name })}
+                          title={t('schedules.runNow')}
                           aria-disabled={busy === job.id}
                           onClick={() => busy !== job.id && act.mutate({ job, action: 'run' })}
                         >
@@ -234,8 +227,8 @@ export function SchedulesPage() {
                           <IconButton
                             size="sm"
                             variant="ghost"
-                            aria-label={`Resume ${job.name}`}
-                            title="Resume"
+                            aria-label={t('schedules.resumeNamed', { name: job.name })}
+                            title={t('schedules.resume')}
                             aria-disabled={busy === job.id}
                             onClick={() => busy !== job.id && act.mutate({ job, action: 'resume' })}
                           >
@@ -245,8 +238,8 @@ export function SchedulesPage() {
                           <IconButton
                             size="sm"
                             variant="ghost"
-                            aria-label={`Pause ${job.name}`}
-                            title="Pause"
+                            aria-label={t('schedules.pauseNamed', { name: job.name })}
+                            title={t('schedules.pause')}
                             aria-disabled={busy === job.id || job.state === 'complete'}
                             onClick={() => busy !== job.id && job.state !== 'complete' && act.mutate({ job, action: 'pause' })}
                           >
@@ -256,8 +249,8 @@ export function SchedulesPage() {
                         <IconButton
                           size="sm"
                           variant="ghost"
-                          aria-label={`Edit ${job.name}`}
-                          title={job.inputFile ? 'Edit' : "This schedule's file is unknown"}
+                          aria-label={t('schedules.editNamed', { name: job.name })}
+                          title={job.inputFile ? t('common.edit') : t('schedules.unknownFile')}
                           aria-disabled={!job.inputFile}
                           onClick={() => job.inputFile && setEditing(job)}
                         >
@@ -266,8 +259,8 @@ export function SchedulesPage() {
                         <IconButton
                           size="sm"
                           variant="ghost"
-                          aria-label={`Delete ${job.name}`}
-                          title="Delete"
+                          aria-label={t('schedules.deleteNamed', { name: job.name })}
+                          title={t('common.delete')}
                           onClick={() => setDeleting(job)}
                           className="text-danger-fg"
                         >
@@ -289,15 +282,15 @@ export function SchedulesPage() {
       <Dialog
         open={deleting !== null}
         onClose={() => !act.isPending && setDeleting(null)}
-        title={`Delete "${deleting?.name ?? ''}"?`}
-        description="The schedule stops and is removed. Output it already produced stays where it is."
+        title={t('schedules.deleteTitle', { name: deleting?.name ?? '' })}
+        description={t('schedules.deleteDescription')}
         actions={
           <>
             <Button size="sm" onClick={() => setDeleting(null)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button size="sm" variant="danger" onClick={() => deleting && act.mutate({ job: deleting, action: 'delete' })}>
-              Delete schedule
+              {t('schedules.deleteSchedule')}
             </Button>
           </>
         }

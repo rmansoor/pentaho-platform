@@ -10,6 +10,7 @@ import { conflictsFor, describeConflict, specFromRecurrence, toBlockout } from '
 import type { ScheduledJob } from '../../api/scheduler';
 import { displayFolder } from '../files/columns';
 import { formatDateTime } from '../files/format';
+import { t } from '../../i18n';
 import {
   buildScheduleRequest,
   buildTrigger,
@@ -48,7 +49,7 @@ function runNowForm(form: ScheduleForm): ScheduleForm {
 /** New schedule for a file, or edit an existing one, in a side sheet. */
 export function ScheduleSheet({ target, onClose, onSaved }: ScheduleSheetProps) {
   const file = target?.kind === 'new' ? target.file : target?.job.inputFile;
-  const title = target?.kind === 'edit' ? `Edit "${target.job.name}"` : target?.once ? 'Run in background' : 'New schedule';
+  const title = target?.kind === 'edit' ? t('schedules.sheet.edit', { name: target.job.name }) : target?.once ? t('schedules.sheet.runInBackground') : t('schedules.sheet.new');
   return (
     <Dialog
       variant="sheet"
@@ -121,31 +122,31 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
   const conflictText = conflict
     ? describeConflict(conflict)
     : neverRuns
-      ? 'Every run falls in a blockout time, so this schedule would never run.'
+      ? t('schedules.blockouts.conflict.never')
       : null;
 
   const problem =
     scheduleFormProblem(form) ??
-    (hasParameters.data && !parametersComplete ? 'Fill in the required report parameters' : null) ??
-    (neverRuns ? 'Change when it runs: it falls in a blockout time' : null);
+    (hasParameters.data && !parametersComplete ? t('schedules.sheet.fillParameters') : null) ??
+    (neverRuns ? t('schedules.blockouts.conflict.blocked') : null);
 
   const save = useMutation({
     mutationFn: () => {
       let reportParameters: ReturnType<ReportParametersHandle['collect']> = [];
       if (hasParameters.data) {
         reportParameters = prompt.current?.collect() ?? null;
-        if (!reportParameters) throw new Error("the report's parameters haven't loaded yet.");
+        if (!reportParameters) throw new Error(t('schedules.sheet.parametersNotLoaded'));
       }
       const request = buildScheduleRequest(form, file, user, target.kind === 'edit' ? target.job.id : undefined, reportParameters);
       return target.kind === 'edit' ? scheduler.updateJob(request) : scheduler.createJob(request);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: schedulerKeys.all });
-      toast(target.kind === 'edit' ? `Saved "${form.name.trim()}"` : `Scheduled "${form.name.trim()}" · ${describeForm(form)}`);
+      toast(target.kind === 'edit' ? t('schedules.sheet.saved', { name: form.name.trim() }) : t('schedules.sheet.created', { name: form.name.trim(), when: describeForm(form) }));
       onSaved?.();
       onClose();
     },
-    onError: (e: Error) => toast(`Couldn't save the schedule: ${e.message}`, { tone: 'danger' }),
+    onError: (e: Error) => toast(t('schedules.sheet.saveFailed', { message: e.message }), { tone: 'danger' }),
   });
 
   const submit = (e: FormEvent) => {
@@ -156,10 +157,10 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
   return (
     <div className="flex h-full flex-col">
       <form id={formId} onSubmit={submit} className="flex flex-col gap-5">
-        <Field label="Name">
+        <Field label={t('schedules.sheet.name')}>
           {(id) => <input id={id} value={form.name} onChange={(e) => set('name', e.target.value)} className={inputClass} />}
         </Field>
-        <Field label="Save output to" hint="A repository folder; the file name is the schedule name plus the run time.">
+        <Field label={t('schedules.sheet.output')} hint={t('schedules.sheet.outputHint')}>
           {(id) => <input id={id} value={form.outputFolder} onChange={(e) => set('outputFolder', e.target.value)} className={cn(inputClass, 'font-mono text-[13px]')} />}
         </Field>
 
@@ -170,8 +171,8 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
             <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
             <span>
               {conflictText}
-              {conflict?.firstBlocked && !neverRuns ? ` The first is ${formatDateTime(conflict.firstBlocked)}.` : ''}
-              {admin ? ' Blockout times are listed under Schedules.' : ''}
+              {conflict?.firstBlocked && !neverRuns ? ` ${t('schedules.blockouts.conflict.first', { when: formatDateTime(conflict.firstBlocked) })}` : ''}
+              {admin ? ` ${t('schedules.blockouts.conflict.listed')}` : ''}
             </span>
           </div>
         )}
@@ -179,41 +180,41 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
         {hasParameters.data && (
           <section aria-labelledby={`${formId}-params`} className="flex flex-col gap-2">
             <h3 id={`${formId}-params`} className="m-0 text-[13px] font-semibold text-fg-soft">
-              Report parameters
+              {t('schedules.sheet.reportParameters')}
             </h3>
             <ReportParameters ref={prompt} file={file} saved={form.savedParameters} onCompleteChange={onCompleteChange} />
           </section>
         )}
 
-        <section aria-label="Email" className="flex flex-col gap-4 border-t border-divider pt-5">
+        <section aria-label={t('schedules.sheet.email')} className="flex flex-col gap-4 border-t border-divider pt-5">
           <Switch
             checked={form.email.enabled}
             onChange={(on) => setEmail('enabled', on)}
             disabled={emailReady.data === false && !form.email.enabled}
-            label="Email the output"
+            label={t('schedules.sheet.emailOutput')}
             description={
               emailReady.data === false
-                ? 'Set up a mail server in Administration › Mail server to email output.'
-                : 'Each run sends the result as an attachment.'
+                ? t('schedules.sheet.emailNotConfigured')
+                : t('schedules.sheet.emailHint')
             }
           />
           {form.email.enabled && (
             <>
-              <Field label="To" hint="Separate addresses with commas.">
+              <Field label={t('schedules.sheet.to')} hint={t('schedules.sheet.toHint')}>
                 {(id) => <input id={id} type="text" inputMode="email" value={form.email.to} onChange={(e) => setEmail('to', e.target.value)} className={inputClass} />}
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Cc (optional)">
+                <Field label={t('schedules.sheet.cc')}>
                   {(id) => <input id={id} type="text" inputMode="email" value={form.email.cc} onChange={(e) => setEmail('cc', e.target.value)} className={inputClass} />}
                 </Field>
-                <Field label="Bcc (optional)">
+                <Field label={t('schedules.sheet.bcc')}>
                   {(id) => <input id={id} type="text" inputMode="email" value={form.email.bcc} onChange={(e) => setEmail('bcc', e.target.value)} className={inputClass} />}
                 </Field>
               </div>
-              <Field label="Subject">
+              <Field label={t('schedules.sheet.subject')}>
                 {(id) => <input id={id} value={form.email.subject} onChange={(e) => setEmail('subject', e.target.value)} className={inputClass} />}
               </Field>
-              <Field label="Message (optional)">
+              <Field label={t('schedules.sheet.message')}>
                 {(id) => (
                   <textarea
                     id={id}
@@ -224,7 +225,7 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
                   />
                 )}
               </Field>
-              <Field label="Attachment name">
+              <Field label={t('schedules.sheet.attachment')}>
                 {(id) => <input id={id} value={form.email.attachmentName} onChange={(e) => setEmail('attachmentName', e.target.value)} className={inputClass} />}
               </Field>
             </>
@@ -238,7 +239,7 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
             <span className="text-fg-soft">
               {' '}
               · {form.timeZone.replace(/_/g, ' ')}
-              {form.endDate && form.repeat !== 'once' ? ` · until ${form.endDate}` : ''}
+              {form.endDate && form.repeat !== 'once' ? ` · ${t('schedules.sheet.until', { date: form.endDate })}` : ''}
             </span>
           </span>
         </div>
@@ -247,10 +248,10 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
       <div className="sticky bottom-0 -mx-6 mt-auto -mb-5 flex items-center justify-end gap-2 border-t border-divider bg-surface px-6 py-4">
         {problem && <span className="mr-auto text-[13px] text-fg-muted">{problem}</span>}
         <Button size="sm" onClick={onClose}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button size="sm" variant="primary" type="submit" form={formId} aria-disabled={!!problem || save.isPending} title={problem ?? undefined}>
-          {save.isPending ? 'Saving…' : target.kind === 'edit' ? 'Save changes' : 'Create schedule'}
+          {save.isPending ? t('common.saving') : target.kind === 'edit' ? t('common.saveChanges') : t('schedules.sheet.create')}
         </Button>
       </div>
     </div>

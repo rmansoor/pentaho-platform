@@ -7,6 +7,7 @@ import { QueryError } from '../files/QueryError';
 import { MailTab } from './MailTab';
 import { PermissionsTab } from './PermissionsTab';
 import { SettingsTab } from './SettingsTab';
+import { t } from '../../i18n';
 
 type Tab = 'users' | 'roles' | 'permissions' | 'settings' | 'mail';
 
@@ -15,15 +16,15 @@ export function AdminPage() {
   const [tab, setTab] = useState<Tab>('users');
   return (
     <div className="flex flex-col gap-5 pt-1">
-      <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">Administration</h1>
+      <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">{t('admin.title')}</h1>
       <Tabs
-        label="Administration"
+        label={t('admin.title')}
         tabs={[
-          { id: 'users', label: 'Users' },
-          { id: 'roles', label: 'Roles' },
-          { id: 'permissions', label: 'Permissions' },
-          { id: 'settings', label: 'Settings' },
-          { id: 'mail', label: 'Mail server' },
+          { id: 'users', label: t('admin.tabs.users') },
+          { id: 'roles', label: t('admin.tabs.roles') },
+          { id: 'permissions', label: t('admin.tabs.permissions') },
+          { id: 'settings', label: t('admin.tabs.settings') },
+          { id: 'mail', label: t('admin.tabs.mail') },
         ]}
         value={tab}
         onChange={setTab}
@@ -105,16 +106,16 @@ function UsersTab() {
 
   const toggleRole = useAdminMutation(
     ({ role, on }: { role: string; on: boolean }) => (on ? source.assignRoles(selected!, [role]) : source.removeRoles(selected!, [role])),
-    ({ role, on }) => (on ? `Gave ${selected} the ${role} role` : `Removed the ${role} role from ${selected}`),
+    ({ role, on }) => t(on ? 'admin.users.gaveRole' : 'admin.users.removedRole', { user: selected ?? '', role }),
   );
   const create = useAdminMutation(
     ({ name, password }: { name: string; password: string }) => source.createUser(name, password),
-    ({ name }) => `Created user ${name}`,
+    ({ name }) => t('admin.users.created', { name }),
   );
-  const remove = useAdminMutation((name: string) => source.deleteUsers([name]), (name) => `Deleted user ${name}`);
+  const remove = useAdminMutation((name: string) => source.deleteUsers([name]), (name) => t('admin.users.deleted', { name }));
   const password = useAdminMutation(
     ({ pw, adminPw }: { pw: string; adminPw: string }) => source.setPassword(selected!, pw, adminPw),
-    () => `Changed the password for ${selected}`,
+    () => t('admin.users.passwordChanged', { name: selected ?? '' }),
   );
 
   if (users.isError) return <QueryError error={users.error} onRetry={() => void users.refetch()} />;
@@ -123,9 +124,9 @@ function UsersTab() {
     <div className="flex flex-wrap items-start gap-5">
       <Card className="flex max-w-full flex-[1_1_220px] flex-col gap-2 p-3 md:max-w-[280px]">
         <Button size="sm" variant="primary" icon={<Plus size={15} aria-hidden="true" />} onClick={() => setDialog('new')}>
-          New user
+          {t('admin.users.new')}
         </Button>
-        {users.isPending ? <p className="m-0 p-2 text-fg-muted">Loading…</p> : <MasterList label="Users" icon="user" items={users.data} selected={selected} onSelect={setSelected} />}
+        {users.isPending ? <p className="m-0 p-2 text-fg-muted">{t('common.loading')}</p> : <MasterList label={t('admin.users.list')} icon="user" items={users.data} selected={selected} onSelect={setSelected} />}
       </Card>
 
       {selected && (
@@ -133,16 +134,16 @@ function UsersTab() {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="m-0 min-w-0 flex-1 truncate text-xl font-extrabold">{selected}</h2>
             <Button size="sm" icon={<KeyRound size={15} aria-hidden="true" />} onClick={() => setDialog('password')}>
-              Change password
+              {t('admin.dialog.changePassword')}
             </Button>
             <Button size="sm" variant="danger-outline" icon={<Trash2 size={15} aria-hidden="true" />} onClick={() => setDialog('delete')}>
-              Delete user
+              {t('admin.users.delete')}
             </Button>
           </div>
           <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
-            <legend className="mb-2.5 p-0 text-[13px] font-semibold text-fg-muted">Roles</legend>
+            <legend className="mb-2.5 p-0 text-[13px] font-semibold text-fg-muted">{t('admin.users.roles')}</legend>
             {userRoles.isPending || roles.isPending ? (
-              <p className="m-0 text-fg-muted">Loading roles…</p>
+              <p className="m-0 text-fg-muted">{t('admin.users.loadingRoles')}</p>
             ) : (
               roles.data?.map((role) => (
                 <Checkbox
@@ -160,8 +161,9 @@ function UsersTab() {
 
       <NewNameDialog
         open={dialog === 'new'}
-        title="New user"
-        nameLabel="User name"
+        title={t('admin.users.new')}
+        nameLabel={t('admin.users.nameLabel')}
+        nameMissing={t('admin.users.enterName')}
         withPassword
         onClose={() => setDialog(null)}
         onSubmit={(name, pw) => create.mutateAsync({ name, password: pw ?? '' }).then(() => setSelected(name))}
@@ -169,15 +171,15 @@ function UsersTab() {
       <Dialog
         open={dialog === 'delete'}
         onClose={() => setDialog(null)}
-        title={`Delete user ${selected ?? ''}?`}
-        description="They can no longer sign in. Their files and schedules stay in the repository."
+        title={t('admin.users.deleteTitle', { name: selected ?? '' })}
+        description={t('admin.users.deleteDescription')}
         actions={
           <>
             <Button size="sm" onClick={() => setDialog(null)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button size="sm" variant="danger" onClick={() => selected && remove.mutate(selected, { onSuccess: () => setDialog(null) })}>
-              Delete user
+              {t('admin.users.delete')}
             </Button>
           </>
         }
@@ -206,10 +208,10 @@ function RolesTab() {
 
   const toggleMember = useAdminMutation(
     ({ user, on }: { user: string; on: boolean }) => (on ? source.assignRoles(user, [selected!]) : source.removeRoles(user, [selected!])),
-    ({ user, on }) => (on ? `Added ${user} to ${selected}` : `Removed ${user} from ${selected}`),
+    ({ user, on }) => t(on ? 'admin.roles.added' : 'admin.roles.removed', { user, role: selected ?? '' }),
   );
-  const create = useAdminMutation((name: string) => source.createRole(name), (name) => `Created role ${name}`);
-  const remove = useAdminMutation((name: string) => source.deleteRoles([name]), (name) => `Deleted role ${name}`);
+  const create = useAdminMutation((name: string) => source.createRole(name), (name) => t('admin.roles.created', { name }));
+  const remove = useAdminMutation((name: string) => source.deleteRoles([name]), (name) => t('admin.roles.deleted', { name }));
 
   if (roles.isError) return <QueryError error={roles.error} onRetry={() => void roles.refetch()} />;
 
@@ -217,9 +219,9 @@ function RolesTab() {
     <div className="flex flex-wrap items-start gap-5">
       <Card className="flex max-w-full flex-[1_1_220px] flex-col gap-2 p-3 md:max-w-[280px]">
         <Button size="sm" variant="primary" icon={<Plus size={15} aria-hidden="true" />} onClick={() => setDialog('new')}>
-          New role
+          {t('admin.roles.new')}
         </Button>
-        {roles.isPending ? <p className="m-0 p-2 text-fg-muted">Loading…</p> : <MasterList label="Roles" icon="role" items={roles.data} selected={selected} onSelect={setSelected} />}
+        {roles.isPending ? <p className="m-0 p-2 text-fg-muted">{t('common.loading')}</p> : <MasterList label={t('admin.roles.list')} icon="role" items={roles.data} selected={selected} onSelect={setSelected} />}
       </Card>
 
       {selected && (
@@ -230,13 +232,13 @@ function RolesTab() {
               {selected}
             </h2>
             <Button size="sm" variant="danger-outline" icon={<Trash2 size={15} aria-hidden="true" />} onClick={() => setDialog('delete')}>
-              Delete role
+              {t('admin.roles.delete')}
             </Button>
           </div>
           <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
-            <legend className="mb-2.5 p-0 text-[13px] font-semibold text-fg-muted">Members</legend>
+            <legend className="mb-2.5 p-0 text-[13px] font-semibold text-fg-muted">{t('admin.roles.members')}</legend>
             {members.isPending || users.isPending ? (
-              <p className="m-0 text-fg-muted">Loading members…</p>
+              <p className="m-0 text-fg-muted">{t('admin.roles.loadingMembers')}</p>
             ) : (
               users.data?.map((user) => (
                 <Checkbox
@@ -254,27 +256,28 @@ function RolesTab() {
 
       <NewNameDialog
         open={dialog === 'new'}
-        title="New role"
-        nameLabel="Role name"
+        title={t('admin.roles.new')}
+        nameLabel={t('admin.roles.nameLabel')}
+        nameMissing={t('admin.roles.enterName')}
         onClose={() => setDialog(null)}
         onSubmit={(name) => create.mutateAsync(name).then(() => setSelected(name))}
       />
       <Dialog
         open={dialog === 'delete'}
         onClose={() => setDialog(null)}
-        title={`Delete role ${selected ?? ''}?`}
+        title={t('admin.roles.deleteTitle', { name: selected ?? '' })}
         description={
           selected === 'Administrator'
-            ? 'Members lose administrator rights, and sharing entries for this role are removed. This can lock everyone out of administration.'
-            : 'Members lose what the role gave them, and sharing entries for this role are removed.'
+            ? t('admin.roles.deleteAdministrator')
+            : t('admin.roles.deleteDescription')
         }
         actions={
           <>
             <Button size="sm" onClick={() => setDialog(null)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button size="sm" variant="danger" onClick={() => selected && remove.mutate(selected, { onSuccess: () => setDialog(null) })}>
-              Delete role
+              {t('admin.roles.delete')}
             </Button>
           </>
         }
@@ -306,6 +309,7 @@ function NewNameDialog({
   open,
   title,
   nameLabel,
+  nameMissing,
   withPassword,
   onClose,
   onSubmit,
@@ -313,6 +317,8 @@ function NewNameDialog({
   open: boolean;
   title: string;
   nameLabel: string;
+  /** Shown while the name is empty. */
+  nameMissing: string;
   withPassword?: boolean;
   onClose: () => void;
   onSubmit: (name: string, password?: string) => Promise<unknown>;
@@ -331,11 +337,11 @@ function NewNameDialog({
   }, [open]);
 
   const problem = !name.trim()
-    ? `Enter a ${nameLabel.toLowerCase()}`
+    ? nameMissing
     : withPassword && !pw
-      ? 'Enter a password'
+      ? t('admin.dialog.enterPassword')
       : withPassword && pw !== confirm
-        ? "The passwords don't match"
+        ? t('admin.dialog.mismatch')
         : null;
 
   async function submit(e: FormEvent) {
@@ -360,10 +366,10 @@ function NewNameDialog({
       actions={
         <>
           <Button size="sm" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button size="sm" variant="primary" type="submit" form={formId} aria-disabled={!!problem || busy} title={problem ?? undefined}>
-            Create
+            {t('admin.dialog.create')}
           </Button>
         </>
       }
@@ -372,8 +378,8 @@ function NewNameDialog({
         <Field label={nameLabel} value={name} onChange={setName} autoComplete="off" />
         {withPassword && (
           <>
-            <Field label="Password" type="password" value={pw} onChange={setPw} autoComplete="new-password" />
-            <Field label="Confirm password" type="password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
+            <Field label={t('admin.dialog.password')} type="password" value={pw} onChange={setPw} autoComplete="new-password" />
+            <Field label={t('admin.dialog.confirmPassword')} type="password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
           </>
         )}
         {problem && name && <p className="m-0 text-[13px] text-fg-muted">{problem}</p>}
@@ -405,7 +411,7 @@ function PasswordDialog({
       setAdminPw('');
     }
   }, [open]);
-  const problem = !pw ? 'Enter a new password' : pw !== confirm ? "The passwords don't match" : !adminPw ? 'Enter your own password to confirm' : null;
+  const problem = !pw ? t('admin.dialog.enterNewPassword') : pw !== confirm ? t('admin.dialog.mismatch') : !adminPw ? t('admin.dialog.enterYourPassword') : null;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -425,23 +431,23 @@ function PasswordDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title={`Change password for ${user}`}
-      description="They'll use the new password the next time they sign in."
+      title={t('admin.dialog.passwordTitle', { name: user })}
+      description={t('admin.dialog.passwordDescription')}
       actions={
         <>
           <Button size="sm" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button size="sm" variant="primary" type="submit" form={formId} aria-disabled={!!problem || busy} title={problem ?? undefined}>
-            Change password
+            {t('admin.dialog.changePassword')}
           </Button>
         </>
       }
     >
       <form id={formId} onSubmit={submit} className="flex flex-col gap-3">
-        <Field label="New password" type="password" value={pw} onChange={setPw} autoComplete="new-password" />
-        <Field label="Confirm new password" type="password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
-        <Field label="Your password" type="password" value={adminPw} onChange={setAdminPw} autoComplete="current-password" />
+        <Field label={t('admin.dialog.newPassword')} type="password" value={pw} onChange={setPw} autoComplete="new-password" />
+        <Field label={t('admin.dialog.confirmNewPassword')} type="password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
+        <Field label={t('admin.dialog.yourPassword')} type="password" value={adminPw} onChange={setAdminPw} autoComplete="current-password" />
       </form>
     </Dialog>
   );

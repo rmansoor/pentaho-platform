@@ -135,6 +135,10 @@ describe('scheduler API parsing', () => {
     expect(describeRecurrence({ '@type': 'simpleJobTrigger', repeatInterval: '900', repeatCount: '-1' })).toBe('Every 15 minutes');
     expect(describeRecurrence({ '@type': 'simpleJobTrigger', repeatInterval: '604800', repeatCount: '-1' })).toBe('Every week');
     expect(describeRecurrence({ '@type': 'complexJobTrigger', cronDescription: 'at 07:00 on Monday' })).toBe('At 07:00 on Monday');
-    expect(describeRecurrence({ '@type': 'cronJobTrigger', cronString: '0 0 7 ? * 2-6' })).toBe('Cron: 0 0 7 ? * 2-6');
+    // Weekly and monthly expressions the console writes are described in words; others shown as cron.
+    expect(describeRecurrence({ '@type': 'cronJobTrigger', cronString: '0 0 7 ? * 2-6' })).toBe('Weekdays at 07:00');
+    expect(describeRecurrence({ '@type': 'cronJobTrigger', cronString: '0 30 18 ? * 2,4,1 *' })).toBe('Mon, Wed, Sun at 18:30');
+    expect(describeRecurrence({ '@type': 'cronJobTrigger', cronString: '0 0 6 15 * ?' })).toBe('Monthly on day 15 at 06:00');
+    expect(describeRecurrence({ '@type': 'cronJobTrigger', cronString: '0 0 7 L * ?' })).toBe('Cron: 0 0 7 L * ?');
   });
 });

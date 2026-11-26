@@ -3,27 +3,28 @@ import { Link } from '@tanstack/react-router';
 import { CalendarClock, Clock, Database, FolderClosed, Star, Trash2, type LucideIcon } from 'lucide-react';
 import { Card, IconButton } from '@helix/ui';
 import { usePickList, useToggleFavorite, type PickItem } from '../../api/pick-lists';
-import { KIND_LABEL } from '../../api/repo';
+import { kindLabel } from '../../api/repo';
 import { displayFolder } from '../files/columns';
 import { FileKindIcon } from '../files/FileKindIcon';
 import { QueryError } from '../files/QueryError';
+import { currentLocale, t, type MessageKey } from '../../i18n';
 
 export interface HomePageProps {
   onOpenFolder: (path: string) => void;
   onOpenFile: (path: string, title: string) => void;
 }
 
-const QUICK_ACTIONS: { to: '/files' | '/files/trash' | '/schedules' | '/datasources'; label: string; detail: string; icon: LucideIcon }[] = [
-  { to: '/files', label: 'Browse files', detail: 'Reports, dashboards and folders', icon: FolderClosed },
-  { to: '/schedules', label: 'Schedules', detail: 'Scheduled reports and their output', icon: CalendarClock },
-  { to: '/datasources', label: 'Data sources', detail: 'Connections and models', icon: Database },
-  { to: '/files/trash', label: 'Trash', detail: 'Restore deleted items', icon: Trash2 },
+const QUICK_ACTIONS: { to: '/files' | '/files/trash' | '/schedules' | '/datasources'; label: MessageKey; detail: MessageKey; icon: LucideIcon }[] = [
+  { to: '/files', label: 'home.browse', detail: 'home.browseDetail', icon: FolderClosed },
+  { to: '/schedules', label: 'shell.nav.schedules', detail: 'home.schedulesDetail', icon: CalendarClock },
+  { to: '/datasources', label: 'shell.nav.datasources', detail: 'home.datasourcesDetail', icon: Database },
+  { to: '/files/trash', label: 'files.trash', detail: 'home.trashDetail', icon: Trash2 },
 ];
 
-const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 
 /** "5 minutes ago", "yesterday", "3 weeks ago". */
 export function timeAgo(ms: number, now = Date.now()): string {
+  const relative = new Intl.RelativeTimeFormat(currentLocale(), { numeric: 'auto' });
   const seconds = Math.round((ms - now) / 1000);
   const steps: [Intl.RelativeTimeFormatUnit, number][] = [
     ['year', 31_536_000],
@@ -36,7 +37,7 @@ export function timeAgo(ms: number, now = Date.now()): string {
   for (const [unit, size] of steps) {
     if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
   }
-  return 'just now';
+  return t('home.justNow');
 }
 
 const parentOf = (path: string) => path.slice(0, path.lastIndexOf('/')) || '/';
@@ -56,9 +57,9 @@ export function HomePage({ onOpenFolder, onOpenFile }: HomePageProps) {
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label={on ? `Remove ${item.title} from favorites` : `Add ${item.title} to favorites`}
+        aria-label={t(on ? 'home.removeFavorite' : 'home.addFavorite', { name: item.title })}
         aria-pressed={on}
-        title={on ? 'Remove from favorites' : 'Add to favorites'}
+        title={on ? t('files.removeFavorite') : t('files.addFavorite')}
         onClick={() => toggleFavorite.mutate({ path: item.fullPath, title: item.title, kind: item.kind })}
       >
         <Star size={16} aria-hidden="true" className={on ? 'fill-highlight text-highlight' : undefined} />
@@ -68,9 +69,9 @@ export function HomePage({ onOpenFolder, onOpenFile }: HomePageProps) {
 
   return (
     <div className="flex flex-col gap-7 pt-1">
-      <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">Home</h1>
+      <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">{t('home.title')}</h1>
 
-      <nav aria-label="Quick actions" className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
+      <nav aria-label={t('home.quickActions')} className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
         {QUICK_ACTIONS.map(({ to, label, detail, icon: Icon }) => (
           <Link
             key={to}
@@ -81,8 +82,8 @@ export function HomePage({ onOpenFolder, onOpenFile }: HomePageProps) {
               <Icon size={19} strokeWidth={1.9} />
             </span>
             <span className="flex min-w-0 flex-col">
-              <span className="font-bold">{label}</span>
-              <span className="truncate text-[12.5px] text-fg-muted">{detail}</span>
+              <span className="font-bold">{t(label)}</span>
+              <span className="truncate text-[12.5px] text-fg-muted">{t(detail)}</span>
             </span>
           </Link>
         ))}
@@ -90,19 +91,21 @@ export function HomePage({ onOpenFolder, onOpenFile }: HomePageProps) {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <PickListCard
-          title="Favorites"
+          id="favorites"
+          title={t('home.favorites')}
           icon={<Star size={16} aria-hidden="true" />}
           query={favorites}
-          empty="Star a file or folder in Files to keep it here."
-          renderMeta={(item) => `${KIND_LABEL[item.kind]} · ${displayFolder(parentOf(item.fullPath))}`}
+          empty={t('home.favoritesEmpty')}
+          renderMeta={(item) => `${kindLabel(item.kind)} · ${displayFolder(parentOf(item.fullPath))}`}
           onOpen={open}
           action={star}
         />
         <PickListCard
-          title="Recent"
+          id="recent"
+          title={t('home.recent')}
           icon={<Clock size={16} aria-hidden="true" />}
           query={recents}
-          empty="Files you open appear here."
+          empty={t('home.recentEmpty')}
           renderMeta={(item) => `${displayFolder(parentOf(item.fullPath))}${item.lastUse ? ` · ${timeAgo(item.lastUse)}` : ''}`}
           onOpen={open}
           action={star}
@@ -113,6 +116,7 @@ export function HomePage({ onOpenFolder, onOpenFile }: HomePageProps) {
 }
 
 function PickListCard({
+  id,
   title,
   icon,
   query,
@@ -121,6 +125,7 @@ function PickListCard({
   onOpen,
   action,
 }: {
+  id: string;
   title: string;
   icon: ReactNode;
   query: ReturnType<typeof usePickList>;
@@ -129,7 +134,7 @@ function PickListCard({
   onOpen: (item: PickItem) => void;
   action: (item: PickItem) => ReactNode;
 }) {
-  const headingId = `home-${title.toLowerCase()}`;
+  const headingId = `home-${id}`;
   return (
     <Card className="flex flex-col overflow-hidden">
       <h2 id={headingId} className="m-0 flex items-center gap-2 border-b border-divider px-[18px] py-3.5 text-[15px] font-bold">
@@ -137,7 +142,7 @@ function PickListCard({
         {title}
       </h2>
       {query.isPending ? (
-        <p className="m-0 px-[18px] py-8 text-fg-muted">Loading…</p>
+        <p className="m-0 px-[18px] py-8 text-fg-muted">{t('common.loading')}</p>
       ) : query.isError ? (
         <QueryError error={query.error} onRetry={() => void query.refetch()} />
       ) : query.data.length === 0 ? (
@@ -149,7 +154,7 @@ function PickListCard({
               <button
                 type="button"
                 onClick={() => onOpen(item)}
-                title={`Open ${item.title}`}
+                title={t('home.open', { name: item.title })}
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-[8px] py-1 text-left"
               >
                 <FileKindIcon kind={item.kind} />

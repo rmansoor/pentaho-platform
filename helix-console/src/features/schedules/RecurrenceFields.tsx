@@ -1,18 +1,11 @@
 import { useId, useMemo, type ReactNode } from 'react';
 import { cn } from '@helix/ui';
 import { WEEKDAYS, type Recurrence, type Repeat } from './schedule-form';
+import { t } from '../../i18n';
 
 /** The "when" fields shared by the schedule and blockout sheets. */
 
-const REPEATS: { value: Repeat; label: string }[] = [
-  { value: 'once', label: 'Once' },
-  { value: 'minutes', label: 'Every few minutes' },
-  { value: 'hours', label: 'Every few hours' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'cron', label: 'Cron expression' },
-];
+const REPEATS: Repeat[] = ['once', 'minutes', 'hours', 'daily', 'weekly', 'monthly', 'cron'];
 
 const supportedZones = (() => {
   try {
@@ -27,36 +20,37 @@ export const inputClass = 'h-10 w-full rounded-control border border-border-stro
 export function RecurrenceFields({
   value,
   onChange,
-  labels = { starting: 'Starting', at: 'At' },
+  labels,
 }: {
   value: Recurrence;
   onChange: (patch: Partial<Recurrence>) => void;
   labels?: { starting: string; at: string };
 }) {
   const name = useId();
+  const { starting, at } = labels ?? { starting: t('schedules.form.starting'), at: t('schedules.form.at') };
   const zones = useMemo(() => (supportedZones.includes(value.timeZone) ? supportedZones : [value.timeZone, ...supportedZones]), [value.timeZone]);
   return (
     <>
           <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-            <legend className="mb-2 p-0 text-[13px] font-semibold text-fg-soft">Repeat</legend>
+            <legend className="mb-2 p-0 text-[13px] font-semibold text-fg-soft">{t('schedules.form.repeat')}</legend>
             <div className="flex flex-wrap gap-1.5">
               {REPEATS.map((r) => (
                 <label
-                  key={r.value}
+                  key={r}
                   className={cn(
                     'inline-flex h-9 cursor-pointer items-center rounded-full border px-3.5 text-[13px] font-semibold has-focus-visible:outline-2 has-focus-visible:outline-focus',
-                    value.repeat === r.value ? 'border-accent bg-accent text-accent-ink' : 'border-border-strong bg-surface text-fg-soft hover:bg-accent-soft',
+                    value.repeat === r ? 'border-accent bg-accent text-accent-ink' : 'border-border-strong bg-surface text-fg-soft hover:bg-accent-soft',
                   )}
                 >
-                  <input type="radio" name={`${name}-repeat`} value={r.value} checked={value.repeat === r.value} onChange={() => onChange({ repeat: r.value })} className="sr-only" />
-                  {r.label}
+                  <input type="radio" name={`${name}-repeat`} value={r} checked={value.repeat === r} onChange={() => onChange({ repeat: r })} className="sr-only" />
+                  {t(`schedules.form.repeats.${r}`)}
                 </label>
               ))}
             </div>
           </fieldset>
 
           {(value.repeat === 'minutes' || value.repeat === 'hours') && (
-            <Field label={value.repeat === 'minutes' ? 'Every how many minutes' : 'Every how many hours'}>
+            <Field label={value.repeat === 'minutes' ? t('schedules.form.everyMinutes') : t('schedules.form.everyHours')}>
               {(id) => (
                 <input
                   id={id}
@@ -73,7 +67,7 @@ export function RecurrenceFields({
 
           {value.repeat === 'weekly' && (
             <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-              <legend className="mb-2 p-0 text-[13px] font-semibold text-fg-soft">On</legend>
+              <legend className="mb-2 p-0 text-[13px] font-semibold text-fg-soft">{t('schedules.form.on')}</legend>
               <div className="flex flex-wrap gap-1.5">
                 {WEEKDAYS.map((d) => {
                   const on = value.weekdays.includes(d.value);
@@ -101,7 +95,7 @@ export function RecurrenceFields({
           )}
 
           {value.repeat === 'monthly' && (
-            <Field label="Day of the month">
+            <Field label={t('schedules.form.dayOfMonth')}>
               {(id) => (
                 <input id={id} type="number" min={1} max={31} value={value.dayOfMonth} onChange={(e) => onChange({ dayOfMonth: Number(e.target.value) })} className={cn(inputClass, 'w-28')} />
               )}
@@ -109,27 +103,27 @@ export function RecurrenceFields({
           )}
 
           {value.repeat === 'cron' && (
-            <Field label="Cron expression" hint="Quartz syntax: seconds minutes hours day-of-month month day-of-week [year]. Use numbers for days (1 = Sunday).">
+            <Field label={t('schedules.form.cron')} hint={t('schedules.form.cronHint')}>
               {(id) => <input id={id} value={value.cron} onChange={(e) => onChange({ cron: e.target.value })} className={cn(inputClass, 'font-mono text-[13px]')} />}
             </Field>
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label={value.repeat === 'once' ? 'Date' : labels.starting}>
+            <Field label={value.repeat === 'once' ? t('schedules.form.date') : starting}>
               {(id) => <input id={id} type="date" value={value.startDate} onChange={(e) => onChange({ startDate: e.target.value })} className={inputClass} />}
             </Field>
-            <Field label={value.repeat === 'minutes' || value.repeat === 'hours' ? 'From' : labels.at}>
+            <Field label={value.repeat === 'minutes' || value.repeat === 'hours' ? t('schedules.form.from') : at}>
               {(id) => <input id={id} type="time" value={value.startTime} onChange={(e) => onChange({ startTime: e.target.value })} className={inputClass} />}
             </Field>
           </div>
 
           {value.repeat !== 'once' && (
-            <Field label="Ending (optional)">
+            <Field label={t('schedules.form.ending')}>
               {(id) => <input id={id} type="date" value={value.endDate} min={value.startDate} onChange={(e) => onChange({ endDate: e.target.value })} className={cn(inputClass, 'w-48')} />}
             </Field>
           )}
 
-          <Field label="Time zone">
+          <Field label={t('schedules.form.timeZone')}>
             {(id) => (
               <select id={id} value={value.timeZone} onChange={(e) => onChange({ timeZone: e.target.value })} className={inputClass}>
                 {zones.map((z) => (
