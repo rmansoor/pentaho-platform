@@ -6,6 +6,7 @@ import { httpRepoSource, type RepoSource } from '../api/repo';
 import { SchedulerSourceProvider } from '../api/scheduler-context';
 import { httpSchedulerSource, type SchedulerSource } from '../api/scheduler';
 import { DataSourceSourceProvider, httpDataSourceSource, type DataSourceSource } from '../api/datasources';
+import { AdminSourceProvider, httpAdminSource, type AdminSource } from '../api/admin';
 
 export function createQueryClient() {
   return new QueryClient({
@@ -27,19 +28,23 @@ export function AppProviders({
   repoSource = httpRepoSource,
   schedulerSource = httpSchedulerSource,
   dataSourceSource = httpDataSourceSource,
+  adminSource = httpAdminSource,
   children,
 }: {
   queryClient: QueryClient;
   repoSource?: RepoSource;
   schedulerSource?: SchedulerSource;
   dataSourceSource?: DataSourceSource;
+  adminSource?: AdminSource;
   children: ReactNode;
 }) {
   return (
     <QueryClientProvider client={queryClient}>
       <RepoSourceProvider source={repoSource}>
         <SchedulerSourceProvider source={schedulerSource}>
-          <DataSourceSourceProvider source={dataSourceSource}>{children}</DataSourceSourceProvider>
+          <DataSourceSourceProvider source={dataSourceSource}>
+            <AdminSourceProvider source={adminSource}>{children}</AdminSourceProvider>
+          </DataSourceSourceProvider>
         </SchedulerSourceProvider>
       </RepoSourceProvider>
     </QueryClientProvider>

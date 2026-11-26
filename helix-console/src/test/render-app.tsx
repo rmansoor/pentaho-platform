@@ -8,6 +8,8 @@ import { createFixtureSchedulerSource } from '../api/mock/scheduler-fixture';
 import type { SchedulerSource } from '../api/scheduler';
 import { createFixtureDataSourceSource } from '../api/mock/datasource-fixture';
 import type { DataSourceSource } from '../api/datasources';
+import { createFixtureAdminSource } from '../api/mock/admin-fixture';
+import type { AdminSource } from '../api/admin';
 
 /** Renders the whole console at `path` (e.g. "/files?path=/public"), backed by the sample repository. */
 export async function renderApp(
@@ -15,6 +17,7 @@ export async function renderApp(
   repoSource: RepoSource = createFixtureRepoSource(),
   schedulerSource: SchedulerSource = createFixtureSchedulerSource(),
   dataSourceSource: DataSourceSource = createFixtureDataSourceSource(),
+  adminSource: AdminSource = createFixtureAdminSource(),
 ) {
   const prefix = BASEPATH === '/' ? '' : BASEPATH;
   const history = createMemoryHistory({ initialEntries: [`${prefix}${path}`] });
@@ -23,7 +26,7 @@ export async function renderApp(
   queryClient.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
   await act(async () => {
     render(
-      <AppProviders queryClient={queryClient} repoSource={repoSource} schedulerSource={schedulerSource} dataSourceSource={dataSourceSource}>
+      <AppProviders queryClient={queryClient} repoSource={repoSource} schedulerSource={schedulerSource} dataSourceSource={dataSourceSource} adminSource={adminSource}>
         <RouterProvider router={router} />
       </AppProviders>,
     );

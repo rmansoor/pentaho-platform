@@ -105,6 +105,16 @@ data-access plugin (`/pentaho/plugin/data-access/api/datasource`), with type fil
 depends on it. DSW models are also returned as metadata domains and are shown once. Creating
 connections and the data source wizard are not built yet.
 
+## Administration
+
+`/admin` has **Users** and **Roles** tabs (`/api/userroledao`). Users: list, roles as checkboxes
+(applied immediately), New user (password typed twice), Change password (the server also requires the
+administrator's own password), Delete. Roles: list, members as checkboxes, New role, Delete (with a
+stronger warning for Administrator). Passwords are sent as `ENC:` + base64 so they don't appear as
+plain text in request logs; bulk names are tab-separated query parameters; validation failures carry
+their reason in the `PUC_VALIDATION_ERROR_MESSAGE` header, which the console shows. System roles and
+permissions, mail server and settings are not built yet.
+
 ## Changing data
 
 Unsafe requests go through `send()` in `src/api/http.ts`, which adds the CSRF header from

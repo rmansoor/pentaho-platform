@@ -13,6 +13,7 @@ import { TrashPage } from '../features/files/TrashPage';
 import { HomePage } from '../features/home/HomePage';
 import { SchedulesPage } from '../features/schedules/SchedulesPage';
 import { DataSourcesPage } from '../features/datasources/DataSourcesPage';
+import { AdminPage } from '../features/admin/AdminPage';
 import { DEFAULT_FOLDER, normalizePath } from '../features/files/paths';
 
 const rootRoute = createRootRoute({
@@ -33,14 +34,6 @@ const indexRoute = createRoute({
     throw redirect({ to: '/home' });
   },
 });
-
-function area<TPath extends string>(path: TPath, title: string, description: string) {
-  return createRoute({
-    getParentRoute: () => rootRoute,
-    path,
-    component: () => <AreaPlaceholder title={title} description={description} />,
-  });
-}
 
 const filesRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -91,6 +84,12 @@ const dataSourcesRoute = createRoute({
   component: DataSourcesPage,
 });
 
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin',
+  component: AdminPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   homeRoute,
@@ -98,7 +97,7 @@ const routeTree = rootRoute.addChildren([
   trashRoute,
   schedulesRoute,
   dataSourcesRoute,
-  area('/admin', 'Administration', 'Users, roles, permissions, mail server and settings.'),
+  adminRoute,
 ]);
 
 /** The console is served from /pentaho/console/ (vite `base`). */
