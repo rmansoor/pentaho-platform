@@ -55,12 +55,19 @@ export interface SchedulerFixtureOptions {
   status?: SchedulerStatus;
   /** Whether a mail server is configured (default true). */
   emailConfigured?: boolean;
+  /** Blockout times, in the same shape (trigger.duration in milliseconds). */
+  blockouts?: FixtureJob[];
+  /** What blockStatus answers (for users who can't list blockouts). */
+  totallyBlocked?: boolean;
+  /** false: listing blockouts fails, as it does for non-administrators. */
+  canListBlockouts?: boolean;
 }
 
 export function createFixtureSchedulerSource(
   options: SchedulerFixtureOptions = {},
 ): SchedulerSource & { runs: string[]; requests: Record<string, unknown>[] } {
   const jobs: FixtureJob[] = structuredClone(options.jobs ?? SAMPLE);
+  const blockouts: FixtureJob[] = structuredClone(options.blockouts ?? []);
   let status: SchedulerStatus = options.status ?? 'running';
   const runs: string[] = [];
   const requests: Record<string, unknown>[] = [];
@@ -81,6 +88,7 @@ export function createFixtureSchedulerSource(
       ? { '@type': 'simpleJobTrigger', uiPassParam: String(simple.uiPassParam), repeatInterval: String(simple.repeatInterval), repeatCount: String(simple.repeatCount), startTime: start.toISOString() }
       : { '@type': 'complexJobTrigger', uiPassParam: 'CRON', cronString: `${String(cron!.cronString)} *`, startTime: start.toISOString() };
     if (r.timeZone) trigger.timeZone = String(r.timeZone);
+    if (r.duration !== undefined) trigger.duration = String(r.duration);
     const once = simple && Number(simple.repeatCount) === 0;
     return {
       id,
@@ -95,10 +103,31 @@ export function createFixtureSchedulerSource(
     };
   };
   const find = (id: string) => {
-    const job = jobs.find((j) => j.id === id);
+    const job = jobs.find((j) => j.id === id) ?? blockouts.find((j) => j.id === id);
     if (!job) throw new Error(`No job ${id}`);
     return job;
   };
+
+  const serialize = (list: FixtureJob[]) =>
+    parseJobsResponse({
+      job: list.map((j) => ({
+        jobId: j.id,
+        jobName: j.name,
+        userName: j.owner,
+        state: j.state,
+        nextRun: j.nextRun,
+        lastRun: j.lastRun,
+        jobTrigger: j.trigger,
+        jobParams: {
+          jobParams: [
+            ...(j.input ? [{ name: 'ActionAdapterQuartzJob-StreamProvider-InputFile', value: j.input }] : []),
+            ...(j.extra ?? []),
+            { name: 'ActionAdapterQuartzJob-ActionUser', value: j.owner },
+            ...(j.output ? [{ name: 'ActionAdapterQuartzJob-StreamProvider', value: `input file = ${j.input}:outputFile = ${j.output}/${j.name}.*` }] : []),
+          ],
+        },
+      })),
+    });
 
   return {
     runs,
@@ -127,25 +156,29 @@ export function createFixtureSchedulerSource(
       return id;
     },
     async listJobs() {
-      return parseJobsResponse({
-        job: jobs.map((j) => ({
-          jobId: j.id,
-          jobName: j.name,
-          userName: j.owner,
-          state: j.state,
-          nextRun: j.nextRun,
-          lastRun: j.lastRun,
-          jobTrigger: j.trigger,
-          jobParams: {
-            jobParams: [
-              ...(j.input ? [{ name: 'ActionAdapterQuartzJob-StreamProvider-InputFile', value: j.input }] : []),
-              ...(j.extra ?? []),
-              { name: 'ActionAdapterQuartzJob-ActionUser', value: j.owner },
-              ...(j.output ? [{ name: 'ActionAdapterQuartzJob-StreamProvider', value: `input file = ${j.input}:outputFile = ${j.output}/${j.name}.*` }] : []),
-            ],
-          },
-        })),
-      });
+      return serialize(jobs);
+    },
+    async listBlockouts() {
+      if (options.canListBlockouts === false) throw new Error('Permission denied');
+      return serialize(blockouts);
+    },
+    async createBlockout(request) {
+      const r = request as Record<string, unknown>;
+      requests.push(r);
+      const id = `admin\tBlockoutAction\t${next++}`;
+      blockouts.push({ ...toFixture(r, id), name: 'BlockoutAction' });
+      return id;
+    },
+    async updateBlockout(old, request) {
+      const r = request as Record<string, unknown>;
+      requests.push(r);
+      const index = blockouts.indexOf(find(old));
+      const id = `admin\tBlockoutAction\t${next++}`;
+      blockouts[index] = { ...toFixture(r, id), name: 'BlockoutAction' };
+      return id;
+    },
+    async blockStatus() {
+      return { totallyBlocked: options.totallyBlocked ?? false, partiallyBlocked: options.totallyBlocked ?? false };
     },
     async pauseJob(id) {
       find(id).state = 'PAUSED';
@@ -158,7 +191,9 @@ export function createFixtureSchedulerSource(
       runs.push(id);
     },
     async removeJob(id) {
-      jobs.splice(jobs.indexOf(find(id)), 1);
+      const job = find(id);
+      const list = jobs.includes(job) ? jobs : blockouts;
+      list.splice(list.indexOf(job), 1);
     },
     async status() {
       return status;

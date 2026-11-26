@@ -10,6 +10,7 @@ import { QueryError } from '../files/QueryError';
 import { formatDateTime } from '../files/format';
 import { displayFolder } from '../files/columns';
 import { ScheduleSheet } from './ScheduleSheet';
+import { BlockoutsCard } from './BlockoutsCard';
 
 const STATE_LABEL: Record<JobState, string> = {
   active: 'Active',
@@ -281,6 +282,8 @@ export function SchedulesPage() {
           </div>
         )}
       </Card>
+
+      <BlockoutsCard />
 
       <ScheduleSheet target={editing ? { kind: 'edit', job: editing } : null} onClose={() => setEditing(null)} />
       <Dialog

@@ -1,20 +1,23 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarClock } from 'lucide-react';
+import { AlertTriangle, CalendarClock } from 'lucide-react';
 import { Button, cn, Dialog, Switch, toast } from '@helix/ui';
 import { ReportParameters, type ReportParametersHandle } from './ReportParameters';
+import { Field, inputClass, RecurrenceFields } from './RecurrenceFields';
 import { useSession } from '../../api/repo-context';
-import { schedulerKeys, useSchedulerSource } from '../../api/scheduler-context';
+import { schedulerKeys, useBlockouts, useSchedulerSource } from '../../api/scheduler-context';
+import { conflictsFor, describeConflict, specFromRecurrence, toBlockout } from './blockouts';
 import type { ScheduledJob } from '../../api/scheduler';
 import { displayFolder } from '../files/columns';
+import { formatDateTime } from '../files/format';
 import {
   buildScheduleRequest,
+  buildTrigger,
   describeForm,
   formFromJob,
   newScheduleForm,
+  recurrenceProblem,
   scheduleFormProblem,
-  WEEKDAYS,
-  type Repeat,
   type ScheduleEmail,
   type ScheduleForm,
 } from './schedule-form';
@@ -30,16 +33,6 @@ export interface ScheduleSheetProps {
   onSaved?: () => void;
 }
 
-const REPEATS: { value: Repeat; label: string }[] = [
-  { value: 'once', label: 'Once' },
-  { value: 'minutes', label: 'Every few minutes' },
-  { value: 'hours', label: 'Every few hours' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'cron', label: 'Cron expression' },
-];
-
 /** A single run, starting now. */
 function runNowForm(form: ScheduleForm): ScheduleForm {
   const now = new Date();
@@ -51,14 +44,6 @@ function runNowForm(form: ScheduleForm): ScheduleForm {
     startTime: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
   };
 }
-
-const supportedZones = (() => {
-  try {
-    return (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone') ?? [];
-  } catch {
-    return [];
-  }
-})();
 
 /** New schedule for a file, or edit an existing one, in a side sheet. */
 export function ScheduleSheet({ target, onClose, onSaved }: ScheduleSheetProps) {
@@ -110,8 +95,39 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
   const [parametersComplete, setParametersComplete] = useState(true);
   const onCompleteChange = useCallback((complete: boolean) => setParametersComplete(complete), []);
 
-  const problem = scheduleFormProblem(form) ?? (hasParameters.data && !parametersComplete ? 'Fill in the required report parameters' : null);
-  const zones = useMemo(() => (supportedZones.includes(form.timeZone) ? supportedZones : [form.timeZone, ...supportedZones]), [form.timeZone]);
+  /*
+   * Blockout conflicts. Administrators can list blockouts, so we count the blocked runs here; for
+   * everyone else we ask the server, whose answer is only trusted when it says every run is blocked.
+   */
+  const admin = session.data?.isAdministrator === true;
+  const blockouts = useBlockouts(admin);
+  const { repeat, interval, weekdays, dayOfMonth, cron, startDate, startTime, endDate, timeZone } = form;
+  const recurrence = useMemo(
+    () => ({ repeat, interval, weekdays, dayOfMonth, cron, startDate, startTime, endDate, timeZone }),
+    [repeat, interval, weekdays, dayOfMonth, cron, startDate, startTime, endDate, timeZone],
+  );
+  const conflict = useMemo(() => {
+    const spec = blockouts.data?.length ? specFromRecurrence(recurrence) : null;
+    return spec ? conflictsFor(spec, blockouts.data!.flatMap((j) => toBlockout(j) ?? [])) : null;
+  }, [recurrence, blockouts.data]);
+  const serverStatus = useQuery({
+    queryKey: ['scheduler', 'block-status', recurrence],
+    queryFn: () => scheduler.blockStatus({ jobName: 'check', inputFile: file, timeZone: recurrence.timeZone, ...buildTrigger(recurrence), jobParameters: [] }),
+    enabled: session.data?.isAdministrator === false && !recurrenceProblem(recurrence),
+    retry: false,
+    staleTime: 30_000,
+  });
+  const neverRuns = conflict ? conflict.runs > 0 && conflict.blocked === conflict.runs : serverStatus.data?.totallyBlocked === true;
+  const conflictText = conflict
+    ? describeConflict(conflict)
+    : neverRuns
+      ? 'Every run falls in a blockout time, so this schedule would never run.'
+      : null;
+
+  const problem =
+    scheduleFormProblem(form) ??
+    (hasParameters.data && !parametersComplete ? 'Fill in the required report parameters' : null) ??
+    (neverRuns ? 'Change when it runs: it falls in a blockout time' : null);
 
   const save = useMutation({
     mutationFn: () => {
@@ -147,109 +163,18 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
           {(id) => <input id={id} value={form.outputFolder} onChange={(e) => set('outputFolder', e.target.value)} className={cn(inputClass, 'font-mono text-[13px]')} />}
         </Field>
 
-        <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-          <legend className="mb-2 p-0 text-[13px] font-semibold text-fg-soft">Repeat</legend>
-          <div className="flex flex-wrap gap-1.5">
-            {REPEATS.map((r) => (
-              <label
-                key={r.value}
-                className={cn(
-                  'inline-flex h-9 cursor-pointer items-center rounded-full border px-3.5 text-[13px] font-semibold has-focus-visible:outline-2 has-focus-visible:outline-focus',
-                  form.repeat === r.value ? 'border-accent bg-accent text-accent-ink' : 'border-border-strong bg-surface text-fg-soft hover:bg-accent-soft',
-                )}
-              >
-                <input type="radio" name="repeat" value={r.value} checked={form.repeat === r.value} onChange={() => set('repeat', r.value)} className="sr-only" />
-                {r.label}
-              </label>
-            ))}
+        <RecurrenceFields value={form} onChange={(patch) => setForm((f) => ({ ...f, ...patch }))} />
+
+        {conflictText && (
+          <div role="status" className={cn('flex items-start gap-3 rounded-card px-4 py-3', neverRuns ? 'bg-danger-bg text-danger-fg' : 'bg-warning-bg text-warning-fg')}>
+            <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span>
+              {conflictText}
+              {conflict?.firstBlocked && !neverRuns ? ` The first is ${formatDateTime(conflict.firstBlocked)}.` : ''}
+              {admin ? ' Blockout times are listed under Schedules.' : ''}
+            </span>
           </div>
-        </fieldset>
-
-        {(form.repeat === 'minutes' || form.repeat === 'hours') && (
-          <Field label={form.repeat === 'minutes' ? 'Every how many minutes' : 'Every how many hours'}>
-            {(id) => (
-              <input
-                id={id}
-                type="number"
-                min={1}
-                max={form.repeat === 'minutes' ? 59 : 23}
-                value={form.interval}
-                onChange={(e) => set('interval', Number(e.target.value))}
-                className={cn(inputClass, 'w-28')}
-              />
-            )}
-          </Field>
         )}
-
-        {form.repeat === 'weekly' && (
-          <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-            <legend className="mb-2 p-0 text-[13px] font-semibold text-fg-soft">On</legend>
-            <div className="flex flex-wrap gap-1.5">
-              {WEEKDAYS.map((d) => {
-                const on = form.weekdays.includes(d.value);
-                return (
-                  <label
-                    key={d.value}
-                    className={cn(
-                      'inline-flex size-11 cursor-pointer items-center justify-center rounded-full border text-[13px] font-semibold has-focus-visible:outline-2 has-focus-visible:outline-focus',
-                      on ? 'border-accent bg-accent-soft text-accent' : 'border-border-strong text-fg-soft hover:bg-accent-soft',
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      aria-label={d.long}
-                      checked={on}
-                      onChange={(e) => set('weekdays', e.target.checked ? [...form.weekdays, d.value] : form.weekdays.filter((x) => x !== d.value))}
-                      className="sr-only"
-                    />
-                    {d.short}
-                  </label>
-                );
-              })}
-            </div>
-          </fieldset>
-        )}
-
-        {form.repeat === 'monthly' && (
-          <Field label="Day of the month">
-            {(id) => (
-              <input id={id} type="number" min={1} max={31} value={form.dayOfMonth} onChange={(e) => set('dayOfMonth', Number(e.target.value))} className={cn(inputClass, 'w-28')} />
-            )}
-          </Field>
-        )}
-
-        {form.repeat === 'cron' && (
-          <Field label="Cron expression" hint="Quartz syntax: seconds minutes hours day-of-month month day-of-week [year]. Use numbers for days (1 = Sunday).">
-            {(id) => <input id={id} value={form.cron} onChange={(e) => set('cron', e.target.value)} className={cn(inputClass, 'font-mono text-[13px]')} />}
-          </Field>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={form.repeat === 'once' ? 'Date' : 'Starting'}>
-            {(id) => <input id={id} type="date" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} className={inputClass} />}
-          </Field>
-          <Field label={form.repeat === 'minutes' || form.repeat === 'hours' ? 'From' : 'At'}>
-            {(id) => <input id={id} type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} className={inputClass} />}
-          </Field>
-        </div>
-
-        {form.repeat !== 'once' && (
-          <Field label="Ending (optional)">
-            {(id) => <input id={id} type="date" value={form.endDate} min={form.startDate} onChange={(e) => set('endDate', e.target.value)} className={cn(inputClass, 'w-48')} />}
-          </Field>
-        )}
-
-        <Field label="Time zone">
-          {(id) => (
-            <select id={id} value={form.timeZone} onChange={(e) => set('timeZone', e.target.value)} className={inputClass}>
-              {zones.map((z) => (
-                <option key={z} value={z}>
-                  {z.replace(/_/g, ' ')}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
 
         {hasParameters.data && (
           <section aria-labelledby={`${formId}-params`} className="flex flex-col gap-2">
@@ -328,26 +253,6 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
           {save.isPending ? 'Saving…' : target.kind === 'edit' ? 'Save changes' : 'Create schedule'}
         </Button>
       </div>
-    </div>
-  );
-}
-
-const inputClass = 'h-10 w-full rounded-control border border-border-strong bg-surface px-3 text-fg';
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: (id: string) => ReactNode }) {
-  const id = useId();
-  const hintId = `${id}-hint`;
-  return (
-    <div className="flex flex-col gap-1.5" aria-describedby={hint ? hintId : undefined}>
-      <label htmlFor={id} className="text-[13px] font-semibold text-fg-soft">
-        {label}
-      </label>
-      {children(id)}
-      {hint && (
-        <p id={hintId} className="m-0 text-[12.5px] text-fg-muted">
-          {hint}
-        </p>
-      )}
     </div>
   );
 }

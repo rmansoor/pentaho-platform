@@ -45,6 +45,10 @@ export interface ScheduledJob {
     startTime?: Date | null;
     endTime?: Date | null;
     repeatInterval?: number;
+    /** -1 forever, 0 once. */
+    repeatCount?: number;
+    /** Blockouts only: how long each blockout lasts, in milliseconds. */
+    duration?: number;
   };
 }
 
@@ -67,6 +71,7 @@ const triggerSchema = z
     startTime: loose,
     endTime: loose,
     timeZone: z.string().nullish(),
+    duration: loose,
   })
   .passthrough();
 
@@ -184,6 +189,8 @@ export function parseJobsResponse(json: unknown): ScheduledJob[] {
         startTime: asDate(job.jobTrigger?.startTime),
         endTime: asDate(job.jobTrigger?.endTime),
         repeatInterval: asNumber(job.jobTrigger?.repeatInterval),
+        repeatCount: asNumber(job.jobTrigger?.repeatCount),
+        duration: asNumber(job.jobTrigger?.duration) ?? asNumber(param('DURATION_PARAM')),
       },
     };
   });
@@ -208,6 +215,17 @@ export interface SchedulerSource {
   emailConfigured(signal?: AbortSignal): Promise<boolean>;
   /** Whether the file prompts for parameters (GET /api/repo/files/{id}/parameterizable). */
   hasParameters(file: string, signal?: AbortSignal): Promise<boolean>;
+  /** GET /blockout/blockoutjobs (administrators; others get an error). Delete with removeJob. */
+  listBlockouts(signal?: AbortSignal): Promise<ScheduledJob[]>;
+  /** POST /blockout/add; returns the new id. */
+  createBlockout(request: object): Promise<string>;
+  /** POST /blockout/update?jobid= (the server replaces the job); returns the new id. */
+  updateBlockout(id: string, request: object): Promise<string>;
+  /**
+   * POST /blockout/blockstatus: the server's own verdict, for users who can't list blockouts.
+   * Only `totallyBlocked` is reliable enough to show (see features/schedules/blockouts.ts).
+   */
+  blockStatus(request: object): Promise<{ totallyBlocked: boolean; partiallyBlocked: boolean }>;
 }
 
 async function postJob(path: string, request: object): Promise<string> {
@@ -243,6 +261,18 @@ export const httpSchedulerSource: SchedulerSource = {
       return (html.match(/<input/g)?.length ?? 0) - (html.match(/type="hidden"/g)?.length ?? 0) > 0;
     }
     return (await getText(`/repo/files/${toPathId(file)}/parameterizable`, signal, 'text/plain')).trim() === 'true';
+  },
+  async listBlockouts(signal) {
+    return parseJobsResponse(await getJson(`${BASE}/blockout/blockoutjobs`, z.unknown(), signal));
+  },
+  createBlockout: (request) => postJob(`${BASE}/blockout/add`, request),
+  updateBlockout: (id, request) => postJob(`${BASE}/blockout/update?jobid=${encodeURIComponent(id)}`, request),
+  async blockStatus(request) {
+    const path = `${BASE}/blockout/blockstatus`;
+    const response = await send('POST', path, { body: JSON.stringify(request), contentType: 'application/json', accept: 'application/json' });
+    if (!response.ok) throw new ApiError(response.status, path, `The server couldn't check blockouts (${response.status}).`);
+    const json = (await response.json()) as { totallyBlocked?: unknown; partiallyBlocked?: unknown };
+    return { totallyBlocked: String(json.totallyBlocked) === 'true', partiallyBlocked: String(json.partiallyBlocked) === 'true' };
   },
 };
 

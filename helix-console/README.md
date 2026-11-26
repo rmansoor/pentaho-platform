@@ -150,7 +150,7 @@ start date and time, optional end date, time zone, and a live summary. It posts 
 triggers for once/minutes/hours/daily, `cronJobTrigger` for weekly/monthly/cron, with **numeric**
 Quartz days (`2-6`) so weekly schedules are right even on servers without the day-of-week fix, and the
 `ActionAdapterQuartzJob-ActionUser` parameter EE requires. When editing, start times are shown in the
-schedule's own time zone. Blockout times are not built yet.
+schedule's own time zone.
 
 *Report parameters.* When `GET /api/repo/files/{id}/parameterizable` says `true` (for `.xaction`, when
 its `parameterUi` has visible inputs), the sheet embeds the content's own prompt,
@@ -164,6 +164,21 @@ the body makes it grow forever. A prompt that reports incomplete blocks saving.
 *Email.* `GET /api/emailconfig/isValid` (`true`/`false`, text) enables the switch. To, Cc, Bcc,
 Subject, Message and Attachment name go in as `_SCH_EMAIL_*` job parameters and are read back when
 editing; `lineage-id` is carried over on edit.
+
+*Blockout times.* Administrators get a Blockout times card under Schedules: add, edit and remove
+windows in which no schedule runs, using the same recurrence fields plus a duration. A blockout is a
+`BlockoutAction` job: `GET /blockout/blockoutjobs`, `POST /blockout/add` (the schedule trigger plus
+`duration` in ms and `timeZone`), `POST /blockout/update?jobid=` (the server deletes and re-adds, so the
+id changes), delete with `removeJob`. The server renames every blockout `BlockoutAction`.
+
+The schedule sheet warns as you edit when runs fall in a blockout ("16 of the 28 runs in the next 4
+weeks…") and refuses a schedule whose every run is blocked. The console works this out itself
+(`features/schedules/blockouts.ts`: run times in the schedule's zone, a Quartz cron reader for
+lists, ranges, steps and names, windows inclusive at both ends) because on 11.1
+`POST /blockout/blockstatus` reports a daily 23:00 run inside a weeknight blockout as not blocked,
+and a single run outside every window as partially blocked. People who can't list blockouts
+(`org.pentaho.scheduler.manage`) fall back to `blockstatus`, and only its "totally blocked" answer is
+shown. Cron expressions using `L`, `W` or `#` aren't evaluated, so they get no warning.
 
 ## Data sources
 

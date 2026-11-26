@@ -34,4 +34,11 @@ describe('httpSchedulerSource requests', () => {
     stub('<input type="hidden" name="a"><input name="REGION">');
     expect(await httpSchedulerSource.hasParameters('/public/old.xaction')).toBe(true);
   });
+
+  it('sends blockout changes to the plugin, with the old id on update', async () => {
+    const calls = stub('admin\tBlockoutAction\t2');
+    expect(await httpSchedulerSource.updateBlockout('admin\tBlockoutAction\t1', {})).toBe('admin\tBlockoutAction\t2');
+    // Writes fetch a CSRF token first; the last call is the update itself.
+    expect(calls.at(-1)).toEqual({ url: '/pentaho/plugin/scheduler-plugin/api/scheduler/blockout/update?jobid=admin%09BlockoutAction%091', accept: 'text/plain' });
+  });
 });

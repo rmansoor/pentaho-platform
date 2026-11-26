@@ -12,6 +12,7 @@ export const schedulerKeys = {
   all: ['scheduler'] as const,
   jobs: ['scheduler', 'jobs'] as const,
   status: ['scheduler', 'status'] as const,
+  blockouts: ['scheduler', 'blockouts'] as const,
 };
 
 export function useSchedulerSource(): SchedulerSource {
@@ -27,4 +28,10 @@ export function useJobs() {
 export function useSchedulerStatus() {
   const source = useSchedulerSource();
   return useQuery({ queryKey: schedulerKeys.status, queryFn: ({ signal }) => source.status(signal) });
+}
+
+/** Blockout times. Only administrators may list them; for anyone else the query errors (no retry). */
+export function useBlockouts(enabled = true) {
+  const source = useSchedulerSource();
+  return useQuery({ queryKey: schedulerKeys.blockouts, queryFn: ({ signal }) => source.listBlockouts(signal), enabled, retry: false, staleTime: 30_000 });
 }

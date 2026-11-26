@@ -138,6 +138,9 @@ export interface ScheduleForm {
   keep: JobParameter[];
 }
 
+/** The "when" part of a schedule, shared with blockout times. */
+export type Recurrence = Pick<ScheduleForm, 'repeat' | 'interval' | 'weekdays' | 'dayOfMonth' | 'cron' | 'startDate' | 'startTime' | 'endDate' | 'timeZone'>;
+
 export const WEEKDAYS: { value: number; short: string; long: string }[] = [
   { value: 2, short: 'Mon', long: 'Monday' },
   { value: 3, short: 'Tue', long: 'Tuesday' },
@@ -181,17 +184,25 @@ export function scheduleFormProblem(form: ScheduleForm): string | null {
   if (!form.name.trim()) return 'Give the schedule a name';
   if (/[\\/\t]/.test(form.name)) return 'Names can\'t contain "/", "\\" or tabs';
   if (!form.outputFolder.startsWith('/')) return 'Choose a folder for the output';
+  return recurrenceProblem(form) ?? emailProblem(form.email);
+}
+
+/** Why a recurrence isn't complete yet, or null. */
+export function recurrenceProblem(form: Recurrence): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.startDate) || !/^\d{2}:\d{2}$/.test(form.startTime)) return 'Choose when it starts';
   if ((form.repeat === 'minutes' || form.repeat === 'hours') && !(form.interval >= 1)) return 'Enter how often it repeats';
   if (form.repeat === 'weekly' && form.weekdays.length === 0) return 'Choose at least one day';
   if (form.repeat === 'monthly' && !(form.dayOfMonth >= 1 && form.dayOfMonth <= 31)) return 'Choose a day of the month';
   if (form.repeat === 'cron' && form.cron.trim().split(/\s+/).length < 6) return 'A cron expression has at least six fields';
   if (form.endDate && form.endDate < form.startDate) return 'The end date is before the start date';
-  if (form.email.enabled) {
-    if (addressProblem(form.email.to, false)) return 'Enter valid email addresses to send to';
-    if (addressProblem(form.email.cc, true) || addressProblem(form.email.bcc, true)) return 'Check the Cc and Bcc addresses';
-    if (!form.email.attachmentName.trim()) return 'Name the attachment';
-  }
+  return null;
+}
+
+function emailProblem(email: ScheduleEmail): string | null {
+  if (!email.enabled) return null;
+  if (addressProblem(email.to, false)) return 'Enter valid email addresses to send to';
+  if (addressProblem(email.cc, true) || addressProblem(email.bcc, true)) return 'Check the Cc and Bcc addresses';
+  if (!email.attachmentName.trim()) return 'Name the attachment';
   return null;
 }
 
@@ -202,7 +213,8 @@ export function weekdaysToCron(days: number[]): string {
   return contiguous ? `${sorted[0]}-${sorted.at(-1)}` : sorted.join(',');
 }
 
-function cronFor(form: ScheduleForm): string {
+/** The Quartz cron expression for weekly, monthly and cron recurrences. */
+export function cronFor(form: Recurrence): string {
   const [h, m] = form.startTime.split(':').map(Number) as [number, number];
   if (form.repeat === 'weekly') return `0 ${m} ${h} ? * ${weekdaysToCron(form.weekdays)}`;
   if (form.repeat === 'monthly') return `0 ${m} ${h} ${form.dayOfMonth} * ?`;
@@ -214,31 +226,13 @@ const UI_PASS: Partial<Record<Repeat, string>> = { once: 'RUN_ONCE', minutes: 'M
 
 /** The JSON body for POST /job (and /job/update with `jobId`). `reportParameters` come from the prompt. */
 export function buildScheduleRequest(form: ScheduleForm, inputFile: string, owner: string, jobId?: string, reportParameters: JobParameter[] = []) {
-  const [year, month, day] = form.startDate.split('-').map(Number) as [number, number, number];
-  const [hour, minute] = form.startTime.split(':').map(Number) as [number, number];
-  const start = { startHour: hour, startMin: minute, startYear: year - 1900, startMonth: month - 1, startDay: day };
-  const endTime = form.endDate && form.repeat !== 'once' ? `${form.endDate}T23:59:59` : null;
-
-  const trigger =
-    form.repeat in UI_PASS
-      ? {
-          simpleJobTrigger: {
-            uiPassParam: UI_PASS[form.repeat],
-            repeatInterval: form.repeat === 'once' ? 0 : (SECONDS[form.repeat] ?? 0) * (form.repeat === 'daily' ? 1 : form.interval),
-            repeatCount: form.repeat === 'once' ? 0 : -1,
-            ...start,
-            endTime,
-          },
-        }
-      : { cronJobTrigger: { uiPassParam: 'CRON', cronString: cronFor(form), ...start, endTime } };
-
   return {
     ...(jobId ? { jobId } : {}),
     jobName: form.name.trim(),
     inputFile,
     outputFile: form.outputFolder,
     timeZone: form.timeZone,
-    ...trigger,
+    ...buildTrigger(form),
     jobParameters: [
       ...reportParameters.filter((p) => !isSystemParameter(p.name)),
       ...emailParameters(form.email),
@@ -248,8 +242,28 @@ export function buildScheduleRequest(form: ScheduleForm, inputFile: string, owne
   };
 }
 
+/** The trigger half of a JobScheduleRequest: { simpleJobTrigger } or { cronJobTrigger }. */
+export function buildTrigger(form: Recurrence) {
+  const [year, month, day] = form.startDate.split('-').map(Number) as [number, number, number];
+  const [hour, minute] = form.startTime.split(':').map(Number) as [number, number];
+  const start = { startHour: hour, startMin: minute, startYear: year - 1900, startMonth: month - 1, startDay: day };
+  const endTime = form.endDate && form.repeat !== 'once' ? `${form.endDate}T23:59:59` : null;
+
+  return form.repeat in UI_PASS
+      ? {
+          simpleJobTrigger: {
+            uiPassParam: UI_PASS[form.repeat],
+            repeatInterval: form.repeat === 'once' ? 0 : (SECONDS[form.repeat] ?? 0) * (form.repeat === 'daily' ? 1 : form.interval),
+            repeatCount: form.repeat === 'once' ? 0 : -1,
+            ...start,
+            endTime,
+          },
+        }
+    : { cronJobTrigger: { uiPassParam: 'CRON', cronString: cronFor(form), ...start, endTime } };
+}
+
 /** Plain-language summary of what the form will do. */
-export function describeForm(form: ScheduleForm): string {
+export function describeForm(form: Recurrence): string {
   const at = form.startTime;
   switch (form.repeat) {
     case 'once':
@@ -295,20 +309,28 @@ export function partsInZone(date: Date, timeZone: string): { date: string; time:
 /** Starts editing an existing job: maps its trigger back onto the form where it can. */
 export function formFromJob(job: ScheduledJob, home: string): ScheduleForm {
   const base = newScheduleForm(job.inputFile ?? '/x', home);
+  return {
+    ...base,
+    ...recurrenceFromJob(job, base),
+    name: job.name,
+    outputFolder: job.outputFolder ?? home,
+    email: emailFromParams(job.params, job.name),
+    savedParameters: Object.fromEntries(Object.entries(job.paramLists ?? {}).filter(([name]) => !isSystemParameter(name))),
+    keep: job.params['lineage-id'] ? [{ name: 'lineage-id', type: 'string', stringValue: [job.params['lineage-id']] }] : [],
+  };
+}
+
+/** Maps a job's trigger back onto the recurrence fields where it can; `base` fills the rest. */
+export function recurrenceFromJob(job: ScheduledJob, base: Recurrence): Recurrence {
   const timeZone = job.trigger.timeZone ?? base.timeZone;
   // Start times are instants; show them as wall-clock time in the schedule's own time zone.
   const start = job.trigger.startTime ? partsInZone(job.trigger.startTime, timeZone) : null;
-  const form: ScheduleForm = {
+  const form: Recurrence = {
     ...base,
-    name: job.name,
-    outputFolder: job.outputFolder ?? home,
     timeZone,
     startDate: start?.date ?? base.startDate,
     startTime: start?.time ?? base.startTime,
     endDate: job.trigger.endTime ? partsInZone(job.trigger.endTime, timeZone).date : '',
-    email: emailFromParams(job.params, job.name),
-    savedParameters: Object.fromEntries(Object.entries(job.paramLists ?? {}).filter(([name]) => !isSystemParameter(name))),
-    keep: job.params['lineage-id'] ? [{ name: 'lineage-id', type: 'string', stringValue: [job.params['lineage-id']] }] : [],
   };
   const interval = job.trigger.repeatInterval ?? 0;
   if (job.trigger.type === 'simpleJobTrigger') {

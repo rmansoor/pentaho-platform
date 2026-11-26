@@ -50,6 +50,8 @@
   --hx-success-fg: #23704a;
   --hx-danger-bg: #fdeae3;
   --hx-danger-fg: #a63a1b;
+  --hx-warning-bg: #fdf3d8;
+  --hx-warning-fg: #7a5300;
   --hx-highlight: var(--hx-palette-ember);
 
   /* Shape */
@@ -86,6 +88,8 @@
     --hx-success-fg: #7fd3a6;
     --hx-danger-bg: #44201a;
     --hx-danger-fg: #f3a58c;
+    --hx-warning-bg: #3d3115;
+    --hx-warning-fg: #f0c869;
     --hx-shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
     color-scheme: dark;
   }
@@ -112,6 +116,8 @@
   --hx-success-fg: #7fd3a6;
   --hx-danger-bg: #44201a;
   --hx-danger-fg: #f3a58c;
+  --hx-warning-bg: #3d3115;
+  --hx-warning-fg: #f0c869;
   --hx-shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
   color-scheme: dark;
 }
@@ -143,6 +149,8 @@
   --color-success-fg: var(--hx-success-fg);
   --color-danger-bg: var(--hx-danger-bg);
   --color-danger-fg: var(--hx-danger-fg);
+  --color-warning-bg: var(--hx-warning-bg);
+  --color-warning-fg: var(--hx-warning-fg);
   --color-highlight: var(--hx-highlight);
 
   --font-sans: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, sans-serif;
