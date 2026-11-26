@@ -40,7 +40,14 @@ helix-console/
   URI-encoded in `fileNameOverride` (the single-file endpoint fails with a server NPE without it),
   optional replace; zips are unpacked by the server. The endpoint answers 200 for everything, so the
   body is read: `INVALID_MIME_TYPE` or a stack trace means it failed. Files can also be dragged onto
-  the Files page. New data source is listed but not built yet.
+  the Files page. New > Database connection opens the connection editor (below).
+- **Database connections:** New / Edit on Data sources (and New > Database connection). Types from
+  `GET /plugin/data-access/api/dialect/getDatabaseTypes` (default port per type); Native (JDBC) or
+  JNDI. Test is `PUT /plugin/data-access/api/connection/test`: 200 with a sentence on success, 500
+  with an HTML error page on failure, so the console shows its own message. Save is
+  `PUT …/datasource/jdbc/connection/{name}` (204; adds or updates). The server never returns the
+  password; a blank password on save or test keeps the saved one. Fields the form doesn't edit
+  (pooling, extra options, attributes) are passed back unchanged.
 - **Command palette:** Ctrl+K / ⌘K, or the search box in the top bar. It jumps to areas and Trash,
   opens favorites, and toggles the menu; type to filter, arrows to move, Enter to run.
 

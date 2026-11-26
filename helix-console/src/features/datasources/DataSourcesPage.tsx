@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Boxes, Cable, Database, Download, FileCode2, Plus, RefreshCw, Search, Trash2, type LucideIcon } from 'lucide-react';
+import { Boxes, Cable, Database, Download, FileCode2, Pencil, Plus, RefreshCw, Search, Trash2, type LucideIcon } from 'lucide-react';
 import { Button, Card, cn, Dialog, IconButton, toast } from '@helix/ui';
 import {
   DATA_SOURCE_LABEL,
@@ -11,6 +11,7 @@ import {
   type DataSourceKind,
 } from '../../api/datasources';
 import { QueryError } from '../files/QueryError';
+import { ConnectionSheet, type ConnectionTarget } from './ConnectionSheet';
 
 const ICON: Record<DataSourceKind, LucideIcon> = { jdbc: Cable, analysis: Boxes, metadata: FileCode2, dsw: Database };
 const ORDER: DataSourceKind[] = ['jdbc', 'analysis', 'metadata', 'dsw'];
@@ -23,6 +24,7 @@ export function DataSourcesPage() {
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<'' | DataSourceKind>('');
   const [deleting, setDeleting] = useState<DataSource | null>(null);
+  const [editing, setEditing] = useState<ConnectionTarget | null>(null);
 
   const remove = useMutation({
     mutationFn: (source: DataSource) => api.remove(source),
@@ -51,15 +53,8 @@ export function DataSourcesPage() {
     <div className="flex flex-col gap-5 pt-1">
       <header className="flex flex-wrap items-end gap-3">
         <h1 className="m-0 min-w-0 flex-1 text-[28px] font-extrabold tracking-[-0.02em]">Data sources</h1>
-        <Button
-          variant="primary"
-          size="sm"
-          icon={<Plus size={15} aria-hidden="true" />}
-          aria-disabled="true"
-          title="New connections and the data source wizard come with the next console milestone"
-          className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-        >
-          New data source
+        <Button variant="primary" size="sm" icon={<Plus size={15} aria-hidden="true" />} onClick={() => setEditing({ kind: 'new' })}>
+          New database connection
         </Button>
       </header>
 
@@ -133,6 +128,11 @@ export function DataSourcesPage() {
                       <Download size={16} aria-hidden="true" />
                     </a>
                   )}
+                  {source.kind === 'jdbc' && (
+                    <IconButton size="sm" variant="ghost" aria-label={`Edit ${source.id}`} title="Edit" onClick={() => setEditing({ kind: 'edit', name: source.id })}>
+                      <Pencil size={16} aria-hidden="true" />
+                    </IconButton>
+                  )}
                   <IconButton
                     size="sm"
                     variant="ghost"
@@ -150,6 +150,7 @@ export function DataSourcesPage() {
         )}
       </Card>
 
+      <ConnectionSheet target={editing} onClose={() => setEditing(null)} />
       <Dialog
         open={deleting !== null}
         onClose={() => !remove.isPending && setDeleting(null)}

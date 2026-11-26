@@ -48,13 +48,6 @@ describe('Data sources', () => {
     expect(await screen.findByText('Deleted database connection "AgileBI"')).toBeInTheDocument();
     await waitFor(() => expect(names()).not.toContain('AgileBI'));
   });
-
-  it('keeps New data source visible but explains it is not ready', async () => {
-    await open();
-    const button = screen.getByRole('button', { name: 'New data source' });
-    expect(button).toHaveAttribute('aria-disabled', 'true');
-    expect(button.getAttribute('title')).toMatch(/next console milestone/);
-  });
 });
 
 describe('describeConnection', () => {
