@@ -16,6 +16,7 @@ export const repoKeys = {
   flags: (path: string) => ['repo', 'flags', path] as const,
   recipients: ['repo', 'recipients'] as const,
   session: ['session'] as const,
+  openers: ['openers'] as const,
 };
 
 export function useRepoSource(): RepoSource {
@@ -60,4 +61,9 @@ export function useRecipients(enabled: boolean) {
 export function useSession() {
   const source = useContext(RepoSourceContext);
   return useQuery({ queryKey: repoKeys.session, queryFn: ({ signal }) => source.getSession(signal), staleTime: Infinity });
+}
+
+export function useOpeners() {
+  const source = useContext(RepoSourceContext);
+  return useQuery({ queryKey: repoKeys.openers, queryFn: ({ signal }) => source.getOpeners(signal), staleTime: Infinity });
 }

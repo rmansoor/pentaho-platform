@@ -14,6 +14,7 @@ import { HomePage } from '../features/home/HomePage';
 import { SchedulesPage } from '../features/schedules/SchedulesPage';
 import { DataSourcesPage } from '../features/datasources/DataSourcesPage';
 import { AdminPage } from '../features/admin/AdminPage';
+import { ViewerPage } from '../features/viewer/ViewerPage';
 import { DEFAULT_FOLDER, normalizePath } from '../features/files/paths';
 
 const rootRoute = createRootRoute({
@@ -49,6 +50,7 @@ const filesRoute = createRoute({
         path={path}
         onNavigate={(next) => void navigate({ search: { path: next } })}
         onOpenTrash={() => void navigate({ to: '/files/trash' })}
+        onOpenFile={(file, title) => void navigate({ to: '/view', search: { path: file, title } })}
       />
     );
   },
@@ -68,7 +70,12 @@ const homeRoute = createRoute({
   path: '/home',
   component: function HomeRoute() {
     const navigate = homeRoute.useNavigate();
-    return <HomePage onOpenFolder={(path) => void navigate({ to: '/files', search: { path } })} />;
+    return (
+      <HomePage
+        onOpenFolder={(path) => void navigate({ to: '/files', search: { path } })}
+        onOpenFile={(path, title) => void navigate({ to: '/view', search: { path, title } })}
+      />
+    );
   },
 });
 
@@ -90,6 +97,20 @@ const adminRoute = createRoute({
   component: AdminPage,
 });
 
+const viewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/view',
+  validateSearch: (search: Record<string, unknown>): { path: string; title?: string } => ({
+    path: typeof search.path === 'string' ? normalizePath(search.path) : '/',
+    ...(typeof search.title === 'string' && search.title ? { title: search.title } : {}),
+  }),
+  component: function ViewRoute() {
+    const { path, title } = viewRoute.useSearch();
+    const navigate = viewRoute.useNavigate();
+    return <ViewerPage path={path} title={title} onOpenFolder={(folder) => void navigate({ to: '/files', search: { path: folder } })} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   homeRoute,
@@ -98,6 +119,7 @@ const routeTree = rootRoute.addChildren([
   schedulesRoute,
   dataSourcesRoute,
   adminRoute,
+  viewRoute,
 ]);
 
 /** The console is served from /pentaho/console/ (vite `base`). */

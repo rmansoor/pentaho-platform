@@ -47,18 +47,28 @@ folder can be bookmarked and survives a reload.
   or Shift+arrow selects a range; Enter or double-click opens a folder.
 - **Tree:** follows the ARIA tree pattern (arrows, Home/End, Right/Left to expand or collapse). Children
   load on first expand and share the cache with the table.
-- **Toolbar:** Open works for folders. Opening files, Share, Schedule and More are shown as in the design
-  but disabled, with a tooltip saying why, until their screens exist.
+- **Toolbar:** Open (folders in Files, files in the viewer), Share, and More (Properties, favorites,
+  Move to trash). Schedule is shown but disabled until the schedule wizard exists.
 - **Errors:** an unreachable server and a missing or forbidden folder each get their own message and a retry.
 - **Move to trash:** from the More menu or the Delete key, with an Undo toast.
+
+## Opening files
+
+Open (Files toolbar, double-click, Enter), Home, the palette and favorites open a file at
+`/view?path=…`: a header (folder breadcrumb, title, favorite star, Share, Open in new window) over one
+frame showing the file with the plugin that renders it, at the URL the GWT console uses,
+`/api/repos/{pathId}/{perspective}`. The perspective for each extension comes from the RUN command in
+`GET /api/mantle/settings` (`plugin-content-type-N…`; "None" means `generatedContent`). Types no
+plugin opens get a Download link instead. Opening a file records it in Recent (GWT format, 10 items).
+This is the plan's ContentFrame step; the native report viewer and the `window.mantle_*` compatibility
+layer for plugins that call back into the console come later.
 
 ## Home
 
 Quick actions (Files, Schedules, Data sources, Trash), then **Favorites** and **Recent**. Both lists are
 per-user settings (`/api/user-settings/favorites`, `/recent`) in the GWT console's JSON format
 (`[{"fullPath","title","lastUse"}]`, 10 recents), so the old and new consoles share them during the
-transition. Star or unstar from Home or from Files › More › Add to favorites. Until files open in the
-console, choosing a file shows it in its folder.
+transition. Star or unstar from Home or from Files › More › Add to favorites.
 
 ## Trash
 

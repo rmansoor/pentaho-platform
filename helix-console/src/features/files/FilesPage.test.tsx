@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../../test/render-app';
 import { ApiError } from '../../api/http';
@@ -94,9 +94,9 @@ describe('Files', () => {
     expect(within(tree).getByRole('treeitem', { name: 'Dashboards', selected: true })).toBeInTheDocument();
   });
 
-  it('keeps Open disabled for files and explains why', async () => {
+  it('opens a selected file in the viewer, and says why Open is disabled with nothing selected', async () => {
     const user = userEvent.setup();
-    await renderApp(REPORTS);
+    const { router } = await renderApp(REPORTS);
     await screen.findByRole('grid', { name: 'Files in Reports' });
 
     const open = screen.getByRole('button', { name: 'Open' });
@@ -104,7 +104,11 @@ describe('Files', () => {
     expect(open).toHaveAttribute('title', 'Select one item to open it');
 
     await user.click(within(grid()).getAllByRole('row')[1]!);
-    expect(open).toHaveAttribute('title', 'Opening files arrives with the report viewer');
+    expect(open).toHaveAttribute('aria-disabled', 'false');
+    await user.click(open);
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ path: '/public/Steel Wheels/Reports/Buyer Report.prpt', title: 'Buyer Report' }),
+    );
   });
 
   it('navigates the folder tree with the keyboard', async () => {

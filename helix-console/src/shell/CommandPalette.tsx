@@ -51,17 +51,14 @@ export function CommandPalette() {
       icon: <n.icon size={16} aria-hidden="true" />,
       run: go(n.to),
     }));
-    const favs = (favorites.data ?? []).map((f) => {
-      const folder = f.kind === 'folder' ? f.fullPath : f.fullPath.slice(0, f.fullPath.lastIndexOf('/')) || '/';
-      return {
-        id: `fav:${f.fullPath}`,
-        label: f.title,
-        group: 'Favorites',
-        keywords: f.fullPath,
-        icon: <Star size={16} aria-hidden="true" />,
-        run: go('/files', { path: folder }),
-      };
-    });
+    const favs = (favorites.data ?? []).map((f) => ({
+      id: `fav:${f.fullPath}`,
+      label: f.title,
+      group: 'Favorites',
+      keywords: f.fullPath,
+      icon: <Star size={16} aria-hidden="true" />,
+      run: f.kind === 'folder' ? go('/files', { path: f.fullPath }) : go('/view', { path: f.fullPath, title: f.title }),
+    }));
     return [
       ...areas,
       { id: 'go:trash', label: 'Go to Trash', group: 'Areas', icon: <Trash2 size={16} aria-hidden="true" />, run: go('/files/trash') },

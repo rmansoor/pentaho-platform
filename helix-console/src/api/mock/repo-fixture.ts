@@ -262,6 +262,9 @@ export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSourc
       await wait();
       settings.set(key, value);
     },
+    async getOpeners() {
+      return { prpt: 'viewer', prpti: 'viewer', xanalyzer: 'viewer', wcdf: 'generatedContent', ktr: 'viewer', kjb: 'viewer', xaction: 'generatedContent' };
+    },
     async getSession() {
       return { userName: user, isAdministrator: options.administrator ?? true };
     },

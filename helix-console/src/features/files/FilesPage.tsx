@@ -17,12 +17,13 @@ export interface FilesPageProps {
   path: string;
   onNavigate: (path: string) => void;
   onOpenTrash: () => void;
+  onOpenFile: (path: string, title: string) => void;
 }
 
 const NO_SELECTION: Selection = { selected: new Set(), anchor: null };
 
 /** Files area: folder tree, sortable file table and a selection toolbar (Atlas, Helix Files mockup). */
-export function FilesPage({ path, onNavigate, onOpenTrash }: FilesPageProps) {
+export function FilesPage({ path, onNavigate, onOpenTrash, onOpenFile }: FilesPageProps) {
   const folder = useFolder(path);
   const { moveToTrash } = useTrashActions();
   const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
@@ -37,7 +38,7 @@ export function FilesPage({ path, onNavigate, onOpenTrash }: FilesPageProps) {
 
   function open(item: RepoItem) {
     if (item.folder) onNavigate(item.path);
-    // Files open in the report viewer or a content tab, which are not built yet.
+    else onOpenFile(item.path, item.title);
   }
 
   function trash(itemsToTrash: RepoItem[]) {
@@ -148,11 +149,11 @@ function Toolbar({
   onProperties: (item: RepoItem, tab: PropertiesTab) => void;
 }) {
   const single = selected.length === 1 ? selected[0] : undefined;
-  const canOpen = single?.folder === true;
+  const canOpen = !!single;
   const favorites = usePickList('favorites');
   const toggleFavorite = useToggleFavorite();
   const isFavorite = !!single && !!favorites.data?.some((f) => f.fullPath === single.path);
-  const openReason = !single ? 'Select one item to open it' : canOpen ? undefined : 'Opening files arrives with the report viewer';
+  const openReason = !single ? 'Select one item to open it' : undefined;
 
   return (
     <>

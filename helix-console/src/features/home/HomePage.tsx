@@ -9,8 +9,8 @@ import { FileKindIcon } from '../files/FileKindIcon';
 import { QueryError } from '../files/QueryError';
 
 export interface HomePageProps {
-  /** Opens a folder in Files (files open in their folder until the viewer exists). */
   onOpenFolder: (path: string) => void;
+  onOpenFile: (path: string, title: string) => void;
 }
 
 const QUICK_ACTIONS: { to: '/files' | '/files/trash' | '/schedules' | '/datasources'; label: string; detail: string; icon: LucideIcon }[] = [
@@ -42,13 +42,13 @@ export function timeAgo(ms: number, now = Date.now()): string {
 const parentOf = (path: string) => path.slice(0, path.lastIndexOf('/')) || '/';
 
 /** Work page: quick ways in, then the user's favorites and recently opened files. */
-export function HomePage({ onOpenFolder }: HomePageProps) {
+export function HomePage({ onOpenFolder, onOpenFile }: HomePageProps) {
   const favorites = usePickList('favorites');
   const recents = usePickList('recent');
   const toggleFavorite = useToggleFavorite();
   const favoritePaths = new Set(favorites.data?.map((f) => f.fullPath));
 
-  const open = (item: PickItem) => onOpenFolder(item.kind === 'folder' ? item.fullPath : parentOf(item.fullPath));
+  const open = (item: PickItem) => (item.kind === 'folder' ? onOpenFolder(item.fullPath) : onOpenFile(item.fullPath, item.title));
 
   const star = (item: PickItem) => {
     const on = favoritePaths.has(item.fullPath);
@@ -149,7 +149,7 @@ function PickListCard({
               <button
                 type="button"
                 onClick={() => onOpen(item)}
-                title={item.kind === 'folder' ? `Open ${item.title}` : `Show ${item.title} in its folder`}
+                title={`Open ${item.title}`}
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-[8px] py-1 text-left"
               >
                 <FileKindIcon kind={item.kind} />

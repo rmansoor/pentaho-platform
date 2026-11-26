@@ -326,6 +326,49 @@ export interface RepoSource {
   setUserSetting(key: string, value: string): Promise<void>;
   /** The signed-in user. */
   getSession(signal?: AbortSignal): Promise<Session>;
+  /** Which file extensions open in the console, and how. */
+  getOpeners(signal?: AbortSignal): Promise<Openers>;
+}
+
+/** Extension (no dot, lower case) -> the RUN perspective for /api/repos/{id}/{perspective}. */
+export type Openers = Record<string, string>;
+
+const mantleSettingsSchema = z.object({
+  setting: z
+    .union([z.object({ name: z.string(), value: z.string().nullish() }), z.array(z.object({ name: z.string(), value: z.string().nullish() }))])
+    .nullish()
+    .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
+});
+
+/**
+ * Reads the plugin content types from GET /api/mantle/settings, the same settings the GWT console
+ * uses: plugin-content-type-N = ".prpt", plugin-content-type-N-command-M = "RUN",
+ * plugin-content-type-N-command-perspective-M = "viewer" ("None" means generatedContent).
+ * Extensions arrive with stray dots ("..xaction"). Exported for tests.
+ */
+export function parseOpeners(json: unknown): Openers {
+  const settings = new Map(mantleSettingsSchema.parse(json).setting.map((s) => [s.name, s.value ?? '']));
+  const openers: Openers = {};
+  for (let i = 0; settings.has(`plugin-content-type-${i}`); i++) {
+    const ext = settings.get(`plugin-content-type-${i}`)!.replace(/^\.+/, '').toLowerCase();
+    for (let c = 0; settings.has(`plugin-content-type-${i}-command-${c}`); c++) {
+      if (settings.get(`plugin-content-type-${i}-command-${c}`) !== 'RUN') continue;
+      const perspective = settings.get(`plugin-content-type-${i}-command-perspective-${c}`) ?? '';
+      openers[ext] = !perspective || perspective === 'None' ? 'generatedContent' : perspective;
+    }
+  }
+  return openers;
+}
+
+/** URL that renders a repository file with its plugin, as the GWT console opens it. */
+export function openUrl(path: string, perspective: string): string {
+  return `/pentaho/api/repos/${toPathId(path)}/${perspective}`;
+}
+
+export function extensionOfPath(path: string): string {
+  const name = path.slice(path.lastIndexOf('/') + 1);
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
 }
 
 export interface Session {
@@ -394,6 +437,9 @@ export const httpRepoSource: RepoSource = {
   },
   async setUserSetting(key, value) {
     await sendOk('POST', `/user-settings/${encodeURIComponent(key)}`, { body: value, contentType: 'text/plain' });
+  },
+  async getOpeners(signal) {
+    return parseOpeners(await getJson('/mantle/settings', z.unknown(), signal));
   },
   async getSession(signal) {
     const [userName, admin] = await Promise.all([

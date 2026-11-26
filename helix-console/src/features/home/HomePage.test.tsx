@@ -40,14 +40,14 @@ describe('Home', () => {
     expect(screen.getByText('Files you open appear here.')).toBeInTheDocument();
   });
 
-  it('opens a favorite folder in Files, and a file in its folder', async () => {
+  it('opens a favorite file in the viewer and a favorite folder in Files', async () => {
     const user = userEvent.setup();
     const { router } = await renderApp('/home', createFixtureRepoSource({ settings }));
     const favorites = await screen.findByRole('list', { name: 'Favorites' });
 
     await user.click(within(favorites).getByRole('button', { name: /^Buyer Report/ }));
-    expect(await screen.findByRole('grid', { name: 'Files in Reports' })).toBeInTheDocument();
-    expect(router.state.location.search).toEqual({ path: '/public/Steel Wheels/Reports' });
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/\/view$/));
+    expect(router.state.location.search).toEqual({ path: '/public/Steel Wheels/Reports/Buyer Report.prpt', title: 'Buyer Report' });
 
     await router.navigate({ to: '/home' });
     await user.click(within(await screen.findByRole('list', { name: 'Favorites' })).getByRole('button', { name: /^Dashboards/ }));
