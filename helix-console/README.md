@@ -34,6 +34,9 @@ helix-console/
 - **Signed-in user** (`/api/session/userName`, `/api/mantle/isAdministrator`) at the foot of the rail,
   with a menu for Change password (`PUT /api/userroledao/user`) and Sign out (`/pentaho/Logout`).
   Administration is only listed for administrators.
+- **New** (top bar): New folder, created in the folder being browsed or else the user's home folder
+  (`PUT /api/repo/dirs/{pathId}`; 409 when the name is taken; `/`, `\` and tab refused). Upload and
+  New data source are listed but not built yet.
 - **Command palette:** Ctrl+K / ⌘K, or the search box in the top bar. It jumps to areas and Trash,
   opens favorites, and toggles the menu; type to filter, arrows to move, Enter to run.
 

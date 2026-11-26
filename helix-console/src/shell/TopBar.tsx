@@ -1,5 +1,9 @@
-import { Menu, Plus, Search } from 'lucide-react';
-import { Button, IconButton } from '@helix/ui';
+import { useState } from 'react';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { ChevronDown, Database, FolderPlus, Menu as MenuIcon, Plus, Search, Upload } from 'lucide-react';
+import { Button, IconButton, Menu } from '@helix/ui';
+import { useSession } from '../api/repo-context';
+import { NewFolderDialog } from '../features/files/NewFolderDialog';
 import { NAV_RAIL_ID } from './NavRail';
 import { useLayoutStore } from './layout-store';
 
@@ -12,6 +16,13 @@ export interface TopBarProps {
 export function TopBar({ onOpenDrawer, drawerOpen }: TopBarProps) {
   const openPalette = useLayoutStore((s) => s.setPaletteOpen);
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+  const navigate = useNavigate();
+  const session = useSession();
+  const [newFolder, setNewFolder] = useState(false);
+  // New items go into the folder being browsed; elsewhere, into the user's home folder.
+  const location = useRouterState({ select: (s) => s.location });
+  const browsing = location.pathname.endsWith('/files') ? (location.search as { path?: string }).path : undefined;
+  const target = browsing ?? (session.data ? `/home/${session.data.userName}` : '/public');
   return (
     <header className="flex h-topbar shrink-0 items-center gap-3 px-4 md:px-8">
       <IconButton
@@ -22,7 +33,7 @@ export function TopBar({ onOpenDrawer, drawerOpen }: TopBarProps) {
         onClick={onOpenDrawer}
         className="md:hidden"
       >
-        <Menu size={20} aria-hidden="true" />
+        <MenuIcon size={20} aria-hidden="true" />
       </IconButton>
 
       <div className="flex-1" />
@@ -37,9 +48,37 @@ export function TopBar({ onOpenDrawer, drawerOpen }: TopBarProps) {
         <span className="flex-1">Search Helix</span>
         <kbd className="font-mono text-[11px]">{mac ? '⌘K' : 'Ctrl K'}</kbd>
       </button>
-      <Button variant="primary" icon={<Plus size={16} strokeWidth={2.4} aria-hidden="true" />}>
-        New
-      </Button>
+      <Menu
+        items={[
+          { label: 'New folder', icon: <FolderPlus size={15} aria-hidden="true" />, onSelect: () => setNewFolder(true) },
+          {
+            label: 'Upload files',
+            icon: <Upload size={15} aria-hidden="true" />,
+            onSelect: () => {},
+            disabled: true,
+            reason: 'Coming with the next console milestone',
+          },
+          {
+            label: 'Data source',
+            icon: <Database size={15} aria-hidden="true" />,
+            onSelect: () => {},
+            disabled: true,
+            reason: 'Coming with the next console milestone',
+          },
+        ]}
+        trigger={(props) => (
+          <Button variant="primary" icon={<Plus size={16} strokeWidth={2.4} aria-hidden="true" />} {...props}>
+            New
+            <ChevronDown size={14} aria-hidden="true" />
+          </Button>
+        )}
+      />
+      <NewFolderDialog
+        open={newFolder}
+        parent={target}
+        onClose={() => setNewFolder(false)}
+        onCreated={(path) => void navigate({ to: '/files', search: { path } })}
+      />
     </header>
   );
 }

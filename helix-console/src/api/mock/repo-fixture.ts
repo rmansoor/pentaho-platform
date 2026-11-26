@@ -7,6 +7,7 @@ import {
   type OverwriteMode,
   type RepoSource,
 } from '../repo';
+import { ApiError } from '../http';
 
 /*
  * A small sample repository in the JSON shape the server returns, so the fixture exercises the
@@ -261,6 +262,16 @@ export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSourc
     async setUserSetting(key, value) {
       await wait();
       settings.set(key, value);
+    },
+    async createFolder(path) {
+      await wait();
+      const { parent, name } = split(path);
+      const folder = find(parent);
+      if (!folder?.children) throw new Error(`No folder at ${parent}`);
+      if (folder.children.some((c) => c.name === name)) {
+        throw new ApiError(409, path, 'A file or folder with that name already exists here.');
+      }
+      folder.children.push({ name, owner: user, modified: String(Date.now()), children: [] });
     },
     async getOpeners() {
       return { prpt: 'viewer', prpti: 'viewer', xanalyzer: 'viewer', wcdf: 'generatedContent', ktr: 'viewer', kjb: 'viewer', xaction: 'generatedContent' };

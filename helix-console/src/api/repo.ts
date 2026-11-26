@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getJson, getText, send, sendOk } from './http';
+import { ApiError, getJson, getText, send, sendOk } from './http';
 
 /*
  * Repository browsing over the platform REST API:
@@ -328,7 +328,12 @@ export interface RepoSource {
   getSession(signal?: AbortSignal): Promise<Session>;
   /** Which file extensions open in the console, and how. */
   getOpeners(signal?: AbortSignal): Promise<Openers>;
+  /** Creates a folder; ApiError 409 when the name is taken. */
+  createFolder(path: string): Promise<void>;
 }
+
+/** Characters the repository refuses in names (GET /repo/files/reservedCharacters). */
+export const RESERVED_NAME_CHARACTERS = ['/', '\\', '\t'];
 
 /** Extension (no dot, lower case) -> the RUN perspective for /api/repos/{id}/{perspective}. */
 export type Openers = Record<string, string>;
@@ -437,6 +442,11 @@ export const httpRepoSource: RepoSource = {
   },
   async setUserSetting(key, value) {
     await sendOk('POST', `/user-settings/${encodeURIComponent(key)}`, { body: value, contentType: 'text/plain' });
+  },
+  async createFolder(path) {
+    const response = await send('PUT', `/repo/dirs/${toPathId(path)}`);
+    if (response.status === 409) throw new ApiError(409, path, 'A file or folder with that name already exists here.');
+    if (!response.ok) throw new ApiError(response.status, path, `Couldn't create the folder (${response.status}).`);
   },
   async getOpeners(signal) {
     return parseOpeners(await getJson('/mantle/settings', z.unknown(), signal));
