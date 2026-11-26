@@ -5,11 +5,12 @@ import { Button, Card, Checkbox, cn, Dialog, Tabs, toast } from '@helix/ui';
 import { adminKeys, useAdminSource, useMembersOf, useRoles, useRolesOf, useUsers } from '../../api/admin';
 import { QueryError } from '../files/QueryError';
 import { MailTab } from './MailTab';
+import { PermissionsTab } from './PermissionsTab';
 import { SettingsTab } from './SettingsTab';
 
-type Tab = 'users' | 'roles' | 'mail' | 'settings';
+type Tab = 'users' | 'roles' | 'permissions' | 'settings' | 'mail';
 
-/** Administration: users, roles, mail server and settings. System roles and permissions follow. */
+/** Administration: users, roles, role permissions, settings and the mail server. */
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>('users');
   return (
@@ -20,14 +21,25 @@ export function AdminPage() {
         tabs={[
           { id: 'users', label: 'Users' },
           { id: 'roles', label: 'Roles' },
-          { id: 'mail', label: 'Mail server' },
+          { id: 'permissions', label: 'Permissions' },
           { id: 'settings', label: 'Settings' },
+          { id: 'mail', label: 'Mail server' },
         ]}
         value={tab}
         onChange={setTab}
       >
         {(current) =>
-          current === 'users' ? <UsersTab /> : current === 'roles' ? <RolesTab /> : current === 'mail' ? <MailTab /> : <SettingsTab />
+          current === 'users' ? (
+            <UsersTab />
+          ) : current === 'roles' ? (
+            <RolesTab />
+          ) : current === 'permissions' ? (
+            <PermissionsTab />
+          ) : current === 'settings' ? (
+            <SettingsTab />
+          ) : (
+            <MailTab />
+          )
         }
       </Tabs>
     </div>

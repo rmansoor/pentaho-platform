@@ -162,8 +162,13 @@ connections and the data source wizard are not built yet.
 administrator's own password), Delete. Roles: list, members as checkboxes, New role, Delete (with a
 stronger warning for Administrator). Passwords are sent as `ENC:` + base64 so they don't appear as
 plain text in request logs; bulk names are tab-separated query parameters; validation failures carry
-their reason in the `PUC_VALIDATION_ERROR_MESSAGE` header, which the console shows. System roles and
-permissions are not built yet.
+their reason in the `PUC_VALIDATION_ERROR_MESSAGE` header, which the console shows.
+
+**Permissions** (the GWT "System Roles" panel): a roles × permissions matrix from
+`GET /api/userroledao/logicalRoleMap` (localized permission names; roles without an assignment are
+added with nothing granted). Each tick saves that one role with `PUT /roleAssignments`
+(`{assignments:[{roleName, logicalRoles}]}`); immutable roles (Administrator, SysAdmin) are locked.
+Tabs: Users, Roles, Permissions, Settings, Mail server.
 
 **Mail server** (`/api/emailconfig`): host, port, protocol, SSL/STARTTLS, sign-in, From; Send test email
 uses the unsaved values (server answers `EmailTester.SUCESS` [sic] or `EmailTester.FAIL`). Saving

@@ -1,5 +1,5 @@
 import { ApiError } from '../http';
-import { parseMailConfig, type AdminSource, type MailConfig } from '../admin';
+import { parseMailConfig, parseRolePermissions, type AdminSource, type MailConfig } from '../admin';
 
 /** The sample install's users and roles. */
 const USERS: Record<string, string[]> = {
@@ -15,6 +15,20 @@ export function createFixtureAdminSource(): AdminSource & { passwords: Map<strin
   const users = new Map(Object.entries(structuredClone(USERS)));
   const roles = new Set(ROLES);
   const passwords = new Map<string, string>([['admin', 'password']]);
+  const PERMS = [
+    ['org.pentaho.repository.read', 'Read Content'],
+    ['org.pentaho.repository.create', 'Create Content'],
+    ['org.pentaho.repository.execute', 'Execute'],
+    ['org.pentaho.scheduler.manage', 'Schedule Content'],
+    ['org.pentaho.security.publish', 'Publish Content'],
+    ['org.pentaho.security.administerSecurity', 'Administer Security'],
+  ];
+  const grants = new Map<string, string[]>([
+    ['Administrator', PERMS.map(([id]) => id!)],
+    ['Authenticated', ['org.pentaho.repository.read']],
+    ['Business Analyst', ['org.pentaho.security.publish']],
+    ['Power User', ['org.pentaho.repository.read', 'org.pentaho.repository.create', 'org.pentaho.scheduler.manage']],
+  ]);
   let mail: MailConfig = parseMailConfig({ authenticate: true, smtpPort: 25, smtpProtocol: 'smtp', authMechanism: 'XOAUTH2', clientId: '' });
   const need = (user: string) => {
     const r = users.get(user);
@@ -56,6 +70,19 @@ export function createFixtureAdminSource(): AdminSource & { passwords: Map<strin
     async createRole(name) {
       if (roles.has(name)) throw new ApiError(400, name, 'A role with that name already exists.');
       roles.add(name);
+    },
+    async getRolePermissions() {
+      return parseRolePermissions(
+        {
+          assignments: [...grants].map(([roleName, logicalRoles]) => ({ roleName, logicalRoles, immutable: roleName === 'Administrator' })),
+          localizedRoleNames: PERMS.map(([roleName, localizedName]) => ({ roleName, localizedName })),
+        },
+        [...roles],
+      );
+    },
+    async setRolePermissions(role, ids) {
+      if (role === 'Administrator') throw new ApiError(403, role, 'The Administrator role cannot be changed.');
+      grants.set(role, [...ids]);
     },
     getMailConfig: async () => structuredClone(mail),
     async setMailConfig(config) {

@@ -74,6 +74,34 @@ export function mailConfigBody(config: MailConfig): string {
 /** The test endpoint answers a message key; note the server's spelling of SUCESS. */
 export const mailTestPassed = (result: string) => /EmailTester\.SUC+ESS/.test(result);
 
+/** What each role may do (/api/userroledao/logicalRoleMap). */
+export interface RolePermissions {
+  /** Permission id ("org.pentaho.scheduler.manage") and its localized name ("Schedule Content"). */
+  permissions: { id: string; label: string }[];
+  roles: { name: string; granted: string[]; immutable: boolean }[];
+}
+
+const asList = <T,>(v: T | T[] | null | undefined): T[] => (v == null ? [] : Array.isArray(v) ? v : [v]);
+
+export function parseRolePermissions(json: unknown, allRoles: string[] = []): RolePermissions {
+  const o = (json ?? {}) as { assignments?: unknown; localizedRoleNames?: unknown };
+  const assignments = asList(o.assignments as Record<string, unknown> | Record<string, unknown>[]).map((a) => ({
+    name: String(a.roleName),
+    granted: asList(a.logicalRoles as string | string[]).map(String),
+    immutable: a.immutable === true || a.immutable === 'true',
+  }));
+  const permissions = asList(o.localizedRoleNames as Record<string, unknown> | Record<string, unknown>[]).map((p) => ({
+    id: String(p.roleName),
+    label: String(p.localizedName ?? p.roleName),
+  }));
+  const known = new Set(assignments.map((a) => a.name));
+  const missing = allRoles.filter((r) => !known.has(r)).map((name) => ({ name, granted: [] as string[], immutable: false }));
+  return {
+    permissions,
+    roles: [...assignments, ...missing].sort((a, b) => Number(b.immutable) - Number(a.immutable) || a.name.localeCompare(b.name)),
+  };
+}
+
 export interface AdminSource {
   listUsers(signal?: AbortSignal): Promise<string[]>;
   listRoles(signal?: AbortSignal): Promise<string[]>;
@@ -89,6 +117,9 @@ export interface AdminSource {
   removeRoles(user: string, roles: string[]): Promise<void>;
   createRole(name: string): Promise<void>;
   deleteRoles(names: string[]): Promise<void>;
+  getRolePermissions(signal?: AbortSignal): Promise<RolePermissions>;
+  /** Replaces one role's permissions. */
+  setRolePermissions(role: string, permissionIds: string[]): Promise<void>;
   getMailConfig(signal?: AbortSignal): Promise<MailConfig>;
   setMailConfig(config: MailConfig): Promise<void>;
   /** Sends a test email with these (unsaved) settings; true when the server reports success. */
@@ -116,6 +147,14 @@ export const httpAdminSource: AdminSource = {
   removeRoles: (user, roles) => put(`${BASE}/removeRoleFromUser?userName=${encodeURIComponent(user)}&roleNames=${tabs(roles)}`),
   createRole: (name) => put(`${BASE}/createRole?roleName=${encodeURIComponent(name)}`),
   deleteRoles: (names) => put(`${BASE}/deleteRoles?roleNames=${tabs(names)}`),
+  async getRolePermissions(signal) {
+    const [map, roles] = await Promise.all([
+      getJson(`${BASE}/logicalRoleMap?locale=${encodeURIComponent(navigator.language || 'en')}`, z.unknown(), signal),
+      getJson(`${BASE}/roles`, list('roles'), signal),
+    ]);
+    return parseRolePermissions(map, roles);
+  },
+  setRolePermissions: (role, permissionIds) => put(`${BASE}/roleAssignments`, { assignments: [{ roleName: role, logicalRoles: permissionIds }] }),
   getMailConfig: async (signal) => parseMailConfig(await getJson('/emailconfig/getEmailConfig', z.unknown(), signal)),
   async setMailConfig(config) {
     const response = await send('PUT', '/emailconfig/setEmailConfig', { body: mailConfigBody(config), contentType: 'application/json' });
@@ -137,6 +176,7 @@ export function AdminSourceProvider({ source, children }: { source: AdminSource;
 export const adminKeys = {
   all: ['admin'] as const,
   mail: ['admin', 'mail'] as const,
+  permissions: ['admin', 'permissions'] as const,
   users: ['admin', 'users'] as const,
   roles: ['admin', 'roles'] as const,
   rolesOf: (user: string) => ['admin', 'rolesOf', user] as const,
@@ -165,4 +205,9 @@ export function useMembersOf(role: string | null) {
 export function useMailConfig() {
   const s = useAdminSource();
   return useQuery({ queryKey: adminKeys.mail, queryFn: ({ signal }) => s.getMailConfig(signal) });
+}
+
+export function useRolePermissions() {
+  const s = useAdminSource();
+  return useQuery({ queryKey: adminKeys.permissions, queryFn: ({ signal }) => s.getRolePermissions(signal) });
 }
