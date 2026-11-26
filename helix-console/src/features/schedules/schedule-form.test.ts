@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addressProblem,
+  toJobParameters,
   buildScheduleRequest,
   describeForm,
   formFromJob,
@@ -8,7 +10,8 @@ import {
   weekdaysToCron,
   type ScheduleForm,
 } from './schedule-form';
-import type { ScheduledJob } from '../../api/scheduler';
+import { parseJobsResponse, type ScheduledJob } from '../../api/scheduler';
+import { parameterUiUrl } from './ReportParameters';
 
 const base = (over: Partial<ScheduleForm> = {}): ScheduleForm => ({
   ...newScheduleForm('/public/Reports/Sales.prpt', '/home/admin', new Date(2026, 10, 25, 9, 30)),
@@ -114,5 +117,66 @@ describe('form helpers', () => {
     expect(formFromJob(job({ type: 'simpleJobTrigger', repeatInterval: 7200 }), '/h')).toMatchObject({ repeat: 'hours', interval: 2 });
     expect(formFromJob(job({ type: 'complexJobTrigger', cronString: '0 5 8 15 * ? *' }), '/h')).toMatchObject({ repeat: 'monthly', dayOfMonth: 15, startTime: '08:05' });
     expect(formFromJob(job({ type: 'complexJobTrigger', cronString: '0 0/5 * * * ?' }), '/h')).toMatchObject({ repeat: 'cron', cron: '0 0/5 * * * ?' });
+  });
+});
+
+describe('report parameters and email', () => {
+  it('types prompt values the way the GWT dialog does and skips system parameters', () => {
+    const date = new Date(2026, 10, 26, 9, 30, 0, 0);
+    const params = toJobParameters({
+      LINE: 'Ships',
+      LIMIT: 10,
+      FLAG: false,
+      WHEN: date,
+      CODES: ['a', 'b'],
+      EMPTY: [],
+      NOTHING: null,
+      _SCH_EMAIL_TO: 'x@y.z',
+      'ActionAdapterQuartzJob-ActionUser': 'pat',
+    });
+    expect(params.map((p) => [p.name, p.type])).toEqual([
+      ['LINE', 'string'],
+      ['LIMIT', 'number'],
+      ['FLAG', 'boolean'],
+      ['WHEN', 'date'],
+      ['CODES', 'string[]'],
+    ]);
+    expect(params[3]!.stringValue[0]).toMatch(/^2026-11-26T09:30:00\.000[+-]\d{2}:\d{2}$/);
+  });
+
+  it('round-trips email settings and saved report values through an existing job', () => {
+    const form = newScheduleForm('/public/r.prpt', '/home/admin');
+    form.email = { ...form.email, enabled: true, to: 'a@b.co', message: 'Hi' };
+    const request = buildScheduleRequest(form, '/public/r.prpt', 'admin', undefined, [{ name: 'LINE', type: 'string', stringValue: ['Ships'] }]);
+    const params = request.jobParameters;
+    const job = parseJobsResponse({
+      job: [
+        {
+          jobId: 'admin\tr\t1',
+          jobName: 'r',
+          jobParams: {
+            jobParams: [
+              ...params.map((p) => ({ name: p.name, value: p.stringValue[0] })),
+              { name: 'CODES', value: ['a', 'b'] },
+              { name: 'lineage-id', value: 'L1' },
+            ],
+          },
+          jobTrigger: { '@type': 'simpleJobTrigger', uiPassParam: 'DAILY', repeatInterval: 86400 },
+        },
+      ],
+    })[0]!;
+    const edited = formFromJob(job, '/home/admin');
+    expect(edited.email).toMatchObject({ enabled: true, to: 'a@b.co', message: 'Hi', subject: 'r' });
+    expect(edited.savedParameters).toEqual({ LINE: ['Ships'], CODES: ['a', 'b'] });
+    expect(edited.keep).toEqual([{ name: 'lineage-id', type: 'string', stringValue: ['L1'] }]);
+    expect(parameterUiUrl('/public/r.prpt', edited.savedParameters)).toBe('/pentaho/api/repos/:public:r.prpt/parameterUi?LINE=Ships&CODES=a&CODES=b');
+  });
+
+  it('checks email addresses', () => {
+    const form = newScheduleForm('/public/r.prpt', '/home/admin');
+    expect(scheduleFormProblem({ ...form, email: { ...form.email, enabled: true } })).toBe('Enter valid email addresses to send to');
+    expect(scheduleFormProblem({ ...form, email: { ...form.email, enabled: true, to: 'a@b.co; c@d.org' } })).toBeNull();
+    expect(scheduleFormProblem({ ...form, email: { ...form.email, enabled: true, to: 'a@b.co', cc: 'nope' } })).toBe('Check the Cc and Bcc addresses');
+    expect(addressProblem('', true)).toBe(false);
   });
 });

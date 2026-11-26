@@ -29,11 +29,32 @@ describe('Schedule wizard', () => {
     await user.type(within(sheet).getByLabelText('At'), '07:30');
     expect(within(sheet).getByRole('status')).toHaveTextContent('Mon, Tue, Wed, Thu at 07:30');
 
+    // Reports show their own parameter prompt; jsdom can't run it, so stand in for its getParams().
+    const frame = (await within(sheet).findByTitle('Report parameters')) as HTMLIFrameElement;
+    expect(frame.getAttribute('src')).toBe('/pentaho/api/repos/:public:Steel%20Wheels:Reports:Inventory%20List.prpt/parameterUi');
+    (frame.contentWindow as unknown as { getParams: () => object }).getParams = () => ({ LINE: 'Ships', IDS: [1, 2], showParameters: true });
+
+    await user.click(within(sheet).getByRole('switch', { name: /Email the output/ }));
+    expect(within(sheet).getByRole('button', { name: 'Create schedule' })).toHaveAttribute('aria-disabled', 'true');
+    await user.type(within(sheet).getByLabelText('To'), 'ops@example.com, cfo@example.com');
+
     await user.click(within(sheet).getByRole('button', { name: 'Create schedule' }));
     expect(await screen.findByText(/Scheduled "Inventory List"/)).toBeInTheDocument();
-    const request = scheduler.requests[0] as { cronJobTrigger: { cronString: string }; inputFile: string };
+    const request = scheduler.requests[0] as {
+      cronJobTrigger: { cronString: string };
+      inputFile: string;
+      jobParameters: Array<{ name: string; type: string; stringValue: string[] }>;
+    };
     expect(request.cronJobTrigger.cronString).toBe('0 30 7 ? * 2-5');
     expect(request.inputFile).toBe('/public/Steel Wheels/Reports/Inventory List.prpt');
+    const byName = Object.fromEntries(request.jobParameters.map((p) => [p.name, p]));
+    expect(byName.LINE).toEqual({ name: 'LINE', type: 'string', stringValue: ['Ships'] });
+    expect(byName.IDS).toEqual({ name: 'IDS', type: 'number[]', stringValue: ['1', '2'] });
+    expect(byName.showParameters?.type).toBe('boolean');
+    expect(byName._SCH_EMAIL_TO?.stringValue).toEqual(['ops@example.com, cfo@example.com']);
+    expect(byName._SCH_EMAIL_SUBJECT?.stringValue).toEqual(['Inventory List']);
+    expect(byName._SCH_EMAIL_ATTACHMENT_NAME?.stringValue).toEqual(['Inventory List']);
+    expect(byName['ActionAdapterQuartzJob-ActionUser']?.stringValue).toEqual(['admin']);
 
     await router.navigate({ to: '/schedules' });
     expect(await screen.findByRole('rowheader', { name: /Inventory List/ })).toBeInTheDocument();
@@ -80,5 +101,17 @@ describe('Schedule wizard', () => {
     await user.clear(within(sheet).getByLabelText('Name'));
     expect(within(sheet).getByText('Give the schedule a name')).toBeInTheDocument();
     expect(within(sheet).getByRole('button', { name: 'Create schedule' })).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('explains that email needs a mail server when none is set up', async () => {
+    const user = userEvent.setup();
+    const scheduler = createFixtureSchedulerSource({ jobs: [], emailConfigured: false });
+    await renderApp('/files?path=/public/Steel Wheels/Reports', createFixtureRepoSource(), scheduler);
+    const grid = await screen.findByRole('grid', { name: 'Files in Reports' });
+    await user.click(within(grid).getByText('Inventory List').closest('[role="row"]')!);
+    await user.click(screen.getByRole('button', { name: 'Schedule' }));
+    const sheet = await screen.findByRole('dialog', { name: 'New schedule' });
+    await waitFor(() => expect(within(sheet).getByRole('switch', { name: /Email the output/ })).toBeDisabled());
+    expect(sheet).toHaveTextContent('Set up a mail server in Administration');
   });
 });

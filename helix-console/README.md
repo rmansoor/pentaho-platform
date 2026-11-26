@@ -150,8 +150,20 @@ start date and time, optional end date, time zone, and a live summary. It posts 
 triggers for once/minutes/hours/daily, `cronJobTrigger` for weekly/monthly/cron, with **numeric**
 Quartz days (`2-6`) so weekly schedules are right even on servers without the day-of-week fix, and the
 `ActionAdapterQuartzJob-ActionUser` parameter EE requires. When editing, start times are shown in the
-schedule's own time zone. Report parameters and email delivery in the wizard, and blockout times, are
-not built yet.
+schedule's own time zone. Blockout times are not built yet.
+
+*Report parameters.* When `GET /api/repo/files/{id}/parameterizable` says `true` (for `.xaction`, when
+its `parameterUi` has visible inputs), the sheet embeds the content's own prompt,
+`/api/repos/{id}/parameterUi`, using the GWT contract: an iframe with id `schedulerParamsFrame`, parent
+callbacks `schedulerParamsLoadedCallback` / `…CompleteCallback` / `…ContentResizeCallback`, values
+read with `getParams(true)` and typed as GWT types them (string, number, boolean, date, `[]` forms).
+When editing, saved values go back in as query parameters. The frame is sized to the prompt panel
+(`#toppanel`), never the body: report prompts have an output area that fills the frame, so sizing to
+the body makes it grow forever. A prompt that reports incomplete blocks saving.
+
+*Email.* `GET /api/emailconfig/isValid` (`true`/`false`, text) enables the switch. To, Cc, Bcc,
+Subject, Message and Attachment name go in as `_SCH_EMAIL_*` job parameters and are read back when
+editing; `lineage-id` is carried over on edit.
 
 ## Data sources
 
@@ -159,8 +171,8 @@ not built yet.
 `jdbc/connection/{name}`), Analysis schemas, Metadata models and Data Source Wizard models from the
 data-access plugin (`/pentaho/plugin/data-access/api/datasource`), with type filters, search, Export
 (the server's attachment download for analysis, metadata and DSW) and Delete with a warning about what
-depends on it. DSW models are also returned as metadata domains and are shown once. Creating
-connections and the data source wizard are not built yet.
+depends on it. DSW models are also returned as metadata domains and are shown once. Database
+connections can be created and edited (see above); the data source wizard is not built yet.
 
 ## Administration
 

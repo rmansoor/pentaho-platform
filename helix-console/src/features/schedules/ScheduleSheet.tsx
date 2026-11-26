@@ -1,7 +1,8 @@
-import { useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarClock } from 'lucide-react';
-import { Button, cn, Dialog, toast } from '@helix/ui';
+import { Button, cn, Dialog, Switch, toast } from '@helix/ui';
+import { ReportParameters, type ReportParametersHandle } from './ReportParameters';
 import { useSession } from '../../api/repo-context';
 import { schedulerKeys, useSchedulerSource } from '../../api/scheduler-context';
 import type { ScheduledJob } from '../../api/scheduler';
@@ -14,6 +15,7 @@ import {
   scheduleFormProblem,
   WEEKDAYS,
   type Repeat,
+  type ScheduleEmail,
   type ScheduleForm,
 } from './schedule-form';
 
@@ -96,12 +98,29 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
   }, [session.data, home, target.kind]);
 
   const set = <K extends keyof ScheduleForm>(key: K, value: ScheduleForm[K]) => setForm((f) => ({ ...f, [key]: value }));
-  const problem = scheduleFormProblem(form);
+  const setEmail = <K extends keyof ScheduleEmail>(key: K, value: ScheduleEmail[K]) => setForm((f) => ({ ...f, email: { ...f.email, [key]: value } }));
+
+  const hasParameters = useQuery({
+    queryKey: ['scheduler', 'has-parameters', file],
+    queryFn: ({ signal }) => scheduler.hasParameters(file, signal),
+    staleTime: 60_000,
+  });
+  const emailReady = useQuery({ queryKey: ['scheduler', 'email-configured'], queryFn: ({ signal }) => scheduler.emailConfigured(signal), staleTime: 60_000 });
+  const prompt = useRef<ReportParametersHandle>(null);
+  const [parametersComplete, setParametersComplete] = useState(true);
+  const onCompleteChange = useCallback((complete: boolean) => setParametersComplete(complete), []);
+
+  const problem = scheduleFormProblem(form) ?? (hasParameters.data && !parametersComplete ? 'Fill in the required report parameters' : null);
   const zones = useMemo(() => (supportedZones.includes(form.timeZone) ? supportedZones : [form.timeZone, ...supportedZones]), [form.timeZone]);
 
   const save = useMutation({
     mutationFn: () => {
-      const request = buildScheduleRequest(form, file, user, target.kind === 'edit' ? target.job.id : undefined);
+      let reportParameters: ReturnType<ReportParametersHandle['collect']> = [];
+      if (hasParameters.data) {
+        reportParameters = prompt.current?.collect() ?? null;
+        if (!reportParameters) throw new Error("the report's parameters haven't loaded yet.");
+      }
+      const request = buildScheduleRequest(form, file, user, target.kind === 'edit' ? target.job.id : undefined, reportParameters);
       return target.kind === 'edit' ? scheduler.updateJob(request) : scheduler.createJob(request);
     },
     onSuccess: async () => {
@@ -231,6 +250,61 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
             </select>
           )}
         </Field>
+
+        {hasParameters.data && (
+          <section aria-labelledby={`${formId}-params`} className="flex flex-col gap-2">
+            <h3 id={`${formId}-params`} className="m-0 text-[13px] font-semibold text-fg-soft">
+              Report parameters
+            </h3>
+            <ReportParameters ref={prompt} file={file} saved={form.savedParameters} onCompleteChange={onCompleteChange} />
+          </section>
+        )}
+
+        <section aria-label="Email" className="flex flex-col gap-4 border-t border-divider pt-5">
+          <Switch
+            checked={form.email.enabled}
+            onChange={(on) => setEmail('enabled', on)}
+            disabled={emailReady.data === false && !form.email.enabled}
+            label="Email the output"
+            description={
+              emailReady.data === false
+                ? 'Set up a mail server in Administration › Mail server to email output.'
+                : 'Each run sends the result as an attachment.'
+            }
+          />
+          {form.email.enabled && (
+            <>
+              <Field label="To" hint="Separate addresses with commas.">
+                {(id) => <input id={id} type="text" inputMode="email" value={form.email.to} onChange={(e) => setEmail('to', e.target.value)} className={inputClass} />}
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Cc (optional)">
+                  {(id) => <input id={id} type="text" inputMode="email" value={form.email.cc} onChange={(e) => setEmail('cc', e.target.value)} className={inputClass} />}
+                </Field>
+                <Field label="Bcc (optional)">
+                  {(id) => <input id={id} type="text" inputMode="email" value={form.email.bcc} onChange={(e) => setEmail('bcc', e.target.value)} className={inputClass} />}
+                </Field>
+              </div>
+              <Field label="Subject">
+                {(id) => <input id={id} value={form.email.subject} onChange={(e) => setEmail('subject', e.target.value)} className={inputClass} />}
+              </Field>
+              <Field label="Message (optional)">
+                {(id) => (
+                  <textarea
+                    id={id}
+                    rows={3}
+                    value={form.email.message}
+                    onChange={(e) => setEmail('message', e.target.value)}
+                    className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-fg"
+                  />
+                )}
+              </Field>
+              <Field label="Attachment name">
+                {(id) => <input id={id} value={form.email.attachmentName} onChange={(e) => setEmail('attachmentName', e.target.value)} className={inputClass} />}
+              </Field>
+            </>
+          )}
+        </section>
 
         <div role="status" className="flex items-center gap-3 rounded-card bg-accent-soft px-4 py-3">
           <CalendarClock size={18} className="shrink-0 text-accent" aria-hidden="true" />

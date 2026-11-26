@@ -11,7 +11,106 @@ import type { ScheduledJob } from '../../api/scheduler';
  *   day-of-week fix shift named days a day earlier.
  * Start fields use java.util.Date offsets: startYear = year - 1900, startMonth = month - 1.
  * The owner goes in as the ActionAdapterQuartzJob-ActionUser parameter (EE refuses jobs without it).
+ * Report parameters come from the content's own prompt (see ReportParameters) and are sent as
+ * job parameters, typed like the GWT dialog types them. Email goes in as _SCH_EMAIL_* parameters.
  */
+
+export interface JobParameter {
+  name: string;
+  type: string;
+  stringValue: string[];
+}
+
+export interface ScheduleEmail {
+  enabled: boolean;
+  to: string;
+  cc: string;
+  bcc: string;
+  subject: string;
+  message: string;
+  attachmentName: string;
+}
+
+const EMAIL_KEYS = {
+  to: '_SCH_EMAIL_TO',
+  cc: '_SCH_EMAIL_CC',
+  bcc: '_SCH_EMAIL_BCC',
+  subject: '_SCH_EMAIL_SUBJECT',
+  message: '_SCH_EMAIL_MESSAGE',
+  attachmentName: '_SCH_EMAIL_ATTACHMENT_NAME',
+} as const;
+
+export const ACTION_USER = 'ActionAdapterQuartzJob-ActionUser';
+
+/**
+ * Job parameters the console sets itself or the server adds; never sent as report parameters and
+ * never fed back into the report prompt.
+ */
+export function isSystemParameter(name: string): boolean {
+  return name.startsWith('_SCH_EMAIL') || name.startsWith('ActionAdapterQuartzJob-') || name === 'lineage-id' || name === 'uiPassParam';
+}
+
+const isDate = (v: unknown): v is Date => Object.prototype.toString.call(v) === '[object Date]';
+const pad3 = (n: number) => String(n).padStart(3, '0');
+/** GWT's ISO_8601 format: 2026-11-26T09:00:00.000-05:00. */
+function isoWithOffset(d: Date): string {
+  const off = -d.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const abs = Math.abs(off);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad3(d.getMilliseconds())}${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+}
+
+/**
+ * The prompt's getParams() map as job parameters, typed exactly as ScheduleParamsWizardPanel does
+ * (number, boolean, date, string, or the [] forms; anything else is dropped). Dates are checked by
+ * tag, not instanceof, because they come from the prompt's iframe.
+ */
+export function toJobParameters(values: Record<string, unknown>): JobParameter[] {
+  const out: JobParameter[] = [];
+  const one = (v: unknown): [string, string] | null =>
+    typeof v === 'number' ? ['number', String(v)]
+    : typeof v === 'boolean' ? ['boolean', v ? 'true' : 'false']
+    : isDate(v) ? ['date', isoWithOffset(v)]
+    : typeof v === 'string' ? ['string', v]
+    : null;
+  for (const [name, value] of Object.entries(values)) {
+    if (isSystemParameter(name)) continue;
+    if (Array.isArray(value)) {
+      if (value.length === 0) continue;
+      let type: string | null = null;
+      const list: string[] = [];
+      for (const item of value) {
+        const typed = one(item);
+        if (typed) {
+          type ??= `${typed[0]}[]`;
+          list.push(typed[1]);
+        }
+      }
+      if (type) out.push({ name, type, stringValue: list });
+    } else {
+      const typed = one(value);
+      if (typed) out.push({ name, type: typed[0], stringValue: [typed[1]] });
+    }
+  }
+  return out;
+}
+
+export function emailParameters(email: ScheduleEmail): JobParameter[] {
+  if (!email.enabled) return [];
+  return (Object.keys(EMAIL_KEYS) as Array<keyof typeof EMAIL_KEYS>).map((k) => ({
+    name: EMAIL_KEYS[k],
+    type: 'string',
+    stringValue: [email[k].trim()],
+  }));
+}
+
+const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+/** Comma- or semicolon-separated addresses; empty is fine when `optional`. */
+export function addressProblem(list: string, optional: boolean): boolean {
+  const parts = list.split(/[,;]/).map((p) => p.trim()).filter(Boolean);
+  if (!parts.length) return !optional;
+  return parts.some((p) => !EMAIL_RE.test(p));
+}
 
 export type Repeat = 'once' | 'minutes' | 'hours' | 'daily' | 'weekly' | 'monthly' | 'cron';
 
@@ -32,6 +131,11 @@ export interface ScheduleForm {
   /** yyyy-mm-dd or '' for no end. */
   endDate: string;
   timeZone: string;
+  email: ScheduleEmail;
+  /** Report parameter values saved with the job being edited, to prefill the prompt. */
+  savedParameters: Record<string, string[]>;
+  /** Server-side parameters to carry over unchanged on edit (lineage-id). */
+  keep: JobParameter[];
 }
 
 export const WEEKDAYS: { value: number; short: string; long: string }[] = [
@@ -66,6 +170,9 @@ export function newScheduleForm(file: string, home: string, now = new Date(), ti
     startTime: `${pad(next.getHours())}:00`,
     endDate: '',
     timeZone: browserTimeZone(),
+    email: { enabled: false, to: '', cc: '', bcc: '', subject: name, message: '', attachmentName: name },
+    savedParameters: {},
+    keep: [],
   };
 }
 
@@ -80,6 +187,11 @@ export function scheduleFormProblem(form: ScheduleForm): string | null {
   if (form.repeat === 'monthly' && !(form.dayOfMonth >= 1 && form.dayOfMonth <= 31)) return 'Choose a day of the month';
   if (form.repeat === 'cron' && form.cron.trim().split(/\s+/).length < 6) return 'A cron expression has at least six fields';
   if (form.endDate && form.endDate < form.startDate) return 'The end date is before the start date';
+  if (form.email.enabled) {
+    if (addressProblem(form.email.to, false)) return 'Enter valid email addresses to send to';
+    if (addressProblem(form.email.cc, true) || addressProblem(form.email.bcc, true)) return 'Check the Cc and Bcc addresses';
+    if (!form.email.attachmentName.trim()) return 'Name the attachment';
+  }
   return null;
 }
 
@@ -100,8 +212,8 @@ function cronFor(form: ScheduleForm): string {
 const SECONDS: Partial<Record<Repeat, number>> = { minutes: 60, hours: 3600, daily: 86400 };
 const UI_PASS: Partial<Record<Repeat, string>> = { once: 'RUN_ONCE', minutes: 'MINUTES', hours: 'HOURS', daily: 'DAILY' };
 
-/** The JSON body for POST /job (and /job/update with `jobId`). */
-export function buildScheduleRequest(form: ScheduleForm, inputFile: string, owner: string, jobId?: string) {
+/** The JSON body for POST /job (and /job/update with `jobId`). `reportParameters` come from the prompt. */
+export function buildScheduleRequest(form: ScheduleForm, inputFile: string, owner: string, jobId?: string, reportParameters: JobParameter[] = []) {
   const [year, month, day] = form.startDate.split('-').map(Number) as [number, number, number];
   const [hour, minute] = form.startTime.split(':').map(Number) as [number, number];
   const start = { startHour: hour, startMin: minute, startYear: year - 1900, startMonth: month - 1, startDay: day };
@@ -127,7 +239,12 @@ export function buildScheduleRequest(form: ScheduleForm, inputFile: string, owne
     outputFile: form.outputFolder,
     timeZone: form.timeZone,
     ...trigger,
-    jobParameters: [{ name: 'ActionAdapterQuartzJob-ActionUser', type: 'string', stringValue: [owner] }],
+    jobParameters: [
+      ...reportParameters.filter((p) => !isSystemParameter(p.name)),
+      ...emailParameters(form.email),
+      ...form.keep,
+      { name: ACTION_USER, type: 'string', stringValue: [owner] },
+    ],
   };
 }
 
@@ -189,6 +306,9 @@ export function formFromJob(job: ScheduledJob, home: string): ScheduleForm {
     startDate: start?.date ?? base.startDate,
     startTime: start?.time ?? base.startTime,
     endDate: job.trigger.endTime ? partsInZone(job.trigger.endTime, timeZone).date : '',
+    email: emailFromParams(job.params, job.name),
+    savedParameters: Object.fromEntries(Object.entries(job.paramLists ?? {}).filter(([name]) => !isSystemParameter(name))),
+    keep: job.params['lineage-id'] ? [{ name: 'lineage-id', type: 'string', stringValue: [job.params['lineage-id']] }] : [],
   };
   const interval = job.trigger.repeatInterval ?? 0;
   if (job.trigger.type === 'simpleJobTrigger') {
@@ -211,4 +331,17 @@ export function formFromJob(job: ScheduledJob, home: string): ScheduleForm {
     return { ...form, repeat: 'monthly', dayOfMonth: Number(monthly[3]), startTime: `${pad(Number(monthly[2]))}:${pad(Number(monthly[1]))}` };
   }
   return { ...form, repeat: 'cron', cron: cron || form.cron };
+}
+
+function emailFromParams(params: Record<string, string>, name: string): ScheduleEmail {
+  const get = (k: keyof typeof EMAIL_KEYS) => params[EMAIL_KEYS[k]] ?? '';
+  return {
+    enabled: !!get('to').trim(),
+    to: get('to'),
+    cc: get('cc'),
+    bcc: get('bcc'),
+    subject: get('subject') || name,
+    message: get('message'),
+    attachmentName: get('attachmentName') || name,
+  };
 }

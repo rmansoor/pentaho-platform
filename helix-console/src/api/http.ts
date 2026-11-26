@@ -49,7 +49,8 @@ async function doFetch(url: string, init: RequestInit): Promise<Response> {
 }
 
 /** GET a JSON resource and validate it. Same-origin session cookie; no tokens in storage. */
-const resolve = (path: string) => (path.startsWith(PLUGIN_ROOT) ? path : `${API_ROOT}${path}`);
+/** Paths are relative to API_ROOT unless already rooted at the API or plugin root. */
+const resolve = (path: string) => (path.startsWith(PLUGIN_ROOT) || path.startsWith(`${API_ROOT}/`) ? path : `${API_ROOT}${path}`);
 
 export async function getJson<T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal): Promise<T> {
   const url = resolve(path);

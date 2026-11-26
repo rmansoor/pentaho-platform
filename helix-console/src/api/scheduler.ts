@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ApiError, getJson, getText, PLUGIN_ROOT, send, sendOk } from './http';
+import { toPathId } from './repo';
 
 /*
  * Scheduler plugin REST API (v1): /pentaho/plugin/scheduler-plugin/api/scheduler/...
@@ -31,8 +32,10 @@ export interface ScheduledJob {
   outputFolder?: string;
   /** Set for system jobs that run an action class instead of a file (e.g. the content cleaner). */
   actionClass?: string;
-  /** Job parameters by name (string values). */
+  /** Job parameters by name (string values; the first one for lists). */
   params: Record<string, string>;
+  /** Every job parameter with all of its values, for editing report parameters. */
+  paramLists?: Record<string, string[]>;
   /** Raw trigger fields, for editing. */
   trigger: {
     type: string;
@@ -170,6 +173,9 @@ export function parseJobsResponse(json: unknown): ScheduledJob[] {
           return typeof v === 'string' || typeof v === 'number' ? [[p.name, String(v)]] : [];
         }),
       ),
+      paramLists: Object.fromEntries(
+        params.map((p) => [p.name, (Array.isArray(p.value) ? p.value : p.value == null ? [] : [p.value]).map(String)]),
+      ),
       trigger: {
         type: job.jobTrigger?.['@type'] ?? '',
         uiPassParam: job.jobTrigger?.uiPassParam ?? undefined,
@@ -198,6 +204,10 @@ export interface SchedulerSource {
   createJob(request: object): Promise<string>;
   /** POST /job/update; the request carries the jobId. Returns the (possibly new) job id. */
   updateJob(request: object): Promise<string>;
+  /** GET /api/emailconfig/isValid: whether a mail server is set up, so schedules can email output. */
+  emailConfigured(signal?: AbortSignal): Promise<boolean>;
+  /** Whether the file prompts for parameters (GET /api/repo/files/{id}/parameterizable). */
+  hasParameters(file: string, signal?: AbortSignal): Promise<boolean>;
 }
 
 async function postJob(path: string, request: object): Promise<string> {
@@ -223,6 +233,17 @@ export const httpSchedulerSource: SchedulerSource = {
   setStatus: (running) => sendOk('POST', `${BASE}/${running ? 'start' : 'pause'}`, { accept: 'text/plain' }),
   createJob: (request) => postJob(`${BASE}/job`, request),
   updateJob: (request) => postJob(`${BASE}/job/update`, request),
+  async emailConfigured(signal) {
+    return (await getText('/emailconfig/isValid', signal, 'text/plain')).trim() === 'true';
+  },
+  async hasParameters(file, signal) {
+    // Action sequences have no flag; like the GWT dialog, count the visible inputs in their prompt.
+    if (file.toLowerCase().endsWith('.xaction')) {
+      const html = await getText(`/repos/${toPathId(file)}/parameterUi`, signal, 'text/html');
+      return (html.match(/<input/g)?.length ?? 0) - (html.match(/type="hidden"/g)?.length ?? 0) > 0;
+    }
+    return (await getText(`/repo/files/${toPathId(file)}/parameterizable`, signal, 'text/plain')).trim() === 'true';
+  },
 };
 
 /** Action class of the generated-content cleaner (GeneratedContentCleaner). */

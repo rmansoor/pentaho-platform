@@ -15,7 +15,7 @@ interface FixtureJob {
   nextRun?: string;
   lastRun?: string;
   output?: string;
-  extra?: Array<{ name: string; value: string }>;
+  extra?: Array<{ name: string; value: string | string[] }>;
 }
 
 const SAMPLE: FixtureJob[] = [
@@ -53,6 +53,8 @@ const SAMPLE: FixtureJob[] = [
 export interface SchedulerFixtureOptions {
   jobs?: FixtureJob[];
   status?: SchedulerStatus;
+  /** Whether a mail server is configured (default true). */
+  emailConfigured?: boolean;
 }
 
 export function createFixtureSchedulerSource(
@@ -73,7 +75,7 @@ export function createFixtureSchedulerSource(
         : new Date(Number(t.startYear) + 1900, Number(t.startMonth), Number(t.startDay), Number(t.startHour), Number(t.startMin));
     const extra = ((r.jobParameters as Array<{ name: string; stringValue: string[] }>) ?? [])
       .filter((p) => p.name !== 'ActionAdapterQuartzJob-ActionUser')
-      .map((p) => ({ name: p.name, value: p.stringValue[0] ?? '' }));
+      .map((p) => ({ name: p.name, value: p.stringValue.length > 1 ? p.stringValue : (p.stringValue[0] ?? '') }));
     if (r.actionClass) extra.push({ name: 'ActionAdapterQuartzJob-ActionClass', value: String(r.actionClass) });
     const trigger: Record<string, string> = simple
       ? { '@type': 'simpleJobTrigger', uiPassParam: String(simple.uiPassParam), repeatInterval: String(simple.repeatInterval), repeatCount: String(simple.repeatCount), startTime: start.toISOString() }
@@ -101,6 +103,13 @@ export function createFixtureSchedulerSource(
   return {
     runs,
     requests,
+    async emailConfigured() {
+      return options.emailConfigured ?? true;
+    },
+    // Reports prompt for parameters; nothing else does.
+    async hasParameters(file) {
+      return file.endsWith('.prpt');
+    },
     async createJob(request) {
       const r = request as Record<string, unknown>;
       requests.push(r);
