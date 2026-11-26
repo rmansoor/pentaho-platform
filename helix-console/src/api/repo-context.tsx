@@ -15,6 +15,7 @@ export const repoKeys = {
   acl: (path: string) => ['repo', 'acl', path] as const,
   flags: (path: string) => ['repo', 'flags', path] as const,
   recipients: ['repo', 'recipients'] as const,
+  session: ['session'] as const,
 };
 
 export function useRepoSource(): RepoSource {
@@ -54,4 +55,9 @@ export function useRecipients(enabled: boolean) {
     enabled,
     staleTime: 5 * 60_000,
   });
+}
+
+export function useSession() {
+  const source = useContext(RepoSourceContext);
+  return useQuery({ queryKey: repoKeys.session, queryFn: ({ signal }) => source.getSession(signal), staleTime: Infinity });
 }

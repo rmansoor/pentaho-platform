@@ -2,6 +2,8 @@ import { Link } from '@tanstack/react-router';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn, HelixMark } from '@helix/ui';
 import { NAV_ITEMS } from './nav-items';
+import { UserMenu } from './UserMenu';
+import { useSession } from '../api/repo-context';
 
 export const NAV_RAIL_ID = 'helix-nav-rail';
 
@@ -28,6 +30,9 @@ export function NavRail({
   id = NAV_RAIL_ID,
 }: NavRailProps) {
   const collapsed = variant === 'docked' && collapsedProp;
+  const session = useSession();
+  // Administration only for administrators; shown while unknown so the rail doesn't jump.
+  const items = NAV_ITEMS.filter((n) => n.to !== '/admin' || session.data?.isAdministrator !== false);
 
   return (
     <nav
@@ -46,7 +51,7 @@ export function NavRail({
       </div>
 
       <ul className="flex flex-col gap-1" role="list">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+        {items.map(({ to, label, icon: Icon }) => (
           <li key={to}>
             <Link
               to={to}
@@ -88,16 +93,7 @@ export function NavRail({
             <span className={cn(collapsed && 'sr-only')}>{collapsed ? 'Expand menu' : 'Collapse menu'}</span>
           </button>
         )}
-        <div className={cn('flex items-center gap-2.5 py-1.5', collapsed ? 'justify-center' : 'px-2')}>
-          <span
-            aria-hidden="true"
-            className="grid size-8 shrink-0 place-items-center rounded-full bg-rail-active text-xs font-bold"
-          >
-            AD
-          </span>
-          {/* Placeholder until the bootstrap endpoint supplies the signed-in user. */}
-          <span className={cn('text-[13px]', collapsed && 'sr-only')}>admin</span>
-        </div>
+        <UserMenu collapsed={collapsed} />
       </div>
     </nav>
   );

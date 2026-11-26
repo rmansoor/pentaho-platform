@@ -3,6 +3,9 @@ import type { z } from 'zod';
 /** Platform REST root. The console is served from /pentaho/console/, the API from /pentaho/api. */
 export const API_ROOT: string = import.meta.env.VITE_API_ROOT ?? '/pentaho/api';
 
+/** Signs the session out and returns to the server's login page. */
+export const LOGOUT_URL = API_ROOT.replace(/\/api$/, '/Logout');
+
 /** Plugin REST endpoints live under /pentaho/plugin/<id>/api, relative to the same root. */
 export const PLUGIN_ROOT = API_ROOT.replace(/\/api$/, '/plugin');
 

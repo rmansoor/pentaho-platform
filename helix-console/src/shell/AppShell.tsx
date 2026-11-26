@@ -3,6 +3,7 @@ import { cn, Toaster } from '@helix/ui';
 import { useLayoutStore } from './layout-store';
 import { NAV_RAIL_ID, NavRail } from './NavRail';
 import { TopBar } from './TopBar';
+import { CommandPalette } from './CommandPalette';
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -18,10 +19,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const toggleRail = useLayoutStore((s) => s.toggleRail);
   const drawerOpen = useLayoutStore((s) => s.drawerOpen);
   const setDrawerOpen = useLayoutStore((s) => s.setDrawerOpen);
+  const setPaletteOpen = useLayoutStore((s) => s.setPaletteOpen);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key.toLowerCase() === 'b' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+      if (e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        setPaletteOpen(true);
+      } else if (e.key.toLowerCase() === 'b' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
         if (isTypingTarget(e.target)) return;
         e.preventDefault();
         toggleRail();
@@ -31,7 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [toggleRail, setDrawerOpen]);
+  }, [toggleRail, setDrawerOpen, setPaletteOpen]);
 
   return (
     <div className="flex h-dvh overflow-hidden bg-bg text-fg">
@@ -76,6 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <Toaster />
+      <CommandPalette />
     </div>
   );
 }

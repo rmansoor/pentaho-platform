@@ -118,6 +118,8 @@ export interface FixtureOptions {
   user?: string;
   /** Per-user settings as stored on the server (e.g. favorites JSON). */
   settings?: Record<string, string>;
+  /** Whether the signed-in user is an administrator (default true). */
+  administrator?: boolean;
 }
 
 const ADMIN_ENTRY = { recipient: 'Administrator', kind: 'role' as const, modifiable: false, permissions: new Set(['read', 'write', 'delete', 'manage'] as const) };
@@ -259,6 +261,9 @@ export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSourc
     async setUserSetting(key, value) {
       await wait();
       settings.set(key, value);
+    },
+    async getSession() {
+      return { userName: user, isAdministrator: options.administrator ?? true };
     },
   };
 }

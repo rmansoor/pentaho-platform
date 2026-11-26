@@ -29,6 +29,14 @@ helix-console/
 - Below 768 px the rail becomes a drawer, opened from the top bar's menu button and closed with Esc.
 - Labels stay in the accessibility tree when collapsed and show as tooltips on hover.
 
+## Shell
+
+- **Signed-in user** (`/api/session/userName`, `/api/mantle/isAdministrator`) at the foot of the rail,
+  with a menu for Change password (`PUT /api/userroledao/user`) and Sign out (`/pentaho/Logout`).
+  Administration is only listed for administrators.
+- **Command palette:** Ctrl+K / ⌘K, or the search box in the top bar. It jumps to areas and Trash,
+  opens favorites, and toggles the menu; type to filter, arrows to move, Enter to run.
+
 ## Files
 
 `/files?path=/public/...` shows a folder tree (Home and Public) next to a sortable table of the folder's

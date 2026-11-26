@@ -324,6 +324,13 @@ export interface RepoSource {
   /** A per-user setting as stored (often JSON), or null when unset. */
   getUserSetting(key: string, signal?: AbortSignal): Promise<string | null>;
   setUserSetting(key: string, value: string): Promise<void>;
+  /** The signed-in user. */
+  getSession(signal?: AbortSignal): Promise<Session>;
+}
+
+export interface Session {
+  userName: string;
+  isAdministrator: boolean;
 }
 
 // The file endpoints take a comma-separated list of ids as a plain-text body.
@@ -387,5 +394,12 @@ export const httpRepoSource: RepoSource = {
   },
   async setUserSetting(key, value) {
     await sendOk('POST', `/user-settings/${encodeURIComponent(key)}`, { body: value, contentType: 'text/plain' });
+  },
+  async getSession(signal) {
+    const [userName, admin] = await Promise.all([
+      getText('/session/userName', signal, 'text/plain'),
+      getText('/mantle/isAdministrator', signal, 'text/plain').catch(() => 'false'),
+    ]);
+    return { userName: userName.trim(), isAdministrator: admin.trim() === 'true' };
   },
 };

@@ -37,6 +37,8 @@ export interface AdminSource {
   deleteUsers(names: string[]): Promise<void>;
   /** Sets another user's password; the server asks for the administrator's own password too. */
   setPassword(user: string, password: string, administratorPassword: string): Promise<void>;
+  /** The signed-in user changes their own password. */
+  changeOwnPassword(user: string, oldPassword: string, newPassword: string): Promise<void>;
   assignRoles(user: string, roles: string[]): Promise<void>;
   removeRoles(user: string, roles: string[]): Promise<void>;
   createRole(name: string): Promise<void>;
@@ -58,6 +60,8 @@ export const httpAdminSource: AdminSource = {
       password: encodePassword(password),
       administratorPassword: encodePassword(administratorPassword),
     }),
+  changeOwnPassword: (user, oldPassword, newPassword) =>
+    put(`${BASE}/user`, { userName: user, oldPassword: encodePassword(oldPassword), newPassword: encodePassword(newPassword) }),
   assignRoles: (user, roles) => put(`${BASE}/assignRoleToUser?userName=${encodeURIComponent(user)}&roleNames=${tabs(roles)}`),
   removeRoles: (user, roles) => put(`${BASE}/removeRoleFromUser?userName=${encodeURIComponent(user)}&roleNames=${tabs(roles)}`),
   createRole: (name) => put(`${BASE}/createRole?roleName=${encodeURIComponent(name)}`),

@@ -40,6 +40,10 @@ export function createFixtureAdminSource(): AdminSource & { passwords: Map<strin
       if (administratorPassword !== passwords.get('admin')) throw new ApiError(403, user, 'The administrator password is incorrect.');
       passwords.set(user, password);
     },
+    async changeOwnPassword(user, oldPassword, newPassword) {
+      if (passwords.get(user) !== oldPassword) throw new ApiError(400, user, 'Your current password is incorrect.');
+      passwords.set(user, newPassword);
+    },
     async assignRoles(user, add) {
       const r = need(user);
       add.forEach((role) => !r.includes(role) && r.push(role));
