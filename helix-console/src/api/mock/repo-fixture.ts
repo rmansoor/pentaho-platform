@@ -1,3 +1,4 @@
+import { fixtureReportPrompt } from './report-fixture';
 import {
   OVERWRITE_MODE,
   parseFolderResponse,
@@ -127,8 +128,9 @@ const ADMIN_ENTRY = { recipient: 'Administrator', kind: 'role' as const, modifia
 const DEFAULT_ENTRIES = () => [{ recipient: 'Authenticated', kind: 'role' as const, modifiable: true, permissions: new Set(['read'] as const) }];
 
 /** An in-memory repository. Each call gets its own copy, so tests don't affect each other. */
-export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSource {
+export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSource & { reportRequests: { file: string; body: string }[] } {
   const root: Node = structuredClone(TREE);
+  const reportRequests: { file: string; body: string }[] = [];
   const trash: Trashed[] = [];
   const user = options.user ?? 'admin';
   // Explicit ACLs by path; anything absent inherits (effectively Authenticated: read).
@@ -179,6 +181,7 @@ export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSourc
   }
 
   return {
+    reportRequests,
     async listFolder(path) {
       await wait();
       const node = find(path);
@@ -288,6 +291,11 @@ export function createFixtureRepoSource(options: FixtureOptions = {}): RepoSourc
         throw new ApiError(409, path, 'A file or folder with that name already exists here.');
       }
       folder.children.push({ name, owner: user, modified: String(Date.now()), children: [] });
+    },
+    /** Records each prompt request so tests can check what was sent. */
+    async reportPrompt(file, body) {
+      reportRequests.push({ file, body });
+      return fixtureReportPrompt(file, body);
     },
     async getOpeners() {
       return { prpt: 'viewer', prpti: 'viewer', xanalyzer: 'viewer', wcdf: 'generatedContent', ktr: 'viewer', kjb: 'viewer', xaction: 'generatedContent' };

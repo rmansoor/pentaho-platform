@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { CalendarPlus, Download, ExternalLink, Share2, Star } from 'lucide-react';
+import { CalendarPlus, Download, ExternalLink, LayoutPanelLeft, Share2, Star } from 'lucide-react';
 import { Button, IconButton } from '@helix/ui';
 import { useOpeners, useRepoSource, useSchedulableExtensions } from '../../api/repo-context';
 import { ScheduleSheet } from '../schedules/ScheduleSheet';
@@ -10,6 +10,7 @@ import { API_ROOT } from '../../api/http';
 import { displayFolder } from '../files/columns';
 import { PropertiesSheet } from '../files/PropertiesSheet';
 import { ContentFrame } from './ContentFrame';
+import { ReportViewer } from './ReportViewer';
 import { t } from '../../i18n';
 
 export interface ViewerPageProps {
@@ -18,6 +19,24 @@ export interface ViewerPageProps {
   title?: string;
   onOpenFolder: (path: string) => void;
 }
+
+/** Reports open in the console's viewer unless the person chose the plugin's (remembered per browser). */
+const CLASSIC_KEY = 'helix.reportViewer.classic';
+const readClassic = () => {
+  try {
+    return localStorage.getItem(CLASSIC_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
+const writeClassic = (on: boolean) => {
+  try {
+    if (on) localStorage.setItem(CLASSIC_KEY, 'true');
+    else localStorage.removeItem(CLASSIC_KEY);
+  } catch {
+    // Storage blocked: the choice lasts for this page only.
+  }
+};
 
 const titleOf = (path: string) => {
   const name = path.slice(path.lastIndexOf('/') + 1);
@@ -39,6 +58,7 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
   const [scheduling, setScheduling] = useState(false);
   const schedulable = useSchedulableExtensions();
   const recorded = useRef<string | null>(null);
+  const [classic, setClassic] = useState(readClassic);
 
   const folder = path.slice(0, path.lastIndexOf('/')) || '/';
   const title = givenTitle || titleOf(path);
@@ -46,6 +66,9 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
   const perspective = openers.data?.[ext];
   const url = perspective ? openUrl(path, perspective) : undefined;
   const isFavorite = !!favorites.data?.some((f) => f.fullPath === path);
+  // Pentaho reports get the console's own viewer; everything else the plugin's page.
+  const isReport = ext === 'prpt' && !!url;
+  const builtIn = isReport && !classic;
   const item: RepoItem = { id: path, path, name: path.slice(path.lastIndexOf('/') + 1), title, folder: false, hidden: false, kind: kindOf(path), created: null, modified: null };
 
   // Opening a file records it in Recent, shared with the GWT console.
@@ -99,6 +122,20 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
             {t('files.schedule')}
           </Button>
         )}
+        {isReport && (
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<LayoutPanelLeft size={15} aria-hidden="true" />}
+            title={classic ? t('files.viewer.builtInHint') : t('files.viewer.classicHint')}
+            onClick={() => {
+              writeClassic(!classic);
+              setClassic(!classic);
+            }}
+          >
+            {classic ? t('files.viewer.builtIn') : t('files.viewer.classic')}
+          </Button>
+        )}
         {url && (
           <a
             href={url}
@@ -115,6 +152,8 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
       <div className="min-h-0 flex-1 border-t border-divider bg-surface">
         {openers.isPending ? (
           <p className="m-0 p-8 text-fg-muted">{t('common.loading')}</p>
+        ) : builtIn ? (
+          <ReportViewer key={path} file={path} title={title} />
         ) : url ? (
           <ContentFrame
             key={url}

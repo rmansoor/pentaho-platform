@@ -325,6 +325,8 @@ export interface RepoSource {
   createFolder(path: string): Promise<void>;
   /** Uploads files into a folder (zip archives are unpacked by the server). */
   upload(folder: string, files: File[], overwrite: boolean): Promise<UploadResult>;
+  /** POST /repos/{id}/parameter with a form body (see api/reports.ts); the XML as text. */
+  reportPrompt(file: string, body: string): Promise<string>;
 }
 
 export interface UploadResult {
@@ -485,6 +487,12 @@ export const httpRepoSource: RepoSource = {
   },
   async getOpeners(signal) {
     return parseOpeners(await getJson('/mantle/settings', z.unknown(), signal));
+  },
+  async reportPrompt(file, body) {
+    const path = `/repos/${toPathId(file)}/parameter`;
+    const response = await send('POST', path, { body, contentType: 'application/x-www-form-urlencoded', accept: 'text/xml' });
+    if (!response.ok) throw new ApiError(response.status, path, `${response.status} ${response.statusText}`.trim());
+    return response.text();
   },
   async getSession(signal) {
     const [userName, admin] = await Promise.all([

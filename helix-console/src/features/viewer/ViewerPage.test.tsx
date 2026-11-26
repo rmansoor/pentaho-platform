@@ -10,17 +10,17 @@ import { openUrl } from '../../api/repo';
 describe('Viewer', () => {
   it('renders the file with its plugin in one frame and records it in Recent', async () => {
     const source = createFixtureRepoSource();
-    await renderApp('/view?path=/public/Steel Wheels/Reports/Buyer Report.prpt', source);
+    await renderApp('/view?path=/public/Steel Wheels/Reports/Product Sales.prpti', source);
 
-    const frame = await screen.findByTitle('Buyer Report');
+    const frame = await screen.findByTitle('Product Sales');
     expect(frame.tagName).toBe('IFRAME');
-    expect(frame).toHaveAttribute('src', '/pentaho/api/repos/%3Apublic%3ASteel%20Wheels%3AReports%3ABuyer%20Report.prpt/viewer');
-    expect(screen.getByRole('heading', { level: 1, name: 'Buyer Report' })).toBeInTheDocument();
+    expect(frame).toHaveAttribute('src', '/pentaho/api/repos/%3Apublic%3ASteel%20Wheels%3AReports%3AProduct%20Sales.prpti/viewer');
+    expect(screen.getByRole('heading', { level: 1, name: 'Product Sales' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open in new window/ })).toHaveAttribute('target', '_blank');
 
     await waitFor(async () =>
       expect(parsePickList(await source.getUserSetting('recent')).map((r) => r.fullPath)).toEqual([
-        '/public/Steel Wheels/Reports/Buyer Report.prpt',
+        '/public/Steel Wheels/Reports/Product Sales.prpti',
       ]),
     );
   });

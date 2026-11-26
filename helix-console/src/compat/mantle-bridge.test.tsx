@@ -131,8 +131,9 @@ describe('Bridge installed in the console', () => {
   });
 
   it('fires tabClosing for the frame when content closes', async () => {
-    const { router } = await renderApp('/view?path=/public/Steel Wheels/Reports/Buyer Report.prpt');
-    const frame = await screen.findByTitle('Buyer Report');
+    // Plugin content (the built-in report viewer has no plugin page to notify).
+    const { router } = await renderApp('/view?path=/public/Steel Wheels/Reports/Product Sales.prpti');
+    const frame = await screen.findByTitle('Product Sales');
     const events: unknown[] = [];
     win().mantle_addHandler!('GenericEvent', (e: unknown) => events.push(e));
 

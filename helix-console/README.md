@@ -74,7 +74,28 @@ frame showing the file with the plugin that renders it, at the URL the GWT conso
 `/api/repos/{pathId}/{perspective}`. The perspective for each extension comes from the RUN command in
 `GET /api/mantle/settings` (`plugin-content-type-N…`; "None" means `generatedContent`). Types no
 plugin opens get a Download link instead. Opening a file records it in Recent (GWT format, 10 items).
-This is the plan's ContentFrame step; the native report viewer comes later.
+Pentaho reports (`.prpt`) open in the console's own viewer instead (below).
+
+*Report viewer.* The console draws the parameter panel, format choice, paging, print and downloads;
+only the rendered output sits in a frame (`features/viewer/ReportViewer.tsx`, `api/reports.ts`):
+
+- `POST /api/repos/{id}/parameter` (form body, `renderMode=PARAMETER`) describes the parameters:
+  labels, values, how to draw each one (`parameter-render-type`: dropdown, list, radio, checkbox,
+  togglebutton, textbox, multi-line, datepicker), which are selected, errors, and whether the report
+  can run (`is-prompt-needed`). Every change is sent back, and the server answers with the corrected
+  selection, so dependent lists refresh and stale choices drop out (cascading parameters). Text
+  commits on Enter or blur. Reports that don't auto-submit wait for **View report**.
+- `GET /api/repos/{id}/report?…&output-target=…&accepted-page=N&renderMode=REPORT` is the output.
+  HTML pages load their images and CSS through `/pentaho/getImage`, so the frame needs nothing else.
+  The same `renderMode=XML` call to `/parameter` gives `page-count` for paged HTML.
+- **View as** offers the viewable formats (HTML paged or single page, PDF); **Download** offers every
+  format the report allows, using the same `REPORT` request, which the server names after the report.
+  `renderMode=DOWNLOAD` is not used: on 11.1 it answers a 109-byte placeholder named "defaultnull".
+- PDF frames are not sandboxed: Chrome refuses to show a PDF in any sandboxed frame.
+- **Classic viewer** switches to the plugin's own viewer (remembered per browser) for what this viewer
+  doesn't do: drill-through links into other reports, row limits, background progress and moving a
+  running report to the background. The plugin's viewer runs reports as background jobs
+  (`/plugin/reporting/api/jobs`); this one uses the synchronous endpoints.
 
 ## Plugin compatibility (`window.mantle_*`)
 
