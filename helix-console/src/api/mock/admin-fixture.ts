@@ -1,5 +1,5 @@
 import { ApiError } from '../http';
-import type { AdminSource } from '../admin';
+import { parseMailConfig, type AdminSource, type MailConfig } from '../admin';
 
 /** The sample install's users and roles. */
 const USERS: Record<string, string[]> = {
@@ -11,10 +11,11 @@ const USERS: Record<string, string[]> = {
 };
 const ROLES = ['Administrator', 'Business Analyst', 'Power User', 'Report Author', 'Schedule Power User'];
 
-export function createFixtureAdminSource(): AdminSource & { passwords: Map<string, string> } {
+export function createFixtureAdminSource(): AdminSource & { passwords: Map<string, string>; savedMail: () => MailConfig } {
   const users = new Map(Object.entries(structuredClone(USERS)));
   const roles = new Set(ROLES);
   const passwords = new Map<string, string>([['admin', 'password']]);
+  let mail: MailConfig = parseMailConfig({ authenticate: true, smtpPort: 25, smtpProtocol: 'smtp', authMechanism: 'XOAUTH2', clientId: '' });
   const need = (user: string) => {
     const r = users.get(user);
     if (!r) throw new ApiError(404, user, `No user ${user}`);
@@ -23,6 +24,7 @@ export function createFixtureAdminSource(): AdminSource & { passwords: Map<strin
 
   return {
     passwords,
+    savedMail: () => mail,
     listUsers: async () => [...users.keys()].sort(),
     listRoles: async () => [...roles].sort(),
     rolesOf: async (user) => [...need(user)],
@@ -55,6 +57,12 @@ export function createFixtureAdminSource(): AdminSource & { passwords: Map<strin
       if (roles.has(name)) throw new ApiError(400, name, 'A role with that name already exists.');
       roles.add(name);
     },
+    getMailConfig: async () => structuredClone(mail),
+    async setMailConfig(config) {
+      mail = structuredClone(config);
+    },
+    // A host named "smtp.example.com" works; anything else fails, like an unreachable server.
+    testMail: async (config) => config.smtpHost === 'smtp.example.com',
     async deleteRoles(names) {
       names.forEach((n) => roles.delete(n));
       for (const [u, r] of users) users.set(u, r.filter((role) => !names.includes(role)));

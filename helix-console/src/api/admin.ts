@@ -28,6 +28,52 @@ async function put(path: string, body?: unknown) {
   }
 }
 
+/** Mail server settings (/api/emailconfig). OAuth fields are carried through unchanged. */
+export interface MailConfig {
+  smtpHost: string;
+  smtpPort: number;
+  smtpProtocol: string;
+  useSsl: boolean;
+  useStartTls: boolean;
+  authenticate: boolean;
+  userId: string;
+  password: string;
+  defaultFrom: string;
+  fromName: string;
+  /** Everything else the server sent (authMechanism, clientId, …), returned as-is on save. */
+  rest: Record<string, unknown>;
+}
+
+const MAIL_KEYS = ['smtpHost', 'smtpPort', 'smtpProtocol', 'useSsl', 'useStartTls', 'authenticate', 'userId', 'password', 'defaultFrom', 'fromName'] as const;
+
+export function parseMailConfig(json: unknown): MailConfig {
+  const o = (json ?? {}) as Record<string, unknown>;
+  const rest = Object.fromEntries(Object.entries(o).filter(([k]) => !(MAIL_KEYS as readonly string[]).includes(k)));
+  const str = (k: string) => (typeof o[k] === 'string' ? (o[k] as string) : '');
+  const bool = (k: string) => o[k] === true || o[k] === 'true';
+  return {
+    smtpHost: str('smtpHost'),
+    smtpPort: Number(o.smtpPort ?? 25) || 25,
+    smtpProtocol: str('smtpProtocol') || 'smtp',
+    useSsl: bool('useSsl'),
+    useStartTls: bool('useStartTls'),
+    authenticate: bool('authenticate'),
+    userId: str('userId'),
+    password: str('password'),
+    defaultFrom: str('defaultFrom'),
+    fromName: str('fromName'),
+    rest,
+  };
+}
+
+export function mailConfigBody(config: MailConfig): string {
+  const { rest, ...fields } = config;
+  return JSON.stringify({ ...rest, ...fields });
+}
+
+/** The test endpoint answers a message key; note the server's spelling of SUCESS. */
+export const mailTestPassed = (result: string) => /EmailTester\.SUC+ESS/.test(result);
+
 export interface AdminSource {
   listUsers(signal?: AbortSignal): Promise<string[]>;
   listRoles(signal?: AbortSignal): Promise<string[]>;
@@ -43,6 +89,10 @@ export interface AdminSource {
   removeRoles(user: string, roles: string[]): Promise<void>;
   createRole(name: string): Promise<void>;
   deleteRoles(names: string[]): Promise<void>;
+  getMailConfig(signal?: AbortSignal): Promise<MailConfig>;
+  setMailConfig(config: MailConfig): Promise<void>;
+  /** Sends a test email with these (unsaved) settings; true when the server reports success. */
+  testMail(config: MailConfig): Promise<boolean>;
 }
 
 const BASE = '/userroledao';
@@ -66,6 +116,16 @@ export const httpAdminSource: AdminSource = {
   removeRoles: (user, roles) => put(`${BASE}/removeRoleFromUser?userName=${encodeURIComponent(user)}&roleNames=${tabs(roles)}`),
   createRole: (name) => put(`${BASE}/createRole?roleName=${encodeURIComponent(name)}`),
   deleteRoles: (names) => put(`${BASE}/deleteRoles?roleNames=${tabs(names)}`),
+  getMailConfig: async (signal) => parseMailConfig(await getJson('/emailconfig/getEmailConfig', z.unknown(), signal)),
+  async setMailConfig(config) {
+    const response = await send('PUT', '/emailconfig/setEmailConfig', { body: mailConfigBody(config), contentType: 'application/json' });
+    if (!response.ok) throw new ApiError(response.status, '/emailconfig/setEmailConfig', `The settings were not saved (${response.status}).`);
+  },
+  async testMail(config) {
+    const response = await send('PUT', '/emailconfig/sendEmailTest', { body: mailConfigBody(config), contentType: 'application/json', accept: 'text/plain' });
+    if (!response.ok) throw new ApiError(response.status, '/emailconfig/sendEmailTest', `The test could not run (${response.status}).`);
+    return mailTestPassed(await response.text());
+  },
 };
 
 const Context = createContext<AdminSource>(httpAdminSource);
@@ -76,6 +136,7 @@ export function AdminSourceProvider({ source, children }: { source: AdminSource;
 
 export const adminKeys = {
   all: ['admin'] as const,
+  mail: ['admin', 'mail'] as const,
   users: ['admin', 'users'] as const,
   roles: ['admin', 'roles'] as const,
   rolesOf: (user: string) => ['admin', 'rolesOf', user] as const,
@@ -99,4 +160,9 @@ export function useRolesOf(user: string | null) {
 export function useMembersOf(role: string | null) {
   const s = useAdminSource();
   return useQuery({ queryKey: adminKeys.membersOf(role ?? ''), queryFn: ({ signal }) => s.membersOf(role!, signal), enabled: !!role });
+}
+
+export function useMailConfig() {
+  const s = useAdminSource();
+  return useQuery({ queryKey: adminKeys.mail, queryFn: ({ signal }) => s.getMailConfig(signal) });
 }

@@ -15,6 +15,7 @@ interface FixtureJob {
   nextRun?: string;
   lastRun?: string;
   output?: string;
+  extra?: Array<{ name: string; value: string }>;
 }
 
 const SAMPLE: FixtureJob[] = [
@@ -66,12 +67,30 @@ export function createFixtureSchedulerSource(
     const simple = r.simpleJobTrigger as Record<string, unknown> | undefined;
     const cron = r.cronJobTrigger as Record<string, unknown> | undefined;
     const t = (simple ?? cron)!;
-    const start = new Date(Number(t.startYear) + 1900, Number(t.startMonth), Number(t.startDay), Number(t.startHour), Number(t.startMin));
+    const start =
+      t.startYear === undefined
+        ? new Date()
+        : new Date(Number(t.startYear) + 1900, Number(t.startMonth), Number(t.startDay), Number(t.startHour), Number(t.startMin));
+    const extra = ((r.jobParameters as Array<{ name: string; stringValue: string[] }>) ?? [])
+      .filter((p) => p.name !== 'ActionAdapterQuartzJob-ActionUser')
+      .map((p) => ({ name: p.name, value: p.stringValue[0] ?? '' }));
+    if (r.actionClass) extra.push({ name: 'ActionAdapterQuartzJob-ActionClass', value: String(r.actionClass) });
     const trigger: Record<string, string> = simple
       ? { '@type': 'simpleJobTrigger', uiPassParam: String(simple.uiPassParam), repeatInterval: String(simple.repeatInterval), repeatCount: String(simple.repeatCount), startTime: start.toISOString() }
       : { '@type': 'complexJobTrigger', uiPassParam: 'CRON', cronString: `${String(cron!.cronString)} *`, startTime: start.toISOString() };
     if (r.timeZone) trigger.timeZone = String(r.timeZone);
-    return { id, name: String(r.jobName), owner: 'admin', state: 'NORMAL', input: String(r.inputFile), trigger, nextRun: start.toISOString(), output: String(r.outputFile) };
+    const once = simple && Number(simple.repeatCount) === 0;
+    return {
+      id,
+      name: String(r.jobName),
+      owner: 'admin',
+      state: once && r.actionClass ? 'COMPLETE' : 'NORMAL',
+      input: r.inputFile ? String(r.inputFile) : '',
+      trigger,
+      nextRun: start.toISOString(),
+      ...(r.outputFile ? { output: String(r.outputFile) } : {}),
+      extra,
+    };
   };
   const find = (id: string) => {
     const job = jobs.find((j) => j.id === id);
@@ -110,7 +129,8 @@ export function createFixtureSchedulerSource(
           jobTrigger: j.trigger,
           jobParams: {
             jobParams: [
-              { name: 'ActionAdapterQuartzJob-StreamProvider-InputFile', value: j.input },
+              ...(j.input ? [{ name: 'ActionAdapterQuartzJob-StreamProvider-InputFile', value: j.input }] : []),
+              ...(j.extra ?? []),
               { name: 'ActionAdapterQuartzJob-ActionUser', value: j.owner },
               ...(j.output ? [{ name: 'ActionAdapterQuartzJob-StreamProvider', value: `input file = ${j.input}:outputFile = ${j.output}/${j.name}.*` }] : []),
             ],

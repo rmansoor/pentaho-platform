@@ -163,7 +163,16 @@ administrator's own password), Delete. Roles: list, members as checkboxes, New r
 stronger warning for Administrator). Passwords are sent as `ENC:` + base64 so they don't appear as
 plain text in request logs; bulk names are tab-separated query parameters; validation failures carry
 their reason in the `PUC_VALIDATION_ERROR_MESSAGE` header, which the console shows. System roles and
-permissions, mail server and settings are not built yet.
+permissions are not built yet.
+
+**Mail server** (`/api/emailconfig`): host, port, protocol, SSL/STARTTLS, sign-in, From; Send test email
+uses the unsaved values (server answers `EmailTester.SUCESS` [sic] or `EmailTester.FAIL`). Saving
+replaces the whole config, so OAuth fields are carried through unchanged. Note: the server returns the
+SMTP password decrypted to administrators.
+
+**Settings**: delete generated files older than N days now (run-once `GeneratedContentCleaner` job,
+removed afterwards because the finished job confuses `getContentCleanerJob`), and a daily automatic
+clean-up found from the job list.
 
 ## Changing data
 

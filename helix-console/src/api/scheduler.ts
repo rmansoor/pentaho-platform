@@ -29,6 +29,10 @@ export interface ScheduledJob {
   recurrence: string;
   /** Folder the output is written to, from the stream provider parameter. */
   outputFolder?: string;
+  /** Set for system jobs that run an action class instead of a file (e.g. the content cleaner). */
+  actionClass?: string;
+  /** Job parameters by name (string values). */
+  params: Record<string, string>;
   /** Raw trigger fields, for editing. */
   trigger: {
     type: string;
@@ -159,6 +163,13 @@ export function parseJobsResponse(json: unknown): ScheduledJob[] {
       lastRun: asDate(job.lastRun),
       recurrence: describeRecurrence(job.jobTrigger),
       outputFolder: outputFolderOf(param('ActionAdapterQuartzJob-StreamProvider')),
+      actionClass: param('ActionAdapterQuartzJob-ActionClass') || undefined,
+      params: Object.fromEntries(
+        params.flatMap((p) => {
+          const v = Array.isArray(p.value) ? p.value[0] : p.value;
+          return typeof v === 'string' || typeof v === 'number' ? [[p.name, String(v)]] : [];
+        }),
+      ),
       trigger: {
         type: job.jobTrigger?.['@type'] ?? '',
         uiPassParam: job.jobTrigger?.uiPassParam ?? undefined,
@@ -213,3 +224,53 @@ export const httpSchedulerSource: SchedulerSource = {
   createJob: (request) => postJob(`${BASE}/job`, request),
   updateJob: (request) => postJob(`${BASE}/job/update`, request),
 };
+
+/** Action class of the generated-content cleaner (GeneratedContentCleaner). */
+export const CONTENT_CLEANER = 'org.pentaho.platform.admin.GeneratedContentCleaner';
+const DAY_MS = 86_400_000;
+
+/**
+ * The scheduled (repeating) content cleaner, if any. Found from the job list rather than
+ * GET /getContentCleanerJob, which returns the first cleaner job it finds, including finished
+ * one-off "delete now" runs.
+ */
+export function findScheduledCleaner(jobs: ScheduledJob[]): { job: ScheduledJob; olderThanDays: number } | null {
+  const job = jobs.find(
+    (j) => j.actionClass === CONTENT_CLEANER && j.state !== 'complete' && (j.trigger.type !== 'simpleJobTrigger' || (j.trigger.repeatInterval ?? 0) > 0),
+  );
+  if (!job) return null;
+  return { job, olderThanDays: Math.round(Number(job.params.age ?? 0) / DAY_MS) };
+}
+
+/** Request for a cleaner job: once now, or daily at a time. Same fields the GWT settings panel sends. */
+export function contentCleanerRequest(olderThanDays: number, owner: string, daily?: { hour: number; minute: number; start: Date }) {
+  const age = String(Math.round(olderThanDays * DAY_MS));
+  const jobParameters = [
+    { name: 'age', type: 'string', stringValue: [age] },
+    { name: 'ActionAdapterQuartzJob-ActionUser', type: 'string', stringValue: [owner] },
+  ];
+  if (!daily) {
+    return {
+      jobName: 'Content Cleaner',
+      actionClass: CONTENT_CLEANER,
+      jobParameters,
+      simpleJobTrigger: { endTime: null, repeatCount: 0, repeatInterval: 0, uiPassParam: 'RUN_ONCE' },
+    };
+  }
+  return {
+    jobName: 'GeneratedContentCleaner',
+    actionClass: CONTENT_CLEANER,
+    jobParameters,
+    simpleJobTrigger: {
+      endTime: null,
+      repeatCount: -1,
+      repeatInterval: 86400,
+      uiPassParam: 'DAILY',
+      startHour: daily.hour,
+      startMin: daily.minute,
+      startYear: daily.start.getFullYear() - 1900,
+      startMonth: daily.start.getMonth(),
+      startDay: daily.start.getDate(),
+    },
+  };
+}

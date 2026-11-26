@@ -4,10 +4,12 @@ import { KeyRound, Plus, Shield, Trash2, User, Users } from 'lucide-react';
 import { Button, Card, Checkbox, cn, Dialog, Tabs, toast } from '@helix/ui';
 import { adminKeys, useAdminSource, useMembersOf, useRoles, useRolesOf, useUsers } from '../../api/admin';
 import { QueryError } from '../files/QueryError';
+import { MailTab } from './MailTab';
+import { SettingsTab } from './SettingsTab';
 
-type Tab = 'users' | 'roles';
+type Tab = 'users' | 'roles' | 'mail' | 'settings';
 
-/** Administration: users and roles. Mail server, settings and system roles follow. */
+/** Administration: users, roles, mail server and settings. System roles and permissions follow. */
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>('users');
   return (
@@ -18,11 +20,15 @@ export function AdminPage() {
         tabs={[
           { id: 'users', label: 'Users' },
           { id: 'roles', label: 'Roles' },
+          { id: 'mail', label: 'Mail server' },
+          { id: 'settings', label: 'Settings' },
         ]}
         value={tab}
         onChange={setTab}
       >
-        {(current) => (current === 'users' ? <UsersTab /> : <RolesTab />)}
+        {(current) =>
+          current === 'users' ? <UsersTab /> : current === 'roles' ? <RolesTab /> : current === 'mail' ? <MailTab /> : <SettingsTab />
+        }
       </Tabs>
     </div>
   );

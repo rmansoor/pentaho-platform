@@ -87,7 +87,7 @@ describe('form helpers', () => {
 
   it('shows an existing start time as wall-clock time in the schedule time zone', () => {
     const job: ScheduledJob = {
-      id: 'x', name: 'n', owner: 'a', state: 'active', inputFile: '/f.prpt', nextRun: null, lastRun: null, recurrence: '',
+      id: 'x', name: 'n', owner: 'a', state: 'active', inputFile: '/f.prpt', nextRun: null, lastRun: null, recurrence: '', params: {},
       trigger: { type: 'simpleJobTrigger', repeatInterval: 86400, timeZone: 'Europe/London', startTime: new Date('2026-11-26T06:30:00Z') },
     };
     expect(formFromJob(job, '/h')).toMatchObject({ repeat: 'daily', startDate: '2026-11-26', startTime: '06:30', timeZone: 'Europe/London' });
@@ -106,6 +106,7 @@ describe('form helpers', () => {
       nextRun: null,
       lastRun: null,
       recurrence: '',
+      params: {},
       trigger,
     });
     const weekly = formFromJob(job({ type: 'complexJobTrigger', cronString: '0 0 7 ? * 2-6 *', timeZone: 'Europe/London' }), '/home/admin');
