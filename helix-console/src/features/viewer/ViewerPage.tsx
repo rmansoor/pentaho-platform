@@ -9,6 +9,7 @@ import { parsePickList, recordRecent, serializePickList, usePickList, useToggleF
 import { API_ROOT } from '../../api/http';
 import { displayFolder } from '../files/columns';
 import { PropertiesSheet } from '../files/PropertiesSheet';
+import { ContentFrame } from './ContentFrame';
 
 export interface ViewerPageProps {
   path: string;
@@ -114,15 +115,10 @@ export function ViewerPage({ path, title: givenTitle, onOpenFolder }: ViewerPage
         {openers.isPending ? (
           <p className="m-0 p-8 text-fg-muted">Loading…</p>
         ) : url ? (
-          <iframe
+          <ContentFrame
             key={url}
             src={url}
             title={title}
-            className="block h-full w-full border-0"
-            // Plugin content is same-origin and needs scripts, forms, popups (export) and downloads.
-            // With allow-scripts + allow-same-origin this does not isolate the content (it is the
-            // server's own); it does stop plugin pages from navigating the console window away.
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-modals"
           />
         ) : (
           <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">

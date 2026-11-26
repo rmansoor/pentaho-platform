@@ -4,6 +4,7 @@ import { useLayoutStore } from './layout-store';
 import { NAV_RAIL_ID, NavRail } from './NavRail';
 import { TopBar } from './TopBar';
 import { CommandPalette } from './CommandPalette';
+import { BridgeHost } from '../compat/BridgeHost';
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -82,6 +83,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <Toaster />
       <CommandPalette />
+      <BridgeHost />
     </div>
   );
 }

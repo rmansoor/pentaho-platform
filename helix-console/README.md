@@ -67,8 +67,25 @@ frame showing the file with the plugin that renders it, at the URL the GWT conso
 `/api/repos/{pathId}/{perspective}`. The perspective for each extension comes from the RUN command in
 `GET /api/mantle/settings` (`plugin-content-type-N…`; "None" means `generatedContent`). Types no
 plugin opens get a Download link instead. Opening a file records it in Recent (GWT format, 10 items).
-This is the plan's ContentFrame step; the native report viewer and the `window.mantle_*` compatibility
-layer for plugins that call back into the console come later.
+This is the plan's ContentFrame step; the native report viewer comes later.
+
+## Plugin compatibility (`window.mantle_*`)
+
+Plugin pages written for the GWT console call functions on `window.parent` / `window.top`.
+`src/compat/mantle-bridge.ts` installs the same names (mounted by `BridgeHost` in the shell):
+
+| Called by | Function | Helix behaviour |
+|---|---|---|
+| reporting | `mantle_addHandler` / `mantle_removeHandler` / `mantle_fireEvent`, `mantle_initialized` | Event bus; the content frame fires `GenericEvent` `tabClosing` with its frame id when it closes |
+| reporting | `pho.runAdhocInBackground(path, jobId, recalculateFinished)` | "Run in background" dialog; fires `locationPromptAttached` / `Ok` / `Finish` / `Canceled` like the GWT command and posts `/plugin/reporting/api/jobs/{id}/schedule` |
+| reporting | `executeCommand("RunInBackgroundCommand")`, `mantle_openRepositoryFile(path, "SCHEDULE_NEW")` | Schedule sheet (one run now / new schedule) |
+| reporting | `mantle_openTab`, `openURL`, `urlCommand`, `mantle_openNamedFrameTab` | `/content?url=` (same-origin `/pentaho/` URLs only) |
+| reporting | `authenticate`, `show/hideLoadingIndicator`, `mantle_showMessage`, `mantle_showConfirmDlg` | Session check, top progress bar, toast, confirm dialog (`{onOk, onCancel}`) |
+| data-access | `enableContentEdit`, `setContentEditSelected`, `mantle_refreshRepository` | Edit state kept; repository queries refreshed |
+| any | favorites, `mantle_isSupportedExtension`, `mantle_setPerspective`, `closeTab` | Mapped to the console |
+
+Every other function the GWT console exported is a stub that logs one warning, so a plugin that
+depends on it fails visibly in QA rather than silently.
 
 ## Home
 

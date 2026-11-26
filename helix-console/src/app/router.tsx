@@ -15,6 +15,7 @@ import { SchedulesPage } from '../features/schedules/SchedulesPage';
 import { DataSourcesPage } from '../features/datasources/DataSourcesPage';
 import { AdminPage } from '../features/admin/AdminPage';
 import { ViewerPage } from '../features/viewer/ViewerPage';
+import { ContentPage } from '../features/viewer/ContentPage';
 import { DEFAULT_FOLDER, normalizePath } from '../features/files/paths';
 
 const rootRoute = createRootRoute({
@@ -111,6 +112,19 @@ const viewRoute = createRoute({
   },
 });
 
+const contentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/content',
+  validateSearch: (search: Record<string, unknown>): { url: string; title?: string } => ({
+    url: typeof search.url === 'string' ? search.url : '',
+    ...(typeof search.title === 'string' && search.title ? { title: search.title } : {}),
+  }),
+  component: function ContentRoute() {
+    const { url, title } = contentRoute.useSearch();
+    return <ContentPage url={url} title={title ?? ''} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   homeRoute,
@@ -120,6 +134,7 @@ const routeTree = rootRoute.addChildren([
   dataSourcesRoute,
   adminRoute,
   viewRoute,
+  contentRoute,
 ]);
 
 /** The console is served from /pentaho/console/ (vite `base`). */

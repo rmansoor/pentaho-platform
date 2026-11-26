@@ -3,3 +3,9 @@
 
 /* Tailwind scans the app automatically; the design-system package lives outside src/. */
 @source "../packages/ui/src";
+
+/* Indeterminate progress bar shown while plugin content calls showLoadingIndicator(). */
+@keyframes helix-busy {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}

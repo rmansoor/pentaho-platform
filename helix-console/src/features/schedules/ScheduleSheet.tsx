@@ -17,7 +17,10 @@ import {
   type ScheduleForm,
 } from './schedule-form';
 
-export type ScheduleTarget = { kind: 'new'; file: string; title?: string } | { kind: 'edit'; job: ScheduledJob };
+export type ScheduleTarget =
+  /** `once`: "run in background" from plugin content, a single run starting now. */
+  | { kind: 'new'; file: string; title?: string; once?: boolean }
+  | { kind: 'edit'; job: ScheduledJob };
 
 export interface ScheduleSheetProps {
   target: ScheduleTarget | null;
@@ -35,6 +38,18 @@ const REPEATS: { value: Repeat; label: string }[] = [
   { value: 'cron', label: 'Cron expression' },
 ];
 
+/** A single run, starting now. */
+function runNowForm(form: ScheduleForm): ScheduleForm {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    ...form,
+    repeat: 'once',
+    startDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+    startTime: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+  };
+}
+
 const supportedZones = (() => {
   try {
     return (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone') ?? [];
@@ -46,7 +61,7 @@ const supportedZones = (() => {
 /** New schedule for a file, or edit an existing one, in a side sheet. */
 export function ScheduleSheet({ target, onClose, onSaved }: ScheduleSheetProps) {
   const file = target?.kind === 'new' ? target.file : target?.job.inputFile;
-  const title = target?.kind === 'edit' ? `Edit "${target.job.name}"` : 'New schedule';
+  const title = target?.kind === 'edit' ? `Edit "${target.job.name}"` : target?.once ? 'Run in background' : 'New schedule';
   return (
     <Dialog
       variant="sheet"
@@ -69,7 +84,11 @@ function ScheduleFormBody({ target, file, onClose, onSaved }: { target: Schedule
   const user = session.data?.userName ?? 'admin';
   const home = `/home/${user}`;
   const [form, setForm] = useState<ScheduleForm>(() =>
-    target.kind === 'edit' ? formFromJob(target.job, home) : newScheduleForm(file, home, new Date(), target.title),
+    target.kind === 'edit'
+      ? formFromJob(target.job, home)
+      : target.once
+        ? runNowForm(newScheduleForm(file, home, new Date(), target.title))
+        : newScheduleForm(file, home, new Date(), target.title),
   );
   // The home folder becomes known once the session loads.
   useEffect(() => {
