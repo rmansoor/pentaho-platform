@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetError, httpDatasetSource, uploadName } from './datasets';
+import { DatasetError, httpDatasetSource } from './datasets';
 import { resetCsrfCache } from './http';
 
 type Call = { url: string; method: string; headers: Record<string, string>; body?: BodyInit | null };
@@ -50,21 +50,17 @@ describe('the datasets API client', () => {
     expect(calls[0]!.headers['If-Match']).toBe('"8"');
   });
 
-  it('uploads as a kept file and checks the servlet answered with its name', async () => {
-    const random = vi.spyOn(Math, 'random').mockReturnValue(0.5);
-    const name = uploadName('Sales 2026.csv', (0.5).toString(36).slice(2, 8));
-    const calls = serve(new Response(name, { status: 200 }), new Response('File exceeds the maximum size', { status: 200 }));
-    expect(await httpDatasetSource.upload(new File(['a'], 'Sales 2026.csv'))).toBe(name);
-    expect(calls[0]!.url).toBe(`/pentaho/UploadService?file_name=${name}&mark_temporary=false`);
-    expect((calls[0]!.body as FormData).get('uploadFormElement')).toBeInstanceOf(File);
-    await expect(httpDatasetSource.upload(new File(['a'], 'Sales 2026.csv'))).rejects.toThrow('File exceeds the maximum size');
-    random.mockRestore();
-  });
-
-  it('makes upload names unique and safe as plain file names', () => {
-    expect(uploadName('Über Große Sales (2026).CSV', 'k3j9x2')).toBe('uber-gro-e-sales-2026-k3j9x2.csv');
-    expect(uploadName('../../etc/passwd', 'x')).toBe('passwd-x.csv');
-    expect(uploadName('C:\\Users\\suzy\\q1.txt', 'x')).toBe('q1-x.txt');
-    expect(uploadName('.csv', 'x')).toBe('csv-x.csv');
+  it('uploads the file as the body, with its name and the version, and explains a refusal', async () => {
+    const calls = serve(
+      json({ name: 'Sales', id: 'sales', source: { type: 'FILE', file: { path: 'sales/1.csv', originalName: 'Q1 Sales.csv' } } }, 200, '"3"'),
+      json({ code: 'too-large', message: 'The file is larger than 500 MB, the most this server accepts', path: 'file' }, 413),
+    );
+    const file = new File(['region,units\n'], 'Q1 Sales.csv', { type: 'text/csv' });
+    const stored = await httpDatasetSource.uploadFile('sales', '2', file);
+    expect(stored.version).toBe('3');
+    expect(stored.definition.source?.file?.originalName).toBe('Q1 Sales.csv');
+    expect(calls[0]).toMatchObject({ method: 'PUT', url: '/pentaho/plugin/data-access/api/v2/datasets/sales/file?name=Q1%20Sales.csv', body: file });
+    expect(calls[0]!.headers).toMatchObject({ 'If-Match': '"2"', 'Content-Type': 'text/csv' });
+    await expect(httpDatasetSource.uploadFile('sales', '3', file)).rejects.toMatchObject({ status: 413, code: 'too-large' });
   });
 });

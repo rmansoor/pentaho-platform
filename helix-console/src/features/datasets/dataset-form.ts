@@ -23,6 +23,8 @@ export interface DatasetForm {
   tables: string;
   /** The uploaded file's stored name, once uploaded or when editing. */
   filePath: string;
+  /** The uploaded file's own name, for display. */
+  fileName: string;
   headerRow: boolean;
   delimiter: string;
   encoding: string;
@@ -46,6 +48,7 @@ export const emptyForm = (): DatasetForm => ({
   sql: '',
   tables: '',
   filePath: '',
+  fileName: '',
   headerRow: true,
   delimiter: '',
   encoding: '',
@@ -62,6 +65,7 @@ export function formFrom(d: Definition): DatasetForm {
     sql: s?.sql ?? '',
     tables: (s?.tables ?? []).join(', '),
     filePath: s?.file?.path ?? '',
+    fileName: s?.file?.originalName ?? s?.file?.path ?? '',
     headerRow: s?.file?.headerRow ?? true,
     delimiter: s?.file?.delimiter ?? '',
     encoding: s?.file?.encoding ?? '',
@@ -105,6 +109,7 @@ export function definitionFrom(form: DatasetForm, base?: Definition, columns?: C
       file: {
         format: 'CSV',
         path: form.filePath,
+        ...(sameFile && old?.file?.originalName ? { originalName: old.file.originalName } : {}),
         headerRow: form.headerRow,
         ...(form.delimiter ? { delimiter: form.delimiter } : {}),
         ...(form.encoding ? { encoding: form.encoding } : {}),

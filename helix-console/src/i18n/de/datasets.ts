@@ -98,7 +98,6 @@ export const datasets: Catalog['datasets'] = {
     },
   },
   errors: {
-    uploadFailed: 'Die Datei konnte nicht hochgeladen werden (Status {status})',
     stale: 'Jemand anderes hat diesen Datensatz geändert. Laden Sie ihn neu und versuchen Sie es noch einmal.',
   },
 };

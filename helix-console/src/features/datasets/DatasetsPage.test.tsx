@@ -58,10 +58,10 @@ describe('Datasets', () => {
     await user.click(screen.getByRole('button', { name: 'Preview data' }));
 
     await screen.findByRole('region', { name: 'First rows' });
-    expect(datasets.calls).toEqual(['upload Sales 2026.csv', 'create regional-sales-2026', 'sample regional-sales-2026']);
+    expect(datasets.calls).toEqual(['create regional-sales-2026', 'upload regional-sales-2026 Sales 2026.csv', 'sample regional-sales-2026']);
     expect(datasets.stored.get('regional-sales-2026')!.definition.source).toEqual({
       type: 'FILE',
-      file: { format: 'CSV', path: 'sales-2026-fixture.csv', headerRow: true, delimiter: ',' },
+      file: { format: 'CSV', path: 'regional-sales-2026/0000-fixture.csv', originalName: 'Sales 2026.csv', headerRow: true, delimiter: ',' },
     });
 
     await user.click(screen.getByRole('checkbox', { name: 'Keep month' }));

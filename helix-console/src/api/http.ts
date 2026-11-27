@@ -123,7 +123,7 @@ export function resetCsrfCache() {
 
 export interface SendOptions {
   /** A FormData body is sent as multipart; the browser sets its Content-Type and boundary. */
-  body?: string | FormData;
+  body?: string | FormData | Blob;
   contentType?: string;
   accept?: string;
   /** More request headers, such as If-Match. */

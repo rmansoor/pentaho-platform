@@ -1,8 +1,7 @@
 import { createContext, createElement, useContext, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
-import { ApiError, CONTEXT_ROOT, getJson, getResponse, PLUGIN_ROOT, send } from './http';
-import { t } from '../i18n';
+import { ApiError, getJson, getResponse, PLUGIN_ROOT, send } from './http';
 
 /*
  * Datasets, from the data-access plugin's v2 API (/pentaho/plugin/data-access/api/v2/datasets; the
@@ -16,11 +15,10 @@ import { t } from '../i18n';
  *   POST   /datasets/{id}/stage  If-Match -> {connection, table, rows, columns, warnings}, ETag
  *   GET    /connections/{name}/tables     -> {tables: [{schema?, name, type, qualifiedName}], truncated}
  * Errors are {code, message, path?, problems?: [{path, message}]}.
- * Files are uploaded first through the platform's UploadService, which answers with the stored name.
+ *   PUT    /datasets/{id}/file?name= If-Match  the file as the body -> definition, ETag (413 too large, 415 not CSV)
  */
 
 const BASE = `${PLUGIN_ROOT}/data-access/api/v2/datasets`;
-const UPLOAD = `${CONTEXT_ROOT}/UploadService`;
 
 export const COLUMN_TYPES = ['STRING', 'INTEGER', 'DECIMAL', 'BOOLEAN', 'DATE', 'TIMESTAMP'] as const;
 export type ColumnType = (typeof COLUMN_TYPES)[number];
@@ -29,6 +27,8 @@ export type SourceType = 'FILE' | 'SQL' | 'TABLES';
 export interface FileSource {
   format?: 'CSV';
   path: string;
+  /** The uploaded file's name on the uploader's computer; set by the server. */
+  originalName?: string;
   encoding?: string;
   delimiter?: string;
   enclosure?: string;
@@ -203,27 +203,12 @@ export interface DatasetSource {
   sample(id: string, limit?: number): Promise<Sample>;
   /** Loads a FILE dataset's file into its staging table; the dataset's version changes. */
   stage(id: string, version: string): Promise<{ table: StagedTable; version: string }>;
-  /** Uploads a file for a FILE source; resolves with the name to put in `source.file.path`. */
-  upload(file: File): Promise<string>;
+  /** Uploads the dataset's CSV file; the server records it in `source.file` and the version changes. */
+  uploadFile(id: string, version: string, file: File): Promise<Stored>;
   /** Database connection names, for SQL and TABLES sources. */
   connections(signal?: AbortSignal): Promise<string[]>;
   /** The tables and views on a connection, for a TABLES source. */
   tables(connection: string, signal?: AbortSignal): Promise<TableList>;
-}
-
-/** "Monthly Orders (2026).csv" -> "monthly-orders-2026-k3j9x2.csv": unique, and safe as a plain file name. */
-export function uploadName(file: string, random = Math.random().toString(36).slice(2, 8)): string {
-  const plain = file.slice(Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\')) + 1);
-  const dot = plain.lastIndexOf('.');
-  const ext = dot > 0 ? plain.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) : 'csv';
-  const base = (dot > 0 ? plain.slice(0, dot) : plain)
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 60);
-  return `${base || 'upload'}-${random}.${ext || 'csv'}`;
 }
 
 export const httpDatasetSource: DatasetSource = {
@@ -259,16 +244,14 @@ export const httpDatasetSource: DatasetSource = {
     const response = await send('POST', `${BASE}/${enc(id)}/stage`, { accept: 'application/json', headers: { 'If-Match': ifMatch(version) } });
     return { table: await read(response, stagedSchema), version: versionOf(response) };
   },
-  async upload(file) {
-    const name = uploadName(file.name);
-    const form = new FormData();
-    form.append('uploadFormElement', file, file.name);
-    // Not temporary: the dataset can be loaded again from the same file later.
-    const response = await send('POST', `${UPLOAD}?file_name=${enc(name)}&mark_temporary=false`, { body: form, accept: 'text/plain' });
-    const text = (await response.text()).trim();
-    // The servlet answers 200 with the stored name on success, and 200 with an error sentence otherwise.
-    if (!response.ok || text !== name) throw new Error(text && text.length < 300 ? text : t('datasets.errors.uploadFailed', { status: response.status }));
-    return name;
+  async uploadFile(id, version, file) {
+    const response = await send('PUT', `${BASE}/${enc(id)}/file?name=${enc(file.name)}`, {
+      body: file,
+      contentType: file.type || 'text/csv',
+      accept: 'application/json',
+      headers: { 'If-Match': ifMatch(version) },
+    });
+    return { definition: await read(response, definitionSchema), version: versionOf(response) };
   },
   async connections(signal) {
     const items = z.object({

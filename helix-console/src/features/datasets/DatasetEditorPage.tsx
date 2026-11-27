@@ -69,15 +69,17 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
 
   const preview = useMutation({
     mutationFn: async () => {
-      let filePath = form.filePath;
+      const definition = definitionFrom(form, stored?.definition);
+      let next = stored ? await api.update(stored.definition.id!, definition, stored.version) : await api.create(definition);
+      setStored(next);
       if (form.sourceType === 'FILE' && file) {
-        filePath = await api.upload(file);
-        update({ filePath });
+        // The server stores the file and records it in the definition, which gets a new version.
+        next = await api.uploadFile(next.definition.id!, next.version, file);
+        setStored(next);
+        const uploaded = next.definition.source?.file;
+        update({ filePath: uploaded?.path ?? '', fileName: uploaded?.originalName ?? file.name });
         setFile(null);
       }
-      const definition = definitionFrom({ ...form, filePath }, stored?.definition);
-      const next = stored ? await api.update(stored.definition.id!, definition, stored.version) : await api.create(definition);
-      setStored(next);
       void refreshList();
       return { next, sample: await api.sample(next.definition.id!) };
     },
@@ -338,7 +340,7 @@ function FileFields({
       <Field
         label={t('datasets.editor.file')}
         problem={problem}
-        hint={!file && form.filePath ? `${t('datasets.editor.currentFile', { name: form.filePath })} ${t('datasets.editor.replaceFile')}` : undefined}
+        hint={!file && form.filePath ? `${t('datasets.editor.currentFile', { name: form.fileName || form.filePath })} ${t('datasets.editor.replaceFile')}` : undefined}
       >
         {(props) => (
           <input

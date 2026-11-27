@@ -45,7 +45,7 @@ const SAMPLE_DATASETS: Definition[] = [
     id: 'regional-sales',
     name: 'Regional sales',
     owner: 'suzy',
-    source: { type: 'FILE', connection: 'Hibernate', file: { format: 'CSV', path: 'regional-sales-a1b2c3.csv', headerRow: true, stagingTable: 'DS_REGIONAL_SALES_MOKX3K2O' } },
+    source: { type: 'FILE', connection: 'Hibernate', file: { format: 'CSV', path: 'regional-sales/1111-fixture.csv', originalName: 'Regional sales.csv', headerRow: true, stagingTable: 'DS_REGIONAL_SALES_MOKX3K2O' } },
     columns: [],
   },
 ];
@@ -160,10 +160,14 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
         },
       };
     },
-    async upload(file) {
+    async uploadFile(id, version, file) {
       await wait();
-      source.calls.push(`upload ${file.name}`);
-      return `${slug(file.name.replace(/\.[^.]+$/, ''))}-fixture.csv`;
+      check(id, version);
+      source.calls.push(`upload ${id} ${file.name}`);
+      const d = structuredClone(find(id).definition);
+      const old = d.source?.type === 'FILE' ? d.source.file : undefined;
+      d.source = { ...(d.source ?? {}), type: 'FILE', file: { format: 'CSV', headerRow: true, ...(old ?? {}), path: `${id}/0000-fixture.csv`, originalName: file.name } };
+      return put(d);
     },
     async connections() {
       return ['AgileBI', 'SampleData'];

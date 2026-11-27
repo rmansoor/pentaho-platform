@@ -96,7 +96,6 @@ export const datasets = {
     },
   },
   errors: {
-    uploadFailed: "Couldn't upload the file (status {status})",
     stale: 'Someone else changed this dataset. Reload it and try again.',
   },
 };
