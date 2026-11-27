@@ -168,6 +168,12 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
     async connections() {
       return ['AgileBI', 'SampleData'];
     },
+    async tables(connection) {
+      await wait();
+      if (connection !== 'SampleData') throw new DatasetError(422, 'source-failed', `The database refused the request: connection "${connection}" is down`);
+      const t = (name: string, type = 'TABLE') => ({ schema: 'PUBLIC', name, type, qualifiedName: name });
+      return { tables: [t('CUSTOMERS'), t('EMPLOYEES'), t('ORDERDETAILS'), t('ORDERS'), t('PRODUCTS'), t('BIG_ORDERS', 'VIEW')], truncated: false };
+    },
   };
   return source;
 }

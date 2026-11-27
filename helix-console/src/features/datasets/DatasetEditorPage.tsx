@@ -17,6 +17,7 @@ import {
   type Stored,
 } from '../../api/datasets';
 import { QueryError } from '../files/QueryError';
+import { TablePicker } from './TablePicker';
 import {
   columnRowsFrom,
   columnsFrom,
@@ -221,9 +222,12 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
                   )}
                 </Field>
               ) : (
-                <Field label={t('datasets.editor.tables')} hint={t('datasets.editor.tablesHint')} problem={checked ? found.tables : undefined}>
-                  {(props) => <input {...props} value={form.tables} onChange={(e) => update({ tables: e.target.value })} className={inputClass} />}
-                </Field>
+                <TablePicker
+                  connection={form.connection}
+                  value={form.tables}
+                  onChange={(tables) => update({ tables })}
+                  problem={checked ? found.tables : undefined}
+                />
               )}
             </>
           )}

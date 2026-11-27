@@ -113,7 +113,7 @@ describe('Datasets', () => {
     await open('/datasets/orders', datasets);
 
     expect(await screen.findByLabelText('Name')).toHaveValue('Orders');
-    expect(screen.getByLabelText('Tables')).toHaveValue('ORDERS');
+    expect(await screen.findByRole('checkbox', { name: 'ORDERS' })).toBeChecked();
     await user.click(screen.getByRole('button', { name: 'Preview data' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('must be a query');
 
@@ -122,5 +122,31 @@ describe('Datasets', () => {
     // Columns chosen before stay chosen; the rest start unticked.
     expect(screen.getByRole('checkbox', { name: 'Keep ORDERNUMBER' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Keep STATUS' })).not.toBeChecked();
+  });
+
+  it('picks tables from what the connection lists, and falls back to typing when it cannot list them', async () => {
+    const user = userEvent.setup();
+    const { datasets } = await open('/datasets/new');
+    await user.type(await screen.findByLabelText('Name'), 'Sales');
+    await user.click(screen.getByRole('radio', { name: 'Database tables' }));
+    expect(screen.getByText('Choose a connection to see its tables.')).toBeInTheDocument();
+
+    await user.selectOptions(await screen.findByLabelText('Connection'), 'SampleData');
+    const group = await screen.findByRole('group', { name: 'Tables' });
+    expect(within(group).getByText('None selected', { exact: false })).toBeInTheDocument();
+    await user.type(within(group).getByRole('searchbox', { name: 'Filter tables' }), 'order');
+    expect(within(group).getAllByRole('checkbox').map((c) => c.closest('label')!.textContent)).toEqual(['ORDERDETAILS', 'ORDERS', 'BIG_ORDERSView']);
+    await user.click(within(group).getByRole('checkbox', { name: 'ORDERS' }));
+    await user.click(within(group).getByRole('checkbox', { name: 'ORDERDETAILS' }));
+    expect(within(group).getByText('2 selected', { exact: false })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Preview data' }));
+    await screen.findByRole('region', { name: 'First rows' });
+    expect(datasets.stored.get('sales')!.definition.source).toEqual({ type: 'TABLES', connection: 'SampleData', tables: ['ORDERS', 'ORDERDETAILS'] });
+
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    await user.selectOptions(screen.getByLabelText('Connection'), 'AgileBI');
+    const typed = await screen.findByRole('textbox', { name: 'Tables' });
+    expect(typed).toHaveValue('ORDERS, ORDERDETAILS');
+    expect(screen.getByText(/Couldn't list this connection's tables: .*connection "AgileBI" is down\. Type their names instead\./)).toBeInTheDocument();
   });
 });

@@ -14,6 +14,7 @@ import { t } from '../i18n';
  *   DELETE /datasets/{id}   If-Match      -> 204
  *   POST   /datasets/{id}/sample?limit=   -> {columns, rows, truncated}
  *   POST   /datasets/{id}/stage  If-Match -> {connection, table, rows, columns, warnings}, ETag
+ *   GET    /connections/{name}/tables     -> {tables: [{schema?, name, type, qualifiedName}], truncated}
  * Errors are {code, message, path?, problems?: [{path, message}]}.
  * Files are uploaded first through the platform's UploadService, which answers with the stored name.
  */
@@ -104,6 +105,20 @@ export interface StagedTable {
   warnings: string[];
 }
 
+export interface ConnectionTable {
+  schema?: string;
+  name: string;
+  /** TABLE or VIEW. */
+  type: string;
+  /** What a TABLES source lists: "schema.name", or "name" without a schema. */
+  qualifiedName: string;
+}
+
+export interface TableList {
+  tables: ConnectionTable[];
+  truncated: boolean;
+}
+
 export interface Problem {
   path: string;
   message: string;
@@ -149,6 +164,10 @@ const stagedSchema = z.object({
   columns: z.array(z.object({ sourceName: z.string(), name: z.string(), type: columnType, sqlType: z.string() })),
   warnings: z.array(z.string()),
 });
+const tableListSchema = z.object({
+  tables: z.array(z.object({ schema: z.string().optional(), name: z.string(), type: z.string(), qualifiedName: z.string() })),
+  truncated: z.boolean(),
+});
 const errorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -188,6 +207,8 @@ export interface DatasetSource {
   upload(file: File): Promise<string>;
   /** Database connection names, for SQL and TABLES sources. */
   connections(signal?: AbortSignal): Promise<string[]>;
+  /** The tables and views on a connection, for a TABLES source. */
+  tables(connection: string, signal?: AbortSignal): Promise<TableList>;
 }
 
 /** "Monthly Orders (2026).csv" -> "monthly-orders-2026-k3j9x2.csv": unique, and safe as a plain file name. */
@@ -258,6 +279,9 @@ export const httpDatasetSource: DatasetSource = {
     });
     return (await getJson(`${PLUGIN_ROOT}/data-access/api/datasource/jdbc/connection`, items, signal)).Item.sort((a, b) => a.localeCompare(b));
   },
+  async tables(connection, signal) {
+    return read(await getResponse(`${PLUGIN_ROOT}/data-access/api/v2/connections/${enc(connection)}/tables`, signal), tableListSchema);
+  },
 };
 
 const Context = createContext<DatasetSource>(httpDatasetSource);
@@ -270,6 +294,7 @@ export const datasetKeys = {
   all: ['datasets'] as const,
   one: (id: string) => ['datasets', 'one', id] as const,
   connections: ['datasets', 'connections'] as const,
+  tables: (connection: string) => ['datasets', 'tables', connection] as const,
 };
 
 export function useDatasetSource() {
@@ -289,6 +314,16 @@ export function useDataset(id: string | undefined) {
 export function useConnectionNames(enabled = true) {
   const source = useContext(Context);
   return useQuery({ queryKey: datasetKeys.connections, queryFn: ({ signal }) => source.connections(signal), enabled });
+}
+
+export function useConnectionTables(connection: string, enabled = true) {
+  const source = useContext(Context);
+  return useQuery({
+    queryKey: datasetKeys.tables(connection),
+    queryFn: ({ signal }) => source.tables(connection, signal),
+    enabled: enabled && !!connection,
+    retry: false,
+  });
 }
 
 /** The API's explanation of an error, for display. */
