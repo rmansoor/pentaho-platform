@@ -51,7 +51,11 @@ async function doFetch(url: string, init: RequestInit): Promise<Response> {
 
 /** GET a JSON resource and validate it. Same-origin session cookie; no tokens in storage. */
 /** Paths are relative to API_ROOT unless already rooted at the API or plugin root. */
-const resolve = (path: string) => (path.startsWith(PLUGIN_ROOT) || path.startsWith(`${API_ROOT}/`) ? path : `${API_ROOT}${path}`);
+/** The web application's root (/pentaho); servlets such as UploadService live directly under it. */
+export const CONTEXT_ROOT = API_ROOT.replace(/\/api$/, '');
+
+const resolve = (path: string) =>
+  path.startsWith(PLUGIN_ROOT) || path.startsWith(`${API_ROOT}/`) || path.startsWith(`${CONTEXT_ROOT}/`) ? path : `${API_ROOT}${path}`;
 
 export async function getJson<T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal): Promise<T> {
   const url = resolve(path);
@@ -64,6 +68,16 @@ export async function getJson<T>(path: string, schema: z.ZodType<T>, signal?: Ab
     throw new ApiError(response.status, url, `Expected JSON but got ${type || 'no content type'}.`);
   }
   return schema.parse(await response.json());
+}
+
+/** GET a resource and return the response whatever its status, for callers that need its headers or error body. */
+export async function getResponse(path: string, signal?: AbortSignal, accept = 'application/json'): Promise<Response> {
+  const url = resolve(path);
+  const response = await doFetch(url, { method: 'GET', headers: { Accept: accept }, signal });
+  if (response.status === 401 || response.status >= 500) {
+    throw new ApiError(response.status, url, `${response.status} ${response.statusText}`.trim());
+  }
+  return response;
 }
 
 /** GET a resource as text; '' for 204 No Content. Some endpoints only answer `text/plain`. */
@@ -112,6 +126,8 @@ export interface SendOptions {
   body?: string | FormData;
   contentType?: string;
   accept?: string;
+  /** More request headers, such as If-Match. */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -122,7 +138,7 @@ export interface SendOptions {
 export async function send(
   method: 'PUT' | 'POST' | 'DELETE',
   path: string,
-  { body, contentType = 'text/plain', accept }: SendOptions = {},
+  { body, contentType = 'text/plain', accept, headers }: SendOptions = {},
 ): Promise<Response> {
   const url = resolve(path);
   const attempt = async (refresh: boolean) =>
@@ -132,6 +148,7 @@ export async function send(
       headers: {
         ...(body instanceof FormData ? {} : { 'Content-Type': contentType }),
         ...(accept ? { Accept: accept } : {}),
+        ...headers,
         ...(await csrfHeaders(url, refresh)),
       },
     });

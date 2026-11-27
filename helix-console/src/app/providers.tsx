@@ -7,6 +7,7 @@ import { SchedulerSourceProvider } from '../api/scheduler-context';
 import { httpSchedulerSource, type SchedulerSource } from '../api/scheduler';
 import { DataSourceSourceProvider, httpDataSourceSource, type DataSourceSource } from '../api/datasources';
 import { AdminSourceProvider, httpAdminSource, type AdminSource } from '../api/admin';
+import { DatasetSourceProvider, httpDatasetSource, type DatasetSource } from '../api/datasets';
 
 export function createQueryClient() {
   return new QueryClient({
@@ -29,6 +30,7 @@ export function AppProviders({
   schedulerSource = httpSchedulerSource,
   dataSourceSource = httpDataSourceSource,
   adminSource = httpAdminSource,
+  datasetSource = httpDatasetSource,
   children,
 }: {
   queryClient: QueryClient;
@@ -36,6 +38,7 @@ export function AppProviders({
   schedulerSource?: SchedulerSource;
   dataSourceSource?: DataSourceSource;
   adminSource?: AdminSource;
+  datasetSource?: DatasetSource;
   children: ReactNode;
 }) {
   return (
@@ -43,7 +46,9 @@ export function AppProviders({
       <RepoSourceProvider source={repoSource}>
         <SchedulerSourceProvider source={schedulerSource}>
           <DataSourceSourceProvider source={dataSourceSource}>
-            <AdminSourceProvider source={adminSource}>{children}</AdminSourceProvider>
+            <AdminSourceProvider source={adminSource}>
+              <DatasetSourceProvider source={datasetSource}>{children}</DatasetSourceProvider>
+            </AdminSourceProvider>
           </DataSourceSourceProvider>
         </SchedulerSourceProvider>
       </RepoSourceProvider>

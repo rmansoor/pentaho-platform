@@ -1,0 +1,126 @@
+import { describe, expect, it } from 'vitest';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { renderApp } from '../../test/render-app';
+import { createFixtureRepoSource } from '../../api/mock/repo-fixture';
+import { createFixtureSchedulerSource } from '../../api/mock/scheduler-fixture';
+import { createFixtureDataSourceSource } from '../../api/mock/datasource-fixture';
+import { createFixtureAdminSource } from '../../api/mock/admin-fixture';
+import { createFixtureDatasetSource, type FixtureDatasetSource } from '../../api/mock/dataset-fixture';
+import { DatasetError } from '../../api/datasets';
+
+const open = (path: string, datasets: FixtureDatasetSource = createFixtureDatasetSource()) =>
+  renderApp(path, createFixtureRepoSource(), createFixtureSchedulerSource(), createFixtureDataSourceSource(), createFixtureAdminSource(), datasets).then(
+    (r) => ({ ...r, datasets }),
+  );
+const items = () => within(screen.getByRole('list', { name: 'Datasets' })).getAllByRole('listitem');
+
+describe('Datasets', () => {
+  it('lists datasets with their source and owner, and searches them', async () => {
+    const user = userEvent.setup();
+    await open('/datasets');
+    await screen.findByRole('list', { name: 'Datasets' });
+
+    expect(items()).toHaveLength(2);
+    expect(items()[0]).toHaveTextContent('Orders');
+    expect(items()[0]).toHaveTextContent('Database tables · Owner: admin');
+    expect(items()[1]).toHaveTextContent('File · Owner: suzy');
+    await user.type(screen.getByRole('searchbox', { name: 'Search datasets' }), 'suzy');
+    expect(items()).toHaveLength(1);
+  });
+
+  it('deletes with the version it listed', async () => {
+    const user = userEvent.setup();
+    const { datasets } = await open('/datasets');
+    await screen.findByRole('list', { name: 'Datasets' });
+
+    await user.click(screen.getByRole('button', { name: 'Delete Orders' }));
+    const dialog = screen.getByRole('dialog', { name: 'Delete "Orders"?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(items()).toHaveLength(1));
+    expect(datasets.calls).toEqual(['delete orders']);
+  });
+
+  it('creates a dataset from a CSV file: upload, preview, choose columns, save and load', async () => {
+    const user = userEvent.setup();
+    const { datasets, router } = await open('/datasets');
+    await user.click(await screen.findByRole('button', { name: 'New dataset' }));
+    await screen.findByRole('heading', { name: 'New dataset', level: 1 });
+
+    await user.click(screen.getByRole('button', { name: 'Preview data' }));
+    expect(screen.getByText('Give the dataset a name')).toBeInTheDocument();
+    expect(screen.getByText('Choose a file')).toBeInTheDocument();
+    expect(datasets.calls).toEqual([]);
+
+    await user.type(screen.getByLabelText('Name'), 'Regional sales 2026');
+    await user.upload(screen.getByLabelText('CSV file'), new File(['region,units\nEMEA,1\n'], 'Sales 2026.csv', { type: 'text/csv' }));
+    await user.selectOptions(screen.getByLabelText('Separator'), 'Comma (,)');
+    await user.click(screen.getByRole('button', { name: 'Preview data' }));
+
+    await screen.findByRole('region', { name: 'First rows' });
+    expect(datasets.calls).toEqual(['upload Sales 2026.csv', 'create regional-sales-2026', 'sample regional-sales-2026']);
+    expect(datasets.stored.get('regional-sales-2026')!.definition.source).toEqual({
+      type: 'FILE',
+      file: { format: 'CSV', path: 'sales-2026-fixture.csv', headerRow: true, delimiter: ',' },
+    });
+
+    await user.click(screen.getByRole('checkbox', { name: 'Keep month' }));
+    await user.type(screen.getByRole('textbox', { name: 'Label for revenue' }), 'Revenue (EUR)');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Type of units' }), 'Decimal');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('3 columns kept of 4')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save and load file' }));
+    expect(await screen.findByText(/Loaded 2 rows into DS_REGIONAL_SALES_2026_/)).toBeInTheDocument();
+    expect(datasets.calls.slice(3)).toEqual(['update regional-sales-2026', 'stage regional-sales-2026']);
+    const saved = datasets.stored.get('regional-sales-2026')!.definition;
+    expect(saved.columns).toEqual([
+      { name: 'region', sourceName: 'region', type: 'STRING' },
+      { name: 'units', sourceName: 'units', type: 'DECIMAL' },
+      { name: 'revenue', sourceName: 'revenue', type: 'DECIMAL', label: 'Revenue (EUR)' },
+    ]);
+    expect(saved.source?.file?.stagingTable).toMatch(/^DS_REGIONAL_SALES_2026_/);
+
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/\/datasets$/));
+  });
+
+  it('creates a dataset from a SQL query on a connection, without loading anything', async () => {
+    const user = userEvent.setup();
+    const { datasets, router } = await open('/datasets/new');
+    await user.type(await screen.findByLabelText('Name'), 'Big orders');
+    await user.click(screen.getByRole('radio', { name: 'SQL query' }));
+    await user.selectOptions(await screen.findByLabelText('Connection'), 'SampleData');
+    await user.type(screen.getByLabelText('Query'), 'SELECT * FROM ORDERS');
+    await user.click(screen.getByRole('button', { name: 'Preview data' }));
+
+    await screen.findByRole('region', { name: 'First rows' });
+    expect(screen.getByText('The source has more rows than shown.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: 'Save dataset' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/\/datasets$/));
+    expect(datasets.calls).toEqual(['create big-orders', 'sample big-orders', 'update big-orders']);
+    expect(datasets.stored.get('big-orders')!.definition.source).toEqual({ type: 'SQL', connection: 'SampleData', sql: 'SELECT * FROM ORDERS' });
+  });
+
+  it('shows what the server refused, and keeps the draft to fix', async () => {
+    const user = userEvent.setup();
+    const datasets = createFixtureDatasetSource();
+    datasets.failNextSample = new DatasetError(422, 'validation-failed', 'The source\'s sql must be a query (SELECT, WITH or VALUES)', 'source.sql', [
+      { path: 'source.sql', message: 'must be a query (SELECT, WITH or VALUES)' },
+    ]);
+    await open('/datasets/orders', datasets);
+
+    expect(await screen.findByLabelText('Name')).toHaveValue('Orders');
+    expect(screen.getByLabelText('Tables')).toHaveValue('ORDERS');
+    await user.click(screen.getByRole('button', { name: 'Preview data' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('must be a query');
+
+    await user.click(screen.getByRole('button', { name: 'Preview data' }));
+    await screen.findByRole('region', { name: 'First rows' });
+    // Columns chosen before stay chosen; the rest start unticked.
+    expect(screen.getByRole('checkbox', { name: 'Keep ORDERNUMBER' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Keep STATUS' })).not.toBeChecked();
+  });
+});

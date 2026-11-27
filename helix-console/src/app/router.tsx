@@ -13,6 +13,8 @@ import { TrashPage } from '../features/files/TrashPage';
 import { HomePage } from '../features/home/HomePage';
 import { SchedulesPage } from '../features/schedules/SchedulesPage';
 import { DataSourcesPage } from '../features/datasources/DataSourcesPage';
+import { DatasetsPage } from '../features/datasets/DatasetsPage';
+import { DatasetEditorPage } from '../features/datasets/DatasetEditorPage';
 import { AdminPage } from '../features/admin/AdminPage';
 import { ViewerPage } from '../features/viewer/ViewerPage';
 import { ContentPage } from '../features/viewer/ContentPage';
@@ -93,6 +95,39 @@ const dataSourcesRoute = createRoute({
   component: DataSourcesPage,
 });
 
+const datasetsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/datasets',
+  component: function DatasetsRoute() {
+    const navigate = datasetsRoute.useNavigate();
+    return (
+      <DatasetsPage
+        onCreate={() => void navigate({ to: '/datasets/new' })}
+        onEdit={(id) => void navigate({ to: '/datasets/$id', params: { id } })}
+      />
+    );
+  },
+});
+
+const newDatasetRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/datasets/new',
+  component: function NewDatasetRoute() {
+    const navigate = newDatasetRoute.useNavigate();
+    return <DatasetEditorPage onDone={() => void navigate({ to: '/datasets' })} />;
+  },
+});
+
+const editDatasetRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/datasets/$id',
+  component: function EditDatasetRoute() {
+    const { id } = editDatasetRoute.useParams();
+    const navigate = editDatasetRoute.useNavigate();
+    return <DatasetEditorPage id={id} onDone={() => void navigate({ to: '/datasets' })} />;
+  },
+});
+
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin',
@@ -132,6 +167,9 @@ const routeTree = rootRoute.addChildren([
   filesRoute,
   trashRoute,
   schedulesRoute,
+  datasetsRoute,
+  newDatasetRoute,
+  editDatasetRoute,
   dataSourcesRoute,
   adminRoute,
   viewRoute,

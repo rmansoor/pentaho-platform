@@ -6,6 +6,7 @@ export const shell: Catalog['shell'] = {
     home: 'Start',
     files: 'Dateien',
     schedules: 'Zeitpläne',
+    datasets: 'Datensätze',
     datasources: 'Datenquellen',
     admin: 'Verwaltung',
   },

@@ -4,6 +4,7 @@ export const shell = {
     home: 'Home',
     files: 'Files',
     schedules: 'Schedules',
+    datasets: 'Datasets',
     datasources: 'Data sources',
     admin: 'Administration',
   },
