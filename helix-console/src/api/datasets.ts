@@ -13,6 +13,7 @@ import { ApiError, getJson, getResponse, PLUGIN_ROOT, send } from './http';
  *   DELETE /datasets/{id}   If-Match      -> 204
  *   POST   /datasets/{id}/sample?limit=   -> {columns, rows, truncated}
  *   POST   /datasets/{id}/stage  If-Match -> {connection, table, rows, columns, warnings}, ETag
+ *   POST   /datasets/{id}/stage?async=true  If-Match -> 202 job; GET .../stage follows it, DELETE .../stage stops it
  *   GET    /connections/{name}/tables     -> {tables: [{schema?, name, type, qualifiedName}], truncated}
  *   GET    /settings/staging              -> {connection?, schema?, saved: {...}, defaults: {...}}
  *   PUT    /settings/staging  {connection?, schema?} (administrators) -> the same
@@ -132,6 +133,17 @@ export interface StagingState extends StagingSettings {
   defaults: StagingSettings;
 }
 
+export interface LoadJob {
+  id: string;
+  state: 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+  rowsRead: number;
+  rowsLoaded: number;
+  table?: StagedTable;
+  /** When it succeeded: the dataset's new version. */
+  version?: string;
+  error?: { code: string; message: string; path?: string };
+}
+
 export interface Problem {
   path: string;
   message: string;
@@ -183,6 +195,15 @@ const tableListSchema = z.object({
 });
 const stagingSettingsSchema = z.object({ connection: z.string().optional(), schema: z.string().optional() });
 const stagingStateSchema = stagingSettingsSchema.extend({ saved: stagingSettingsSchema, defaults: stagingSettingsSchema });
+const loadJobSchema = z.object({
+  id: z.string(),
+  state: z.enum(['RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED']),
+  rowsRead: z.number(),
+  rowsLoaded: z.number(),
+  table: stagedSchema.optional(),
+  version: z.string().optional(),
+  error: z.object({ code: z.string(), message: z.string(), path: z.string().optional() }).optional(),
+});
 const errorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -218,6 +239,12 @@ export interface DatasetSource {
   sample(id: string, limit?: number): Promise<Sample>;
   /** Loads a FILE dataset's file into its staging table; the dataset's version changes. */
   stage(id: string, version: string): Promise<{ table: StagedTable; version: string }>;
+  /** Starts loading a FILE dataset's file in the background. */
+  startLoad(id: string, version: string): Promise<LoadJob>;
+  /** The dataset's running or last background load. */
+  loadStatus(id: string): Promise<LoadJob>;
+  /** Asks the running background load to stop. */
+  cancelLoad(id: string): Promise<LoadJob>;
   /** Uploads the dataset's CSV file; the server records it in `source.file` and the version changes. */
   uploadFile(id: string, version: string, file: File): Promise<Stored>;
   /** Database connection names, for SQL and TABLES sources. */
@@ -262,6 +289,16 @@ export const httpDatasetSource: DatasetSource = {
   async stage(id, version) {
     const response = await send('POST', `${BASE}/${enc(id)}/stage`, { accept: 'application/json', headers: { 'If-Match': ifMatch(version) } });
     return { table: await read(response, stagedSchema), version: versionOf(response) };
+  },
+  async startLoad(id, version) {
+    const response = await send('POST', `${BASE}/${enc(id)}/stage?async=true`, { accept: 'application/json', headers: { 'If-Match': ifMatch(version) } });
+    return read(response, loadJobSchema);
+  },
+  async loadStatus(id) {
+    return read(await getResponse(`${BASE}/${enc(id)}/stage`), loadJobSchema);
+  },
+  async cancelLoad(id) {
+    return read(await send('DELETE', `${BASE}/${enc(id)}/stage`, { accept: 'application/json' }), loadJobSchema);
   },
   async uploadFile(id, version, file) {
     const response = await send('PUT', `${BASE}/${enc(id)}/file?name=${enc(file.name)}`, {

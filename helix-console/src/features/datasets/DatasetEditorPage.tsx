@@ -13,6 +13,7 @@ import {
   type ColumnType,
   type Sample,
   type SourceType,
+  type LoadJob,
   type StagedTable,
   type Stored,
 } from '../../api/datasets';
@@ -40,6 +41,8 @@ const SOURCE_TYPES: Array<{ type: SourceType; icon: LucideIcon }> = [
 ];
 const STEPS: MessageKey[] = ['datasets.editor.steps.source', 'datasets.editor.steps.columns', 'datasets.editor.steps.finish'];
 const PREVIEW_ROWS = 20;
+/** How often a background load is checked. */
+export const LOAD_POLL_MS = 500;
 
 /** Create a dataset, or edit one (`id`): its source, then its columns, then save (and load a file). */
 export function DatasetEditorPage({ id, onDone }: { id?: string; onDone: () => void }) {
@@ -61,6 +64,7 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
   const [checked, setChecked] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [staged, setStaged] = useState<StagedTable | null>(null);
+  const [load, setLoad] = useState<LoadJob | null>(null);
   const formId = useId();
   const connections = useConnectionNames(form.sourceType !== 'FILE');
   const found = problems(form, file !== null);
@@ -93,27 +97,45 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
   });
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<StagedTable | null | 'cancelled'> => {
+      const id = stored!.definition.id!;
       const definition = definitionFrom(form, stored!.definition, columnsFrom(rows));
-      let next = await api.update(stored!.definition.id!, definition, stored!.version);
-      let table: StagedTable | null = null;
-      if (form.sourceType === 'FILE') {
-        const loaded = await api.stage(next.definition.id!, next.version);
-        table = loaded.table;
-        next = { definition: next.definition, version: loaded.version };
-      }
+      let next = await api.update(id, definition, stored!.version);
       setStored(next);
-      return table;
+      if (form.sourceType !== 'FILE') return null;
+      // Large files take a while: load in the background and follow it.
+      let job = await api.startLoad(id, next.version);
+      setLoad(job);
+      while (job.state === 'RUNNING') {
+        await new Promise((r) => setTimeout(r, LOAD_POLL_MS));
+        job = await api.loadStatus(id);
+        setLoad(job);
+      }
+      setLoad(null);
+      if (job.state === 'FAILED') {
+        throw new DatasetError(422, job.error?.code ?? 'internal', job.error?.message ?? '', job.error?.path);
+      }
+      if (job.state === 'CANCELLED') return 'cancelled';
+      next = await api.get(id);
+      setStored(next);
+      return job.table ?? null;
     },
     onMutate: () => setError(null),
     onSuccess: (table) => {
       void refreshList();
       void queryClient.invalidateQueries({ queryKey: datasetKeys.one(stored!.definition.id!) });
+      if (table === 'cancelled') {
+        toast(t('datasets.editor.loadCancelled'));
+        return;
+      }
       toast(t('datasets.editor.saved', { name: form.name.trim() }));
       if (table) setStaged(table);
       else onDone();
     },
-    onError: setError,
+    onError: (e) => {
+      setLoad(null);
+      setError(e);
+    },
   });
 
   const startPreview = () => {
@@ -275,6 +297,14 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
             <dd className="m-0">{t('datasets.editor.summaryColumns', { count: kept, total: rows.length })}</dd>
           </dl>
           {form.sourceType === 'FILE' && <p className="m-0 text-[13px] text-fg-muted">{t('datasets.editor.summaryFile')}</p>}
+          {load && (
+            <div role="status" className="flex flex-wrap items-center gap-3 rounded-card bg-accent-soft px-4 py-3">
+              <span className="flex-1 text-[13.5px]">{t('datasets.editor.loadProgress', { read: load.rowsRead, loaded: load.rowsLoaded })}</span>
+              <Button size="sm" onClick={() => void api.cancelLoad(stored!.definition.id!).catch(() => undefined)}>
+                {t('datasets.editor.stopLoading')}
+              </Button>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-3 border-t border-divider pt-4">
             <Button size="sm" onClick={() => setStep(1)} disabled={save.isPending}>
               {t('datasets.editor.previous')}

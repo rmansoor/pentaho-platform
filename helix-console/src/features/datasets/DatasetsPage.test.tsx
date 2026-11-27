@@ -72,7 +72,7 @@ describe('Datasets', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save and load file' }));
     expect(await screen.findByText(/Loaded 2 rows into DS_REGIONAL_SALES_2026_/)).toBeInTheDocument();
-    expect(datasets.calls.slice(3)).toEqual(['update regional-sales-2026', 'stage regional-sales-2026']);
+    expect(datasets.calls.slice(3)).toEqual(['update regional-sales-2026', 'start load regional-sales-2026', 'stage regional-sales-2026']);
     const saved = datasets.stored.get('regional-sales-2026')!.definition;
     expect(saved.columns).toEqual([
       { name: 'region', sourceName: 'region', type: 'STRING' },
@@ -148,5 +148,23 @@ describe('Datasets', () => {
     const typed = await screen.findByRole('textbox', { name: 'Tables' });
     expect(typed).toHaveValue('ORDERS, ORDERDETAILS');
     expect(screen.getByText(/Couldn't list this connection's tables: .*connection "AgileBI" is down\. Type their names instead\./)).toBeInTheDocument();
+  });
+
+  it('shows a background load\'s progress, and can stop it', async () => {
+    const user = userEvent.setup();
+    const datasets = createFixtureDatasetSource();
+    datasets.loadSteps = 50;
+    await open('/datasets/regional-sales', datasets);
+    await user.click(await screen.findByRole('button', { name: 'Preview data' }));
+    await screen.findByRole('region', { name: 'First rows' });
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: 'Save and load file' }));
+
+    expect(await screen.findByText(/Checked 2,000 rows, loaded 1,000…/, undefined, { timeout: 3000 })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Stop loading' }));
+    expect(await screen.findByText("Loading stopped. The columns are saved; the file wasn't loaded.", undefined, { timeout: 3000 })).toBeInTheDocument();
+    expect(datasets.calls).toContain('cancel load regional-sales');
+    expect(datasets.calls).not.toContain('stage regional-sales');
+    expect(screen.getByRole('button', { name: 'Save and load file' })).toBeEnabled();
   });
 });

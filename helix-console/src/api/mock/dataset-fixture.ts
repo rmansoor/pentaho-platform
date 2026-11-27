@@ -1,4 +1,4 @@
-import { DatasetError, type Definition, type DatasetSource, type DatasetSummary, type Sample, type StagingState, type Stored } from '../datasets';
+import { DatasetError, type Definition, type DatasetSource, type DatasetSummary, type LoadJob, type Sample, type StagingState, type Stored } from '../datasets';
 
 /** Rows the fixture's sources return when sampled. */
 const ORDERS: Sample = {
@@ -63,6 +63,8 @@ export type FixtureDatasetSource = DatasetSource & {
   stored: Map<string, Stored & { updated: string }>;
   /** When set, the next sample fails with this error. */
   failNextSample?: DatasetError;
+  /** How many times a background load reports progress before it finishes (default 0). */
+  loadSteps: number;
 };
 
 export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASETS, { delayMs = 0 } = {}): FixtureDatasetSource {
@@ -84,10 +86,13 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
     if (find(id).version !== version) throw new DatasetError(412, 'stale-version', 'The dataset changed since it was read');
   };
 
+  let job: LoadJob | undefined;
+  let pending: { id: string; version: string; steps: number; cancelled?: boolean } | undefined;
   let staging: StagingState = { connection: 'Hibernate', saved: {}, defaults: { connection: 'Hibernate' } };
   const source: FixtureDatasetSource = {
     calls: [],
     stored,
+    loadSteps: 0,
     async list() {
       await wait();
       return [...stored.values()]
@@ -160,6 +165,35 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
           warnings: [],
         },
       };
+    },
+    async startLoad(id, version) {
+      await wait();
+      check(id, version);
+      source.calls.push(`start load ${id}`);
+      job = { id: 'job-1', state: 'RUNNING', rowsRead: 0, rowsLoaded: 0 };
+      pending = { id, version, steps: source.loadSteps };
+      return structuredClone(job);
+    },
+    async loadStatus(id) {
+      await wait();
+      if (!job || !pending || pending.id !== id) throw new DatasetError(404, 'not-found', 'No load');
+      if (job.state === 'RUNNING') {
+        if (pending.cancelled) {
+          job = { ...job, state: 'CANCELLED' };
+        } else if (pending.steps > 0) {
+          pending.steps--;
+          job = { ...job, rowsRead: 2000, rowsLoaded: job.rowsLoaded + 1000 };
+        } else {
+          const done = await source.stage(id, pending.version);
+          job = { ...job, state: 'SUCCEEDED', rowsLoaded: done.table.rows, table: done.table, version: done.version };
+        }
+      }
+      return structuredClone(job);
+    },
+    async cancelLoad(id) {
+      source.calls.push(`cancel load ${id}`);
+      if (pending) pending.cancelled = true;
+      return structuredClone(job!);
     },
     async uploadFile(id, version, file) {
       await wait();
