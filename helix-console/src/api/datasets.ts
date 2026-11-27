@@ -14,6 +14,8 @@ import { ApiError, getJson, getResponse, PLUGIN_ROOT, send } from './http';
  *   POST   /datasets/{id}/sample?limit=   -> {columns, rows, truncated}
  *   POST   /datasets/{id}/stage  If-Match -> {connection, table, rows, columns, warnings}, ETag
  *   GET    /connections/{name}/tables     -> {tables: [{schema?, name, type, qualifiedName}], truncated}
+ *   GET    /settings/staging              -> {connection?, schema?, saved: {...}, defaults: {...}}
+ *   PUT    /settings/staging  {connection?, schema?} (administrators) -> the same
  * Errors are {code, message, path?, problems?: [{path, message}]}.
  *   PUT    /datasets/{id}/file?name= If-Match  the file as the body -> definition, ETag (413 too large, 415 not CSV)
  */
@@ -119,6 +121,17 @@ export interface TableList {
   truncated: boolean;
 }
 
+export interface StagingSettings {
+  connection?: string;
+  schema?: string;
+}
+
+/** Where uploaded files are loaded: in effect, as saved, and the server's settings.xml defaults. */
+export interface StagingState extends StagingSettings {
+  saved: StagingSettings;
+  defaults: StagingSettings;
+}
+
 export interface Problem {
   path: string;
   message: string;
@@ -168,6 +181,8 @@ const tableListSchema = z.object({
   tables: z.array(z.object({ schema: z.string().optional(), name: z.string(), type: z.string(), qualifiedName: z.string() })),
   truncated: z.boolean(),
 });
+const stagingSettingsSchema = z.object({ connection: z.string().optional(), schema: z.string().optional() });
+const stagingStateSchema = stagingSettingsSchema.extend({ saved: stagingSettingsSchema, defaults: stagingSettingsSchema });
 const errorSchema = z.object({
   code: z.string(),
   message: z.string(),
@@ -209,6 +224,10 @@ export interface DatasetSource {
   connections(signal?: AbortSignal): Promise<string[]>;
   /** The tables and views on a connection, for a TABLES source. */
   tables(connection: string, signal?: AbortSignal): Promise<TableList>;
+  /** Where uploaded files are loaded. */
+  staging(signal?: AbortSignal): Promise<StagingState>;
+  /** Administrators: change where uploaded files are loaded; empty values go back to the server's defaults. */
+  setStaging(settings: StagingSettings): Promise<StagingState>;
 }
 
 export const httpDatasetSource: DatasetSource = {
@@ -262,6 +281,17 @@ export const httpDatasetSource: DatasetSource = {
     });
     return (await getJson(`${PLUGIN_ROOT}/data-access/api/datasource/jdbc/connection`, items, signal)).Item.sort((a, b) => a.localeCompare(b));
   },
+  async staging(signal) {
+    return read(await getResponse(`${PLUGIN_ROOT}/data-access/api/v2/settings/staging`, signal), stagingStateSchema);
+  },
+  async setStaging(settings) {
+    const response = await send('PUT', `${PLUGIN_ROOT}/data-access/api/v2/settings/staging`, {
+      body: JSON.stringify(settings),
+      contentType: 'application/json',
+      accept: 'application/json',
+    });
+    return read(response, stagingStateSchema);
+  },
   async tables(connection, signal) {
     return read(await getResponse(`${PLUGIN_ROOT}/data-access/api/v2/connections/${enc(connection)}/tables`, signal), tableListSchema);
   },
@@ -278,6 +308,7 @@ export const datasetKeys = {
   one: (id: string) => ['datasets', 'one', id] as const,
   connections: ['datasets', 'connections'] as const,
   tables: (connection: string) => ['datasets', 'tables', connection] as const,
+  staging: ['datasets', 'staging'] as const,
 };
 
 export function useDatasetSource() {

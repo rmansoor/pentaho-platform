@@ -1,4 +1,4 @@
-import { DatasetError, type Definition, type DatasetSource, type DatasetSummary, type Sample, type Stored } from '../datasets';
+import { DatasetError, type Definition, type DatasetSource, type DatasetSummary, type Sample, type StagingState, type Stored } from '../datasets';
 
 /** Rows the fixture's sources return when sampled. */
 const ORDERS: Sample = {
@@ -84,6 +84,7 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
     if (find(id).version !== version) throw new DatasetError(412, 'stale-version', 'The dataset changed since it was read');
   };
 
+  let staging: StagingState = { connection: 'Hibernate', saved: {}, defaults: { connection: 'Hibernate' } };
   const source: FixtureDatasetSource = {
     calls: [],
     stored,
@@ -168,6 +169,18 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
       const old = d.source?.type === 'FILE' ? d.source.file : undefined;
       d.source = { ...(d.source ?? {}), type: 'FILE', file: { format: 'CSV', headerRow: true, ...(old ?? {}), path: `${id}/0000-fixture.csv`, originalName: file.name } };
       return put(d);
+    },
+    async staging() {
+      return structuredClone(staging);
+    },
+    async setStaging(settings) {
+      source.calls.push(`staging ${settings.connection ?? '-'} ${settings.schema ?? '-'}`);
+      if (settings.connection && !['AgileBI', 'SampleData'].includes(settings.connection)) {
+        throw new DatasetError(422, 'validation-failed', `The connection names no connection this server can open ("${settings.connection}")`, 'connection');
+      }
+      const saved = { ...(settings.connection ? { connection: settings.connection } : {}), ...(settings.schema ? { schema: settings.schema } : {}) };
+      staging = { ...staging.defaults, ...saved, saved, defaults: staging.defaults };
+      return structuredClone(staging);
     },
     async connections() {
       return ['AgileBI', 'SampleData'];

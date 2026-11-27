@@ -7,6 +7,7 @@ import { contentCleanerRequest, findScheduledCleaner } from '../../api/scheduler
 import { useSession } from '../../api/repo-context';
 import { formatDateTime } from '../files/format';
 import { QueryError } from '../files/QueryError';
+import { StagingSettingsCard } from '../datasets/StagingSettingsCard';
 import { t } from '../../i18n';
 
 const inputClass = 'h-10 rounded-control border border-border-strong bg-surface px-3 text-fg';
@@ -117,6 +118,8 @@ export function SettingsTab() {
           </div>
         )}
       </Card>
+
+      <StagingSettingsCard />
 
       <Dialog
         open={confirming}
