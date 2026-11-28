@@ -41,7 +41,7 @@ describe('Datasets', () => {
     expect(datasets.calls).toEqual(['delete orders']);
   });
 
-  it('creates a dataset from a CSV file: upload, preview, choose columns, save and load', async () => {
+  it('creates a dataset from a CSV file: upload, preview, choose columns, model, then load and publish', async () => {
     const user = userEvent.setup();
     const { datasets, router } = await open('/datasets');
     await user.click(await screen.findByRole('button', { name: 'New dataset' }));
@@ -68,18 +68,47 @@ describe('Datasets', () => {
     await user.type(screen.getByRole('textbox', { name: 'Label for revenue' }), 'Revenue (EUR)');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Type of units' }), 'Decimal');
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    expect(screen.getByText('3 columns kept of 4')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Save and load file' }));
+    // The model starts from the suggestion: every kept column a dimension, the numbers also summed.
+    expect(screen.getByRole('textbox', { name: 'Name of dimension 1' })).toHaveValue('region');
+    expect(screen.getByRole('textbox', { name: 'Name of dimension 3' })).toHaveValue('Revenue (EUR)');
+    expect(screen.getByRole('textbox', { name: 'Name of measure 1' })).toHaveValue('units');
+    expect(screen.getByRole('textbox', { name: 'Name of measure 2' })).toHaveValue('Revenue (EUR)');
+    await user.click(screen.getByRole('button', { name: 'Remove dimension units' }));
+    await user.click(screen.getByRole('button', { name: 'Remove dimension Revenue (EUR)' }));
+    await user.clear(screen.getByRole('textbox', { name: 'Name of dimension 1' }));
+    await user.type(screen.getByRole('textbox', { name: 'Name of dimension 1' }), 'Region');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Total of units' }), 'Average');
+    await user.type(screen.getByRole('textbox', { name: 'Format of Revenue (EUR)' }), '#,##0.00');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('3 columns kept of 4')).toBeInTheDocument();
+    expect(screen.getByText('1 dimension, 2 measures')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save and publish' }));
     expect(await screen.findByText(/Loaded 2 rows into DS_REGIONAL_SALES_2026_/)).toBeInTheDocument();
-    expect(datasets.calls.slice(3)).toEqual(['update regional-sales-2026', 'start load regional-sales-2026', 'stage regional-sales-2026']);
+    expect(screen.getByText('Published as "Regional sales 2026"')).toBeInTheDocument();
+    expect(screen.getByText(/Choose it as a data source in Analyzer, Interactive Reports and Report Designer/)).toBeInTheDocument();
+    expect(datasets.calls.slice(3)).toEqual([
+      'update regional-sales-2026',
+      'start load regional-sales-2026',
+      'stage regional-sales-2026',
+      'publish regional-sales-2026',
+    ]);
     const saved = datasets.stored.get('regional-sales-2026')!.definition;
     expect(saved.columns).toEqual([
       { name: 'region', sourceName: 'region', type: 'STRING' },
       { name: 'units', sourceName: 'units', type: 'DECIMAL' },
       { name: 'revenue', sourceName: 'revenue', type: 'DECIMAL', label: 'Revenue (EUR)' },
     ]);
+    expect(saved.model).toEqual({
+      dimensions: [{ name: 'Region', levels: ['region'] }],
+      measures: [
+        { name: 'units', column: 'units', aggregation: 'AVERAGE' },
+        { name: 'Revenue (EUR)', column: 'revenue', aggregation: 'SUM', format: '#,##0.00' },
+      ],
+    });
     expect(saved.source?.file?.stagingTable).toMatch(/^DS_REGIONAL_SALES_2026_/);
+    expect(saved.legacy).toEqual({ domainId: 'regional-sales-2026.xmi', modelId: 'MODEL_1', catalogName: 'Regional sales 2026' });
 
     await user.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(router.state.location.pathname).toMatch(/\/datasets$/));
@@ -97,11 +126,46 @@ describe('Datasets', () => {
     await screen.findByRole('region', { name: 'First rows' });
     expect(screen.getByText('The source has more rows than shown.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    await user.click(screen.getByRole('button', { name: 'Save dataset' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: 'Save without publishing' }));
 
     await waitFor(() => expect(router.state.location.pathname).toMatch(/\/datasets$/));
     expect(datasets.calls).toEqual(['create big-orders', 'sample big-orders', 'update big-orders']);
-    expect(datasets.stored.get('big-orders')!.definition.source).toEqual({ type: 'SQL', connection: 'SampleData', sql: 'SELECT * FROM ORDERS' });
+    const saved = datasets.stored.get('big-orders')!.definition;
+    expect(saved.source).toEqual({ type: 'SQL', connection: 'SampleData', sql: 'SELECT * FROM ORDERS' });
+    expect(saved.model?.measures.map((m) => m.column)).toEqual(['ORDERNUMBER', 'AMOUNT']);
+  });
+
+  it('says what to fix in the model before going on', async () => {
+    const user = userEvent.setup();
+    const { datasets } = await open('/datasets/new');
+    await user.type(await screen.findByLabelText('Name'), 'Big orders');
+    await user.click(screen.getByRole('radio', { name: 'SQL query' }));
+    await user.selectOptions(await screen.findByLabelText('Connection'), 'SampleData');
+    await user.type(screen.getByLabelText('Query'), 'SELECT * FROM ORDERS');
+    await user.click(screen.getByRole('button', { name: 'Preview data' }));
+    await screen.findByRole('region', { name: 'First rows' });
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    await user.clear(screen.getByRole('textbox', { name: 'Name of dimension 1' }));
+    await user.clear(screen.getByRole('textbox', { name: 'Name of dimension 3' }));
+    await user.type(screen.getByRole('textbox', { name: 'Name of dimension 3' }), 'orderdate');
+    await user.click(screen.getByRole('button', { name: 'Add measure' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Column of 3' }), 'STATUS');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Total of 3' }), 'Sum');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByText('Fix the marked fields to continue.')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Name of dimension 1' })).toHaveAccessibleDescription('Give it a name');
+    expect(screen.getByRole('textbox', { name: 'Name of dimension 2' })).not.toHaveAccessibleDescription();
+    expect(screen.getByRole('textbox', { name: 'Name of dimension 3' })).toHaveAccessibleDescription('Another one has this name');
+    expect(screen.getByRole('textbox', { name: 'Name of measure 3' })).toHaveAccessibleDescription('Give it a name');
+    expect(screen.getByRole('combobox', { name: 'Column of 3' })).toHaveAccessibleDescription('Only numbers can be summed or averaged');
+
+    await user.click(screen.getByRole('button', { name: 'Start from the suggestion' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('button', { name: 'Save and publish' })).toBeInTheDocument();
+    expect(datasets.calls).not.toContain('update big-orders');
   });
 
   it('shows what the server refused, and keeps the draft to fix', async () => {
@@ -158,13 +222,15 @@ describe('Datasets', () => {
     await user.click(await screen.findByRole('button', { name: 'Preview data' }));
     await screen.findByRole('region', { name: 'First rows' });
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    await user.click(screen.getByRole('button', { name: 'Save and load file' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: 'Save and publish' }));
 
     expect(await screen.findByText(/Checked 2,000 rows, loaded 1,000…/, undefined, { timeout: 3000 })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Stop loading' }));
     expect(await screen.findByText("Loading stopped. The columns are saved; the file wasn't loaded.", undefined, { timeout: 3000 })).toBeInTheDocument();
     expect(datasets.calls).toContain('cancel load regional-sales');
     expect(datasets.calls).not.toContain('stage regional-sales');
-    expect(screen.getByRole('button', { name: 'Save and load file' })).toBeEnabled();
+    expect(datasets.calls).not.toContain('publish regional-sales');
+    expect(screen.getByRole('button', { name: 'Save and publish' })).toBeEnabled();
   });
 });

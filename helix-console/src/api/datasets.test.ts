@@ -51,6 +51,14 @@ describe('the datasets API client', () => {
     expect((await httpDatasetSource.tables('SampleData')).tables[0]).toEqual({ name: 'ORDERS', type: 'TABLE', qualifiedName: 'ORDERS' });
   });
 
+  it('publishes with the version and returns what was published', async () => {
+    const calls = serve(json({ domainId: 'sales.xmi', modelId: 'MODEL_1', catalogName: 'Sales', analysis: true, warnings: [] }, 200, '"4"'));
+    const result = await httpDatasetSource.publish('sales', '3');
+    expect(result).toEqual({ version: '4', published: { domainId: 'sales.xmi', modelId: 'MODEL_1', catalogName: 'Sales', analysis: true, warnings: [] } });
+    expect(calls[0]).toMatchObject({ method: 'POST', url: '/pentaho/plugin/data-access/api/v2/datasets/sales/publish' });
+    expect(calls[0]!.headers['If-Match']).toBe('"3"');
+  });
+
   it('stages with the version and returns the new one', async () => {
     const calls = serve(json({ connection: 'Hibernate', table: 'DS_A_1', rows: 3, columns: [], warnings: [] }, 200, '"9"'));
     const result = await httpDatasetSource.stage('a', '8');

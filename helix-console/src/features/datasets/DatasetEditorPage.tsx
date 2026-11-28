@@ -14,11 +14,13 @@ import {
   type Sample,
   type SourceType,
   type LoadJob,
+  type Published,
   type StagedTable,
   type Stored,
 } from '../../api/datasets';
 import { QueryError } from '../files/QueryError';
 import { TablePicker } from './TablePicker';
+import { ModelStep } from './ModelStep';
 import {
   columnRowsFrom,
   columnsFrom,
@@ -27,9 +29,14 @@ import {
   emptyForm,
   ENCODINGS,
   formFrom,
+  keepKeptColumns,
+  modelFormFrom,
+  modelFrom,
+  modelProblems,
   problems,
   type ColumnRow,
   type DatasetForm,
+  type ModelForm,
 } from './dataset-form';
 import { t, type MessageKey } from '../../i18n';
 
@@ -39,12 +46,12 @@ const SOURCE_TYPES: Array<{ type: SourceType; icon: LucideIcon }> = [
   { type: 'SQL', icon: Code2 },
   { type: 'TABLES', icon: Table2 },
 ];
-const STEPS: MessageKey[] = ['datasets.editor.steps.source', 'datasets.editor.steps.columns', 'datasets.editor.steps.finish'];
+const STEPS: MessageKey[] = ['datasets.editor.steps.source', 'datasets.editor.steps.columns', 'datasets.editor.steps.model', 'datasets.editor.steps.finish'];
 const PREVIEW_ROWS = 20;
 /** How often a background load is checked. */
 export const LOAD_POLL_MS = 500;
 
-/** Create a dataset, or edit one (`id`): its source, then its columns, then save (and load a file). */
+/** Create a dataset, or edit one (`id`): its source, its columns, its model, then save (load a file) and publish. */
 export function DatasetEditorPage({ id, onDone }: { id?: string; onDone: () => void }) {
   const existing = useDataset(id);
   if (id && existing.isPending) return <p className="m-0 py-10 text-fg-muted">{t('datasets.loading')}</p>;
@@ -63,7 +70,9 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
   const [rows, setRows] = useState<ColumnRow[]>([]);
   const [checked, setChecked] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const [staged, setStaged] = useState<StagedTable | null>(null);
+  const [model, setModel] = useState<ModelForm | null>(null);
+  const [modelChecked, setModelChecked] = useState(false);
+  const [result, setResult] = useState<{ staged?: StagedTable; published?: Published } | null>(null);
   const [load, setLoad] = useState<LoadJob | null>(null);
   const formId = useId();
   const connections = useConnectionNames(form.sourceType !== 'FILE');
@@ -97,39 +106,45 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
   });
 
   const save = useMutation({
-    mutationFn: async (): Promise<StagedTable | null | 'cancelled'> => {
+    mutationFn: async ({ publish }: { publish: boolean }): Promise<{ staged?: StagedTable; published?: Published } | 'cancelled'> => {
       const id = stored!.definition.id!;
-      const definition = definitionFrom(form, stored!.definition, columnsFrom(rows));
+      const definition = definitionFrom(form, stored!.definition, columnsFrom(rows), model ? modelFrom(model) : undefined);
       let next = await api.update(id, definition, stored!.version);
       setStored(next);
-      if (form.sourceType !== 'FILE') return null;
-      // Large files take a while: load in the background and follow it.
-      let job = await api.startLoad(id, next.version);
-      setLoad(job);
-      while (job.state === 'RUNNING') {
-        await new Promise((r) => setTimeout(r, LOAD_POLL_MS));
-        job = await api.loadStatus(id);
+      let staged: StagedTable | undefined;
+      if (form.sourceType === 'FILE') {
+        // Large files take a while: load in the background and follow it.
+        let job = await api.startLoad(id, next.version);
         setLoad(job);
+        while (job.state === 'RUNNING') {
+          await new Promise((r) => setTimeout(r, LOAD_POLL_MS));
+          job = await api.loadStatus(id);
+          setLoad(job);
+        }
+        setLoad(null);
+        if (job.state === 'FAILED') {
+          throw new DatasetError(422, job.error?.code ?? 'internal', job.error?.message ?? '', job.error?.path);
+        }
+        if (job.state === 'CANCELLED') return 'cancelled';
+        next = await api.get(id);
+        setStored(next);
+        staged = job.table;
       }
-      setLoad(null);
-      if (job.state === 'FAILED') {
-        throw new DatasetError(422, job.error?.code ?? 'internal', job.error?.message ?? '', job.error?.path);
-      }
-      if (job.state === 'CANCELLED') return 'cancelled';
-      next = await api.get(id);
-      setStored(next);
-      return job.table ?? null;
+      if (!publish) return { staged };
+      const { published, version } = await api.publish(id, next.version);
+      setStored({ ...next, version });
+      return { staged, published };
     },
     onMutate: () => setError(null),
-    onSuccess: (table) => {
+    onSuccess: (outcome) => {
       void refreshList();
       void queryClient.invalidateQueries({ queryKey: datasetKeys.one(stored!.definition.id!) });
-      if (table === 'cancelled') {
+      if (outcome === 'cancelled') {
         toast(t('datasets.editor.loadCancelled'));
         return;
       }
       toast(t('datasets.editor.saved', { name: form.name.trim() }));
-      if (table) setStaged(table);
+      if (outcome.staged || outcome.published) setResult(outcome);
       else onDone();
     },
     onError: (e) => {
@@ -143,6 +158,15 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
     if (Object.keys(found).length === 0) preview.mutate();
   };
   const kept = rows.filter((r) => r.keep).length;
+  const foundInModel = model ? modelProblems(model, rows) : {};
+  const toModel = () => {
+    setModel((m) => (m ? keepKeptColumns(m, rows) : modelFormFrom(stored?.definition.model, rows)));
+    setStep(2);
+  };
+  const toFinish = () => {
+    setModelChecked(true);
+    if (Object.keys(foundInModel).length === 0) setStep(3);
+  };
   const title = initial ? t('datasets.editor.editTitle', { name: initial.definition.name }) : t('datasets.editor.newTitle');
 
   return (
@@ -274,7 +298,7 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
             <Button size="sm" onClick={() => setStep(0)}>
               {t('datasets.editor.previous')}
             </Button>
-            <Button variant="primary" size="sm" disabled={kept === 0} onClick={() => setStep(2)}>
+            <Button variant="primary" size="sm" disabled={kept === 0} onClick={toModel}>
               {t('datasets.editor.next')}
             </Button>
             {kept === 0 && <span className="text-[12.5px] text-danger-fg">{t('datasets.editor.noColumns')}</span>}
@@ -282,7 +306,22 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
         </Card>
       )}
 
-      {step === 2 && !staged && (
+      {step === 2 && model && (
+        <Card className="flex flex-col gap-4 p-[18px]">
+          <ModelStep model={model} rows={rows} onChange={setModel} problems={foundInModel} checked={modelChecked} />
+          <div className="flex flex-wrap items-center gap-3 border-t border-divider pt-4">
+            <Button size="sm" onClick={() => setStep(1)}>
+              {t('datasets.editor.previous')}
+            </Button>
+            <Button variant="primary" size="sm" onClick={toFinish}>
+              {t('datasets.editor.next')}
+            </Button>
+            {modelChecked && Object.keys(foundInModel).length > 0 && <span className="text-[12.5px] text-danger-fg">{t('datasets.editor.model.fix')}</span>}
+          </div>
+        </Card>
+      )}
+
+      {step === 3 && !result && (
         <Card className="flex flex-col gap-3 p-[18px]">
           <h2 className="m-0 text-[17px] font-bold">{t('datasets.editor.summary')}</h2>
           <dl className="m-0 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1.5">
@@ -295,8 +334,11 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
             </dd>
             <dt className="text-fg-muted">{t('datasets.editor.steps.columns')}</dt>
             <dd className="m-0">{t('datasets.editor.summaryColumns', { count: kept, total: rows.length })}</dd>
+            <dt className="text-fg-muted">{t('datasets.editor.steps.model')}</dt>
+            <dd className="m-0">{t('datasets.editor.summaryModel', { dimensions: model?.dimensions.length ?? 0, measures: model?.measures.length ?? 0 })}</dd>
           </dl>
           {form.sourceType === 'FILE' && <p className="m-0 text-[13px] text-fg-muted">{t('datasets.editor.summaryFile')}</p>}
+          <p className="m-0 text-[13px] text-fg-muted">{t('datasets.editor.publishNote')}</p>
           {load && (
             <div role="status" className="flex flex-wrap items-center gap-3 rounded-card bg-accent-soft px-4 py-3">
               <span className="flex-1 text-[13.5px]">{t('datasets.editor.loadProgress', { read: load.rowsRead, loaded: load.rowsLoaded })}</span>
@@ -306,40 +348,41 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
             </div>
           )}
           <div className="flex flex-wrap items-center gap-3 border-t border-divider pt-4">
-            <Button size="sm" onClick={() => setStep(1)} disabled={save.isPending}>
+            <Button size="sm" onClick={() => setStep(2)} disabled={save.isPending}>
               {t('datasets.editor.previous')}
             </Button>
-            <Button variant="primary" size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
-              {save.isPending
-                ? form.sourceType === 'FILE'
-                  ? t('datasets.editor.loadingFile')
-                  : t('datasets.editor.saving')
-                : form.sourceType === 'FILE'
-                  ? t('datasets.editor.saveAndLoad')
-                  : t('datasets.editor.save')}
+            <Button variant="primary" size="sm" onClick={() => save.mutate({ publish: true })} disabled={save.isPending}>
+              {save.isPending ? (load ? t('datasets.editor.loadingFile') : t('datasets.editor.publishing')) : t('datasets.editor.publish')}
+            </Button>
+            <Button size="sm" onClick={() => save.mutate({ publish: false })} disabled={save.isPending}>
+              {form.sourceType === 'FILE' ? t('datasets.editor.saveAndLoad') : t('datasets.editor.saveOnly')}
             </Button>
           </div>
         </Card>
       )}
 
-      {staged && (
+      {result && (
         <Card className="flex flex-col gap-3 p-[18px]" role="status">
-          <p className="m-0 flex items-center gap-2 font-semibold">
-            <CheckCircle2 size={18} aria-hidden="true" className="text-success-fg" />
-            {t('datasets.editor.loaded', { count: staged.rows, table: staged.table })}
-          </p>
-          {staged.warnings.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <p className="m-0 flex items-center gap-2 text-[13px] font-semibold">
-                <AlertTriangle size={15} aria-hidden="true" className="text-warning-fg" />
-                {t('datasets.editor.warnings')}
+          {result.staged && (
+            <>
+              <p className="m-0 flex items-center gap-2 font-semibold">
+                <CheckCircle2 size={18} aria-hidden="true" className="text-success-fg" />
+                {t('datasets.editor.loaded', { count: result.staged.rows, table: result.staged.table })}
               </p>
-              <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[13px] text-fg-soft">
-                {staged.warnings.map((w) => (
-                  <li key={w}>{w}</li>
-                ))}
-              </ul>
-            </div>
+              <Notes title={t('datasets.editor.warnings')} notes={result.staged.warnings} />
+            </>
+          )}
+          {result.published && (
+            <>
+              <p className="m-0 flex items-center gap-2 font-semibold">
+                <CheckCircle2 size={18} aria-hidden="true" className="text-success-fg" />
+                {t('datasets.editor.published', { name: result.published.catalogName })}
+              </p>
+              <p className="m-0 text-[13px] text-fg-soft">
+                {result.published.analysis ? t('datasets.editor.publishedAnalysis') : t('datasets.editor.publishedReports')}
+              </p>
+              <Notes title={t('datasets.editor.publishedNotes')} notes={result.published.warnings} />
+            </>
           )}
           <div className="border-t border-divider pt-4">
             <Button variant="primary" size="sm" onClick={onDone}>
@@ -348,6 +391,23 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
           </div>
         </Card>
       )}
+    </div>
+  );
+}
+
+function Notes({ title, notes }: { title: string; notes: string[] }) {
+  if (notes.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="m-0 flex items-center gap-2 text-[13px] font-semibold">
+        <AlertTriangle size={15} aria-hidden="true" className="text-warning-fg" />
+        {title}
+      </p>
+      <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[13px] text-fg-soft">
+        {notes.map((w) => (
+          <li key={w}>{w}</li>
+        ))}
+      </ul>
     </div>
   );
 }

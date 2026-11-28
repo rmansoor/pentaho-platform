@@ -205,6 +205,34 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
       d.source = { ...(d.source ?? {}), type: 'FILE', file: { format: 'CSV', headerRow: true, ...(old ?? {}), path: `${id}/0000-fixture.csv`, originalName: file.name } };
       return put(d);
     },
+    async publish(id, version) {
+      await wait();
+      check(id, version);
+      source.calls.push(`publish ${id}`);
+      const d = structuredClone(find(id).definition);
+      if (d.source?.type === 'FILE' && !d.source.file?.stagingTable) {
+        throw new DatasetError(422, 'validation-failed', 'The dataset can\'t be published: load the file first', 'source.file.stagingTable');
+      }
+      const kept = new Set((d.columns ?? []).filter((c) => !c.hidden).map((c) => c.name));
+      if (kept.size === 0) throw new DatasetError(422, 'validation-failed', 'The dataset can\'t be published: keep at least one column', 'columns');
+      const model = d.model ?? { dimensions: [], measures: [] };
+      model.measures.forEach((m, i) => {
+        if (!kept.has(m.column)) {
+          throw new DatasetError(422, 'validation-failed', `The model can't be published: names "${m.column}"`, `model.measures[${i}].column`);
+        }
+      });
+      const empty = model.dimensions.length === 0 && model.measures.length === 0;
+      const analysis = empty ? (d.columns ?? []).some((c) => !c.hidden && (c.type === 'INTEGER' || c.type === 'DECIMAL')) : model.measures.length > 0;
+      const warnings = model.dimensions.filter((x) => x.time && !x.levels.some((l) => /year|month|quarter|week|day|date/i.test(l))).map(
+        (x) => `Dimension "${x.name}" was published as a plain dimension`,
+      );
+      let next = version;
+      if (!d.legacy?.domainId) {
+        d.legacy = { domainId: `${id}.xmi`, modelId: 'MODEL_1', catalogName: d.name };
+        next = put(d).version;
+      }
+      return { version: next, published: { domainId: d.legacy.domainId!, modelId: d.legacy.modelId!, catalogName: d.legacy.catalogName!, analysis, warnings } };
+    },
     async staging() {
       return structuredClone(staging);
     },

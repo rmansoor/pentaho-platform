@@ -14,6 +14,7 @@ import { ApiError, getJson, getResponse, PLUGIN_ROOT, send } from './http';
  *   POST   /datasets/{id}/sample?limit=   -> {columns, rows, truncated}
  *   POST   /datasets/{id}/stage  If-Match -> {connection, table, rows, columns, warnings}, ETag
  *   POST   /datasets/{id}/stage?async=true  If-Match -> 202 job; GET .../stage follows it, DELETE .../stage stops it
+ *   POST   /datasets/{id}/publish  If-Match -> {domainId, modelId, catalogName, analysis, warnings}, ETag
  *   GET    /connections/{name}/tables     -> {tables: [{schema?, name, type, qualifiedName}], truncated}
  *   GET    /settings/staging              -> {connection?, schema?, saved: {...}, defaults: {...}}
  *   PUT    /settings/staging  {connection?, schema?} (administrators) -> the same
@@ -58,7 +59,32 @@ export interface Column {
   hidden?: boolean;
 }
 
-/** A dataset definition. Fields this console doesn't edit (model, security, refresh…) are kept as they are. */
+export const AGGREGATIONS = ['SUM', 'COUNT', 'COUNT_DISTINCT', 'AVERAGE', 'MINIMUM', 'MAXIMUM'] as const;
+export type Aggregation = (typeof AGGREGATIONS)[number];
+
+/** A dimension with one hierarchy: its levels are column names, top level first. */
+export interface Dimension {
+  name: string;
+  levels: string[];
+  /** A time dimension (Year, Quarter, Month…), so analysis tools offer time functions. */
+  time?: boolean;
+}
+
+/** An aggregated column. */
+export interface Measure {
+  name: string;
+  column: string;
+  aggregation?: Aggregation;
+  format?: string;
+}
+
+/** What analysis tools see: dimensions to slice by and measures to total. */
+export interface Model {
+  dimensions: Dimension[];
+  measures: Measure[];
+}
+
+/** A dataset definition. Fields this console doesn't edit (security, refresh…) are kept as they are. */
 export interface Definition {
   schemaVersion?: number;
   id?: string;
@@ -67,7 +93,23 @@ export interface Definition {
   owner?: string;
   source?: Source;
   columns?: Column[];
+  model?: Model;
+  /** The names reports use, fixed when the dataset is first published; set by the server. */
+  legacy?: { domainId?: string; modelId?: string; catalogName?: string };
   [other: string]: unknown;
+}
+
+/** What publishing stored. */
+export interface Published {
+  /** The metadata domain, as Interactive Reports and Report Designer name it. */
+  domainId: string;
+  modelId: string;
+  /** The Mondrian catalog, also the cube's name in Analyzer. */
+  catalogName: string;
+  /** Whether a catalog was published (the model has measures). */
+  analysis: boolean;
+  /** What was published differently from the definition. */
+  warnings: string[];
 }
 
 export interface Stored {
@@ -194,6 +236,13 @@ const optionalString = z
   .string()
   .nullish()
   .transform((v) => v ?? undefined);
+const publishedSchema = z.object({
+  domainId: z.string(),
+  modelId: z.string(),
+  catalogName: z.string(),
+  analysis: z.boolean(),
+  warnings: z.array(z.string()),
+});
 const tableListSchema = z.object({
   tables: z.array(z.object({ schema: optionalString, name: z.string(), type: z.string(), qualifiedName: z.string() })),
   truncated: z.boolean(),
@@ -252,6 +301,11 @@ export interface DatasetSource {
   cancelLoad(id: string): Promise<LoadJob>;
   /** Uploads the dataset's CSV file; the server records it in `source.file` and the version changes. */
   uploadFile(id: string, version: string, file: File): Promise<Stored>;
+  /**
+   * Publishes the dataset for reporting (its metadata domain and, with measures, its Mondrian catalog).
+   * The version changes on the first publish, when the names reports use are fixed.
+   */
+  publish(id: string, version: string): Promise<{ version: string; published: Published }>;
   /** Database connection names, for SQL and TABLES sources. */
   connections(signal?: AbortSignal): Promise<string[]>;
   /** The tables and views on a connection, for a TABLES source. */
@@ -313,6 +367,10 @@ export const httpDatasetSource: DatasetSource = {
       headers: { 'If-Match': ifMatch(version) },
     });
     return { definition: await read(response, definitionSchema), version: versionOf(response) };
+  },
+  async publish(id, version) {
+    const response = await send('POST', `${BASE}/${enc(id)}/publish`, { accept: 'application/json', headers: { 'If-Match': ifMatch(version) } });
+    return { published: await read(response, publishedSchema), version: versionOf(response) };
   },
   async connections(signal) {
     const items = z.object({

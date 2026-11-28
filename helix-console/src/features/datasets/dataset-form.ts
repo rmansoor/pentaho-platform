@@ -1,5 +1,5 @@
 import type { MessageKey } from '../../i18n';
-import type { Column, ColumnType, Definition, Sample, SourceType } from '../../api/datasets';
+import type { Aggregation, Column, ColumnType, Definition, Model, Sample, SourceType } from '../../api/datasets';
 
 /** The separators offered for CSV files; '' lets the server detect it. */
 export const DELIMITERS = [
@@ -98,7 +98,7 @@ export function problems(form: DatasetForm, hasNewFile: boolean): FormProblems {
  * The definition to store: `base`'s fields this console doesn't edit (model, security, refresh…)
  * kept, the source rebuilt from the form. A file keeps its staging table while it stays the same file.
  */
-export function definitionFrom(form: DatasetForm, base?: Definition, columns?: Column[]): Definition {
+export function definitionFrom(form: DatasetForm, base?: Definition, columns?: Column[], model?: Model): Definition {
   const old = base?.source;
   let source: Definition['source'];
   if (form.sourceType === 'FILE') {
@@ -130,6 +130,7 @@ export function definitionFrom(form: DatasetForm, base?: Definition, columns?: C
     ...(description ? { description } : {}),
     source,
     columns: columns ?? base?.columns ?? [],
+    ...(model ?? base?.model ? { model: model ?? base?.model } : {}),
   };
 }
 
@@ -161,4 +162,105 @@ export function columnsFrom(rows: ColumnRow[]): Column[] {
       type: r.type,
       ...(r.label.trim() ? { label: r.label.trim() } : {}),
     }));
+}
+
+// ------------------------------------------------------------------------------------------------
+// The model: what analysis tools slice by (dimensions) and total (measures).
+
+export interface DimensionRow {
+  name: string;
+  /** Column names, top level first. */
+  levels: string[];
+  time: boolean;
+}
+
+export interface MeasureRow {
+  name: string;
+  column: string;
+  aggregation: Aggregation;
+  format: string;
+}
+
+export interface ModelForm {
+  dimensions: DimensionRow[];
+  measures: MeasureRow[];
+}
+
+export const isNumeric = (type: ColumnType) => type === 'INTEGER' || type === 'DECIMAL';
+/** A column as people see it: its label, else its name. */
+export const columnLabel = (r: ColumnRow) => r.label.trim() || r.name;
+
+/** What the server's modeler suggests, as the Data Source Wizard did: every kept column a dimension, numeric ones also summed. */
+export function suggestModel(rows: ColumnRow[]): ModelForm {
+  const kept = rows.filter((r) => r.keep);
+  return {
+    dimensions: kept.map((r) => ({ name: columnLabel(r), levels: [r.name], time: false })),
+    measures: kept.filter((r) => isNumeric(r.type)).map((r) => ({ name: columnLabel(r), column: r.name, aggregation: 'SUM', format: '' })),
+  };
+}
+
+/** The stored model, for editing; the suggestion when there is none yet. */
+export function modelFormFrom(model: Model | undefined, rows: ColumnRow[]): ModelForm {
+  if (!model || (model.dimensions.length === 0 && model.measures.length === 0)) return suggestModel(rows);
+  return keepKeptColumns(
+    {
+      dimensions: model.dimensions.map((d) => ({ name: d.name, levels: [...d.levels], time: !!d.time })),
+      measures: model.measures.map((m) => ({ name: m.name, column: m.column, aggregation: m.aggregation ?? 'SUM', format: m.format ?? '' })),
+    },
+    rows,
+  );
+}
+
+/** The model without what names a column that is no longer kept (a dimension left with no level goes too). */
+export function keepKeptColumns(model: ModelForm, rows: ColumnRow[]): ModelForm {
+  const kept = new Set(rows.filter((r) => r.keep).map((r) => r.name));
+  return {
+    dimensions: model.dimensions.flatMap((d) => {
+      const levels = d.levels.filter((l) => !l || kept.has(l));
+      // Gone only when every column it named is gone; one still being filled in stays.
+      return d.levels.some(Boolean) && !levels.some(Boolean) ? [] : [{ ...d, levels }];
+    }),
+    measures: model.measures.filter((m) => !m.column || kept.has(m.column)),
+  };
+}
+
+export type ModelProblems = Partial<Record<string, MessageKey>>;
+
+/**
+ * What must be fixed before saving, by field: `dimensions.0.name`, `dimensions.0.levels`,
+ * `measures.1.column`… Names are required and unique among dimensions and among measures.
+ */
+export function modelProblems(model: ModelForm, rows: ColumnRow[]): ModelProblems {
+  const p: ModelProblems = {};
+  const types = new Map(rows.map((r) => [r.name, r.type]));
+  const seen = (names: string[], i: number) => names.slice(0, i).some((n) => n.toLowerCase() === names[i]!.toLowerCase());
+  const dims = model.dimensions.map((d) => d.name.trim());
+  model.dimensions.forEach((d, i) => {
+    if (!dims[i]) p[`dimensions.${i}.name`] = 'datasets.editor.problems.modelName';
+    else if (seen(dims, i)) p[`dimensions.${i}.name`] = 'datasets.editor.problems.duplicateName';
+    if (!d.levels.some(Boolean)) p[`dimensions.${i}.levels`] = 'datasets.editor.problems.levels';
+  });
+  const measures = model.measures.map((m) => m.name.trim());
+  model.measures.forEach((m, i) => {
+    if (!measures[i]) p[`measures.${i}.name`] = 'datasets.editor.problems.modelName';
+    else if (seen(measures, i)) p[`measures.${i}.name`] = 'datasets.editor.problems.duplicateName';
+    if (!m.column) p[`measures.${i}.column`] = 'datasets.editor.problems.measureColumn';
+    else if ((m.aggregation === 'SUM' || m.aggregation === 'AVERAGE') && !isNumeric(types.get(m.column) ?? 'STRING')) {
+      p[`measures.${i}.column`] = 'datasets.editor.problems.numericAggregation';
+    }
+  });
+  return p;
+}
+
+/** The model as the definition stores it. */
+export function modelFrom(form: ModelForm): Model {
+  return {
+    dimensions: form.dimensions.map((d) => ({ name: d.name.trim(), levels: d.levels.filter(Boolean), ...(d.time ? { time: true } : {}) })),
+    measures: form.measures.map((m) => ({
+      name: m.name.trim(),
+      column: m.column,
+      aggregation: m.aggregation,
+      ...(m.format.trim() ? { format: m.format.trim() } : {}),
+    })),
+  };
 }
