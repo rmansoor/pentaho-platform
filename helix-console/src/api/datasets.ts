@@ -189,11 +189,16 @@ const stagedSchema = z.object({
   columns: z.array(z.object({ sourceName: z.string(), name: z.string(), type: columnType, sqlType: z.string() })),
   warnings: z.array(z.string()),
 });
+/** An optional string the server may send as null: read as absent. */
+const optionalString = z
+  .string()
+  .nullish()
+  .transform((v) => v ?? undefined);
 const tableListSchema = z.object({
-  tables: z.array(z.object({ schema: z.string().optional(), name: z.string(), type: z.string(), qualifiedName: z.string() })),
+  tables: z.array(z.object({ schema: optionalString, name: z.string(), type: z.string(), qualifiedName: z.string() })),
   truncated: z.boolean(),
 });
-const stagingSettingsSchema = z.object({ connection: z.string().optional(), schema: z.string().optional() });
+const stagingSettingsSchema = z.object({ connection: optionalString, schema: optionalString });
 const stagingStateSchema = stagingSettingsSchema.extend({ saved: stagingSettingsSchema, defaults: stagingSettingsSchema });
 const loadJobSchema = z.object({
   id: z.string(),

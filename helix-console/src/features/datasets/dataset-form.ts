@@ -125,6 +125,7 @@ export function definitionFrom(form: DatasetForm, base?: Definition, columns?: C
   const { description: _old, ...rest } = base ?? { name: '' };
   return {
     ...rest,
+    schemaVersion: base?.schemaVersion ?? 1,
     name: form.name.trim(),
     ...(description ? { description } : {}),
     source,

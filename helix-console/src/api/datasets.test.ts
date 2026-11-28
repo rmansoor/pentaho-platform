@@ -42,6 +42,15 @@ describe('the datasets API client', () => {
     expect(error).toMatchObject({ status: 422, code: 'validation-failed', path: 'source.sql', problems: [{ path: 'source.sql', message: 'is required' }] });
   });
 
+  it('reads values the server sends as null as absent', async () => {
+    serve(
+      json({ connection: 'Hibernate', schema: null, saved: {}, defaults: { connection: 'Hibernate', schema: null } }),
+      json({ tables: [{ schema: null, name: 'ORDERS', type: 'TABLE', qualifiedName: 'ORDERS' }], truncated: false }),
+    );
+    expect(await httpDatasetSource.staging()).toEqual({ connection: 'Hibernate', saved: {}, defaults: { connection: 'Hibernate' } });
+    expect((await httpDatasetSource.tables('SampleData')).tables[0]).toEqual({ name: 'ORDERS', type: 'TABLE', qualifiedName: 'ORDERS' });
+  });
+
   it('stages with the version and returns the new one', async () => {
     const calls = serve(json({ connection: 'Hibernate', table: 'DS_A_1', rows: 3, columns: [], warnings: [] }, 200, '"9"'));
     const result = await httpDatasetSource.stage('a', '8');

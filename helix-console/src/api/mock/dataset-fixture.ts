@@ -117,10 +117,11 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
     async create(definition) {
       await wait();
       if (!definition.name?.trim()) throw new DatasetError(400, 'invalid-definition', 'A dataset needs a name', 'name');
+      if (!Number.isInteger(definition.schemaVersion)) throw new DatasetError(400, 'invalid-definition', 'schemaVersion: is required and must be a whole number', 'schemaVersion');
       let id = definition.id ?? slug(definition.name);
       for (let n = 2; stored.has(id); n++) id = `${slug(definition.name)}-${n}`;
       source.calls.push(`create ${id}`);
-      return put({ schemaVersion: 1, owner: 'admin', ...definition, id });
+      return put({ owner: 'admin', ...definition, id });
     },
     async update(id, definition, version) {
       await wait();
