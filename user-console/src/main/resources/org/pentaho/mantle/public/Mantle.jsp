@@ -37,6 +37,15 @@
 <%
   boolean hasDataAccessPlugin = PentahoSystem.get( IPluginManager.class, PentahoSessionHolder.getSession() ).getRegisteredPlugins().contains( "data-access" );
 
+  // [helix] The data-access plugin's files are cached for a month; naming the deployed version in the
+  // address makes browsers fetch them again after an upgrade instead of running the old script.
+  String dataAccessVersion = "";
+  if ( hasDataAccessPlugin ) {
+    long modified = new java.io.File( PentahoSystem.getApplicationContext().getSolutionPath(
+      "system/data-access/resources/gwt/DatasourceEditor.nocache.js" ) ).lastModified();
+    dataAccessVersion = modified > 0 ? "?v=" + modified : "";
+  }
+
   // Handle the `locale` request parameter.
   Locale effectiveLocale = LocaleHelper.parseLocale( request.getParameter( "locale" ) );
 
@@ -134,7 +143,7 @@
   <link rel="mask-icon" href="/pentaho-style/safari-pinned-tab.svg" color="#cc0000">
   <link rel='stylesheet' href='mantle/MantleStyle.css'/>
   <%if ( hasDataAccessPlugin ) {%>
-  <link rel="stylesheet" href="content/data-access/resources/gwt/datasourceEditorDialog.css"/>
+  <link rel="stylesheet" href="content/data-access/resources/gwt/datasourceEditorDialog.css<%= dataAccessVersion %>"/>
   <%}%>
   <link rel="stylesheet" href="mantle/Widgets.css"/>
 
@@ -263,7 +272,7 @@
 
 <script language='javascript' src='mantle/mantle.nocache.js'></script>
 <%if ( hasDataAccessPlugin ) {%>
-<script language='javascript' src='content/data-access/resources/gwt/DatasourceEditor.nocache.js'></script>
+<script language='javascript' src='content/data-access/resources/gwt/DatasourceEditor.nocache.js<%= dataAccessVersion %>'></script>
 <%}}}%>
 
 </html>

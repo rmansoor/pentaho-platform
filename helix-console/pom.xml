@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ******************************************************************************
+ *
+ * Pentaho
+ *
+ * Copyright (C) 2026 by Pentaho Canada Inc. : http://www.pentaho.com
+ *
+ * Use of this software is governed by the Business Source License included
+ * in the LICENSE.TXT file.
+ *
+ * Change Date: 2030-06-15
+ ******************************************************************************* -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>pentaho</groupId>
+    <artifactId>pentaho-platform-ce-parent</artifactId>
+    <version>11.1.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>helix-console</artifactId>
+  <version>11.1.0.0-SNAPSHOT</version>
+  <packaging>war</packaging>
+  <name>Helix Console</name>
+  <description>The React console that replaces the GWT user-console. Built only with -Pnew-console
+    until cutover; served at /pentaho/console/. See helix-console/README.md.</description>
+
+  <properties>
+    <frontend-maven-plugin.version>1.14.0</frontend-maven-plugin.version>
+    <helix-console.node.version>v26.7.0</helix-console.node.version>
+    <helix-console.npm.version>11.19.0</helix-console.npm.version>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>com.github.eirslett</groupId>
+        <artifactId>frontend-maven-plugin</artifactId>
+        <version>${frontend-maven-plugin.version}</version>
+        <configuration>
+          <nodeVersion>${helix-console.node.version}</nodeVersion>
+          <npmVersion>${helix-console.npm.version}</npmVersion>
+          <installDirectory>${project.build.directory}</installDirectory>
+          <!-- The parent defaults to the reactor root; the npm project is this module. -->
+          <workingDirectory>${basedir}</workingDirectory>
+        </configuration>
+        <!-- Node and npm are installed by the parent's node-npm_install execution (initialize). -->
+        <executions>
+          <execution>
+            <id>npm-ci</id>
+            <goals>
+              <goal>npm</goal>
+            </goals>
+            <configuration>
+              <arguments>ci</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>npm-build</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>npm</goal>
+            </goals>
+            <configuration>
+              <arguments>run build</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>npm-test</id>
+            <phase>test</phase>
+            <goals>
+              <goal>npm</goal>
+            </goals>
+            <configuration>
+              <arguments>test</arguments>
+              <skip>${skipTests}</skip>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-war-plugin</artifactId>
+        <configuration>
+          <failOnMissingWebXml>false</failOnMissingWebXml>
+          <webResources>
+            <resource>
+              <directory>${basedir}/dist</directory>
+              <targetPath>console</targetPath>
+            </resource>
+          </webResources>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

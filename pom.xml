@@ -296,6 +296,13 @@
       </modules>
     </profile>
     <profile>
+      <!-- Helix React console. Hidden until cutover: build with -Pnew-console. -->
+      <id>new-console</id>
+      <modules>
+        <module>helix-console</module>
+      </modules>
+    </profile>
+    <profile>
       <id>platform-assemble</id>
       <activation>
         <property>

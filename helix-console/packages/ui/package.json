@@ -1,0 +1,16 @@
+{
+  "name": "@helix/ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Helix design system: Atlas tokens, Tailwind theme and shared components. Consumed from source.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./theme.css": "./src/theme.css"
+  },
+  "peerDependencies": {
+    "lucide-react": ">=1.80.0",
+    "react": "^19.3.0",
+    "zustand": "^5.1.0"
+  }
+}

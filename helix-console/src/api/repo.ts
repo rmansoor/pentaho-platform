@@ -1,0 +1,504 @@
+import { z } from 'zod';
+import { ApiError, getJson, getText, send, sendOk } from './http';
+import { t } from '../i18n';
+
+/*
+ * Repository browsing over the platform REST API:
+ *   GET /api/repo/files/{pathId}/tree?depth=1&showHidden=false&filter=*
+ * which returns a RepositoryFileTreeDto { file, children[] } of RepositoryFileDto.
+ *
+ * The JAXB JSON provider sends dates as epoch-millisecond strings, may send booleans and
+ * numbers as strings, and may collapse a one-element list into a bare object. The schemas
+ * below absorb all three.
+ */
+
+const boolish = z
+  .union([z.boolean(), z.string()])
+  .optional()
+  .transform((v) => v === true || v === 'true');
+
+const numberish = z
+  .union([z.number(), z.string()])
+  .optional()
+  .transform((v) => (v === undefined || v === '' ? undefined : Number(v)));
+
+const dateish = z
+  .union([z.number(), z.string()])
+  .optional()
+  .transform((v) => {
+    if (v === undefined || v === '') return null;
+    const ms = typeof v === 'number' ? v : /^\d+$/.test(v) ? Number(v) : Date.parse(v);
+    return Number.isFinite(ms) ? new Date(ms) : null;
+  });
+
+const fileDtoSchema = z.object({
+  id: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  title: z.string().nullish(),
+  description: z.string().nullish(),
+  folder: boolish,
+  hidden: boolish,
+  fileSize: numberish,
+  createdDate: dateish,
+  lastModifiedDate: dateish,
+  owner: z.string().nullish(),
+  creatorId: z.string().nullish(),
+  deletedDate: dateish,
+  originalParentFolderPath: z.string().nullish(),
+});
+
+/** GET /repo/files/deleted: {repositoryFileDto: null | dto | dto[]}. */
+const deletedWrapperSchema = z.object({
+  repositoryFileDto: z
+    .union([fileDtoSchema, z.array(fileDtoSchema)])
+    .nullish()
+    .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
+});
+
+interface TreeDtoInput {
+  file: z.input<typeof fileDtoSchema>;
+  children?: TreeDtoInput | TreeDtoInput[];
+}
+interface TreeDto {
+  file: z.output<typeof fileDtoSchema>;
+  children: TreeDto[];
+}
+
+const treeDtoSchema: z.ZodType<TreeDto, TreeDtoInput> = z.lazy(() =>
+  z.object({
+    file: fileDtoSchema,
+    children: z
+      .union([treeDtoSchema, z.array(treeDtoSchema)])
+      .optional()
+      .transform((c) => (c === undefined ? [] : Array.isArray(c) ? c : [c])),
+  }),
+);
+
+export type FileKind =
+  | 'folder'
+  | 'report'
+  | 'interactive-report'
+  | 'analysis'
+  | 'dashboard'
+  | 'transformation'
+  | 'job'
+  | 'action'
+  | 'link'
+  | 'file';
+
+export interface RepoItem {
+  /** Repository id; what the trash, restore and delete endpoints take. */
+  id: string;
+  path: string;
+  name: string;
+  /** Localized display name; falls back to the file name without its extension. */
+  title: string;
+  description?: string;
+  folder: boolean;
+  hidden: boolean;
+  kind: FileKind;
+  size?: number;
+  created: Date | null;
+  modified: Date | null;
+  /** Not sent by the tree endpoint today (it lives in the file's ACL); kept for when it is. */
+  owner?: string;
+  /** Set for items in the trash. */
+  deleted?: Date;
+  /** For items in the trash: the folder it was deleted from. */
+  originalFolder?: string;
+}
+
+export interface RepoFolder {
+  folder: RepoItem;
+  children: RepoItem[];
+}
+
+const KIND_BY_EXTENSION: Record<string, FileKind> = {
+  prpt: 'report',
+  prpti: 'interactive-report',
+  xanalyzer: 'analysis',
+  wcdf: 'dashboard',
+  xcdf: 'dashboard',
+  ktr: 'transformation',
+  kjb: 'job',
+  xaction: 'action',
+  url: 'link',
+};
+
+/** "Report", "Folder"…, in the console's language. */
+export const kindLabel = (kind: FileKind): string => t(`files.kind.${kind}`);
+
+function extensionOf(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+}
+
+/** File kind from its name (or path); folders are known only from the server. */
+export function kindOf(name: string, folder = false): FileKind {
+  return folder ? 'folder' : (KIND_BY_EXTENSION[extensionOf(name)] ?? 'file');
+}
+
+function toItem(dto: z.output<typeof fileDtoSchema>): RepoItem {
+  const ext = extensionOf(dto.name);
+  const kind = kindOf(dto.name, dto.folder);
+  const bare = !dto.folder && ext ? dto.name.slice(0, -(ext.length + 1)) : dto.name;
+  return {
+    id: dto.id || dto.path,
+    path: dto.path,
+    name: dto.name,
+    title: dto.title?.trim() || bare || dto.path,
+    description: dto.description || undefined,
+    folder: dto.folder,
+    hidden: dto.hidden,
+    kind,
+    // Folders report fileSize -1.
+    size: dto.folder || dto.fileSize === undefined || dto.fileSize < 0 ? undefined : dto.fileSize,
+    created: dto.createdDate,
+    // Folders come back with an empty lastModifiedDate; their creation date is the best we have.
+    modified: dto.lastModifiedDate ?? dto.createdDate,
+    owner: dto.owner || dto.creatorId || undefined,
+    deleted: dto.deletedDate ?? undefined,
+    originalFolder: dto.originalParentFolderPath || undefined,
+  };
+}
+
+/** Parses the trash listing. Exported for tests. */
+export function parseTrashResponse(json: unknown): RepoItem[] {
+  return deletedWrapperSchema.parse(json).repositoryFileDto.map(toItem);
+}
+
+/** Parses one tree response into the folder and its direct children. Exported for tests. */
+export function parseFolderResponse(json: unknown): RepoFolder {
+  const tree = treeDtoSchema.parse(json);
+  return { folder: toItem(tree.file), children: tree.children.map((c) => toItem(c.file)) };
+}
+
+/** Repository path ("/public/Steel Wheels") to the REST path id (":public:Steel Wheels"), URL-encoded. */
+export function toPathId(path: string): string {
+  const id = path.replace(/:/g, '\t').replace(/\//g, ':');
+  return encodeURIComponent(id || ':');
+}
+
+/*
+ * Sharing. Permission ordinals follow RepositoryFilePermission: READ 0, WRITE 1, DELETE 2,
+ * ACL_MANAGEMENT 3, ALL 4. A single permission arrives as a string, several as an array.
+ */
+export type Permission = 'read' | 'write' | 'delete' | 'manage';
+export const PERMISSIONS: readonly Permission[] = ['read', 'write', 'delete', 'manage'];
+const ORDINAL: Record<Permission, string> = { read: '0', write: '1', delete: '2', manage: '3' };
+const ALL_ORDINAL = '4';
+
+export interface AclEntry {
+  recipient: string;
+  kind: 'user' | 'role';
+  permissions: Set<Permission>;
+  /** False for entries the server adds for display (the Administrator role); never sent back. */
+  modifiable: boolean;
+}
+
+export interface FileAcl {
+  owner: string;
+  ownerKind: 'user' | 'role';
+  /** When true, `entries` are the effective ones inherited from the parent folder. */
+  inheriting: boolean;
+  entries: AclEntry[];
+}
+
+const stringList = z
+  .union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))])
+  .nullish()
+  .transform((v) => (v == null ? [] : (Array.isArray(v) ? v : [v]).map(String)));
+
+const aclDtoSchema = z.object({
+  owner: z.string().nullish(),
+  ownerType: numberish,
+  entriesInheriting: boolish,
+  aces: z
+    .union([
+      z.object({ recipient: z.string(), recipientType: numberish, modifiable: boolish, permissions: stringList }),
+      z.array(z.object({ recipient: z.string(), recipientType: numberish, modifiable: boolish, permissions: stringList })),
+    ])
+    .nullish()
+    .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
+});
+
+/** Parses GET /repo/files/{id}/acl. Exported for tests. */
+export function parseAclResponse(json: unknown): FileAcl {
+  const dto = aclDtoSchema.parse(json);
+  return {
+    owner: dto.owner ?? '',
+    ownerKind: dto.ownerType === 1 ? 'role' : 'user',
+    inheriting: dto.entriesInheriting,
+    entries: dto.aces.map((ace) => ({
+      recipient: ace.recipient,
+      kind: ace.recipientType === 1 ? 'role' : 'user',
+      modifiable: ace.modifiable,
+      permissions: ace.permissions.includes(ALL_ORDINAL)
+        ? new Set(PERMISSIONS)
+        : new Set(PERMISSIONS.filter((p) => ace.permissions.includes(ORDINAL[p]))),
+    })),
+  };
+}
+
+/**
+ * Body for PUT /repo/files/{id}/acl. Server quirk: the DTO's list setter resets
+ * entriesInheriting to false, so turning inheritance on means sending no `aces` at all;
+ * sending entries turns it off. Display-only entries are dropped.
+ */
+export function aclRequestBody(acl: FileAcl): string {
+  const base = { owner: acl.owner, ownerType: acl.ownerKind === 'role' ? 1 : 0 };
+  if (acl.inheriting) return JSON.stringify({ ...base, entriesInheriting: true });
+  const aces = acl.entries
+    .filter((e) => e.modifiable && e.permissions.size > 0)
+    .map((e) => ({
+      recipient: e.recipient,
+      recipientType: e.kind === 'role' ? 1 : 0,
+      modifiable: true,
+      permissions:
+        e.permissions.size === PERMISSIONS.length ? [ALL_ORDINAL] : PERMISSIONS.filter((p) => e.permissions.has(p)).map((p) => ORDINAL[p]),
+    }));
+  return JSON.stringify({ ...base, aces, entriesInheriting: false });
+}
+
+/** Per-file flags kept as repository metadata. */
+export interface FileFlags {
+  hidden: boolean;
+  schedulable: boolean;
+}
+
+const metadataSchema = z.object({
+  stringKeyStringValueDto: z
+    .union([z.object({ key: z.string(), value: z.string().nullish() }), z.array(z.object({ key: z.string(), value: z.string().nullish() }))])
+    .nullish()
+    .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
+});
+
+export function parseMetadataResponse(json: unknown): FileFlags {
+  const entries = metadataSchema.parse(json).stringKeyStringValueDto;
+  const get = (key: string) => entries.find((e) => e.key === key)?.value;
+  return { hidden: get('_PERM_HIDDEN') === 'true', schedulable: get('_PERM_SCHEDULABLE') !== 'false' };
+}
+
+export interface Recipients {
+  users: string[];
+  roles: string[];
+}
+
+/** How a restore went; the server can refuse the original folder (no write access there). */
+export type RestoreOutcome =
+  /** Back in its original folder. */
+  | 'restored'
+  /** Can't go back; it can go to the user's home folder with no name clashes. */
+  | 'home-available'
+  /** Can't go back; the home folder already has items with the same names. */
+  | 'home-conflict';
+
+/** What to do with name clashes when restoring to the home folder (server MODE_* values). */
+export const OVERWRITE_MODE = { replace: 1, keepBoth: 2, skip: 3 } as const;
+export type OverwriteMode = (typeof OVERWRITE_MODE)[keyof typeof OVERWRITE_MODE];
+
+/** Where the Files screens read from and write to. Swapped for a fixture in tests and `npm run dev:mock`. */
+export interface RepoSource {
+  listFolder(path: string, signal?: AbortSignal): Promise<RepoFolder>;
+  listTrash(signal?: AbortSignal): Promise<RepoItem[]>;
+  moveToTrash(ids: string[]): Promise<void>;
+  /** Without `mode`, restores to the original folder; with it, to the user's home folder. */
+  restore(ids: string[], mode?: OverwriteMode): Promise<RestoreOutcome>;
+  deletePermanently(ids: string[]): Promise<void>;
+  getAcl(path: string, signal?: AbortSignal): Promise<FileAcl>;
+  setAcl(path: string, acl: FileAcl): Promise<void>;
+  getFlags(path: string, signal?: AbortSignal): Promise<FileFlags>;
+  setFlags(path: string, flags: FileFlags): Promise<void>;
+  /** Users and roles that permissions can be granted to. */
+  listRecipients(signal?: AbortSignal): Promise<Recipients>;
+  /** A per-user setting as stored (often JSON), or null when unset. */
+  getUserSetting(key: string, signal?: AbortSignal): Promise<string | null>;
+  setUserSetting(key: string, value: string): Promise<void>;
+  /** The signed-in user. */
+  getSession(signal?: AbortSignal): Promise<Session>;
+  /** Which file extensions open in the console, and how. */
+  getOpeners(signal?: AbortSignal): Promise<Openers>;
+  /** Extensions the scheduler can run (GET /repos/executableTypes, canSchedule). */
+  getSchedulableExtensions(signal?: AbortSignal): Promise<string[]>;
+  /** Creates a folder; ApiError 409 when the name is taken. */
+  createFolder(path: string): Promise<void>;
+  /** Uploads files into a folder (zip archives are unpacked by the server). */
+  upload(folder: string, files: File[], overwrite: boolean): Promise<UploadResult>;
+  /** POST /repos/{id}/parameter with a form body (see api/reports.ts); the XML as text. */
+  reportPrompt(file: string, body: string): Promise<string>;
+}
+
+export interface UploadResult {
+  ok: boolean;
+  /** Why the server refused, in words. */
+  problem?: string;
+}
+
+/**
+ * The import endpoint answers 200 for everything and reports in the body: an HTML import log on
+ * success, "INVALID_MIME_TYPE" for types it won't store, or a log containing a stack trace.
+ */
+export function interpretImportResponse(text: string): UploadResult {
+  if (/INVALID_MIME_TYPE/.test(text)) return { ok: false, problem: t('common.errors.uploadType') };
+  if (/PentahoAccessControlException|not authorized/i.test(text)) return { ok: false, problem: t('common.errors.uploadDenied') };
+  if (/Exception/.test(text)) return { ok: false, problem: t('common.errors.uploadDamaged') };
+  return { ok: true };
+}
+
+/** Characters the repository refuses in names (GET /repo/files/reservedCharacters). */
+export const RESERVED_NAME_CHARACTERS = ['/', '\\', '\t'];
+
+/** Extension (no dot, lower case) -> the RUN perspective for /api/repos/{id}/{perspective}. */
+export type Openers = Record<string, string>;
+
+const mantleSettingsSchema = z.object({
+  setting: z
+    .union([z.object({ name: z.string(), value: z.string().nullish() }), z.array(z.object({ name: z.string(), value: z.string().nullish() }))])
+    .nullish()
+    .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
+});
+
+/**
+ * Reads the plugin content types from GET /api/mantle/settings, the same settings the GWT console
+ * uses: plugin-content-type-N = ".prpt", plugin-content-type-N-command-M = "RUN",
+ * plugin-content-type-N-command-perspective-M = "viewer" ("None" means generatedContent).
+ * Extensions arrive with stray dots ("..xaction"). Exported for tests.
+ */
+export function parseOpeners(json: unknown): Openers {
+  const settings = new Map(mantleSettingsSchema.parse(json).setting.map((s) => [s.name, s.value ?? '']));
+  const openers: Openers = {};
+  for (let i = 0; settings.has(`plugin-content-type-${i}`); i++) {
+    const ext = settings.get(`plugin-content-type-${i}`)!.replace(/^\.+/, '').toLowerCase();
+    for (let c = 0; settings.has(`plugin-content-type-${i}-command-${c}`); c++) {
+      if (settings.get(`plugin-content-type-${i}-command-${c}`) !== 'RUN') continue;
+      const perspective = settings.get(`plugin-content-type-${i}-command-perspective-${c}`) ?? '';
+      openers[ext] = !perspective || perspective === 'None' ? 'generatedContent' : perspective;
+    }
+  }
+  return openers;
+}
+
+/** URL that renders a repository file with its plugin, as the GWT console opens it. */
+export function openUrl(path: string, perspective: string): string {
+  return `/pentaho/api/repos/${toPathId(path)}/${perspective}`;
+}
+
+export function extensionOfPath(path: string): string {
+  const name = path.slice(path.lastIndexOf('/') + 1);
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+}
+
+export interface Session {
+  userName: string;
+  isAdministrator: boolean;
+}
+
+// The file endpoints take a comma-separated list of ids as a plain-text body.
+const idList = (ids: string[]) => ({ body: ids.join(','), contentType: 'text/plain' });
+
+export const httpRepoSource: RepoSource = {
+  async listFolder(path, signal) {
+    const query = 'depth=1&showHidden=false&filter=*';
+    const json = await getJson(`/repo/files/${toPathId(path)}/tree?${query}`, z.unknown(), signal);
+    return parseFolderResponse(json);
+  },
+  async listTrash(signal) {
+    return parseTrashResponse(await getJson('/repo/files/deleted', z.unknown(), signal));
+  },
+  async moveToTrash(ids) {
+    await sendOk('PUT', '/repo/files/delete', idList(ids));
+  },
+  async restore(ids, mode) {
+    const query = mode === undefined ? '' : `?overwriteMode=${mode}`;
+    const response = await send('PUT', `/repo/files/restore${query}`, idList(ids));
+    // 406 and 307 both mean "not the original folder, but home works"; 409 means clashes there.
+    if (response.ok) return 'restored';
+    if (response.status === 406 || response.status === 307) return 'home-available';
+    if (response.status === 409) return 'home-conflict';
+    throw new Error(t('common.errors.restoreFailed', { status: response.status }));
+  },
+  async deletePermanently(ids) {
+    await sendOk('PUT', '/repo/files/deletepermanent', idList(ids));
+  },
+  async getAcl(path, signal) {
+    return parseAclResponse(await getJson(`/repo/files/${toPathId(path)}/acl`, z.unknown(), signal));
+  },
+  async setAcl(path, acl) {
+    await sendOk('PUT', `/repo/files/${toPathId(path)}/acl`, { body: aclRequestBody(acl), contentType: 'application/json' });
+  },
+  async getFlags(path, signal) {
+    return parseMetadataResponse(await getJson(`/repo/files/${toPathId(path)}/metadata`, z.unknown(), signal));
+  },
+  async setFlags(path, flags) {
+    const body = JSON.stringify({
+      stringKeyStringValueDto: [
+        { key: '_PERM_HIDDEN', value: String(flags.hidden) },
+        { key: '_PERM_SCHEDULABLE', value: String(flags.schedulable) },
+      ],
+    });
+    await sendOk('PUT', `/repo/files/${toPathId(path)}/metadata`, { body, contentType: 'application/json' });
+  },
+  async listRecipients(signal) {
+    const usersSchema = z.object({ users: stringList });
+    const rolesSchema = z.object({ roles: stringList });
+    const [users, roles] = await Promise.all([
+      getJson('/userrolelist/permission-users', usersSchema, signal),
+      getJson('/userrolelist/permission-roles', rolesSchema, signal),
+    ]);
+    return { users: users.users, roles: roles.roles };
+  },
+  async getUserSetting(key, signal) {
+    // Unset settings answer 204 with no body; set ones return the stored text verbatim.
+    const text = await getText(`/user-settings/${encodeURIComponent(key)}`, signal);
+    return text === '' ? null : text;
+  },
+  async setUserSetting(key, value) {
+    await sendOk('POST', `/user-settings/${encodeURIComponent(key)}`, { body: value, contentType: 'text/plain' });
+  },
+  async getSchedulableExtensions(signal) {
+    const schema = z.object({
+      executableFileTypeDto: z
+        .union([z.object({ extension: z.string(), canSchedule: boolish }), z.array(z.object({ extension: z.string(), canSchedule: boolish }))])
+        .nullish()
+        .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
+    });
+    const types = (await getJson('/repos/executableTypes', schema, signal)).executableFileTypeDto;
+    return [...new Set(types.filter((t) => t.canSchedule).map((t) => t.extension.toLowerCase()))];
+  },
+  async upload(folder, files, overwrite) {
+    const form = new FormData();
+    form.append('importDir', folder);
+    for (const file of files) form.append('fileUpload', file, file.name);
+    form.append('overwriteFile', String(overwrite));
+    form.append('logLevel', 'ERROR');
+    form.append('retainOwnership', 'true');
+    // Names travel separately, URI-encoded: the multipart file name is only reliable in ASCII.
+    form.append('fileNameOverride', files.map((f) => encodeURIComponent(f.name)).join(','));
+    const response = await send('POST', '/repo/files/import/multiple', { body: form, accept: 'text/html' });
+    if (!response.ok) return { ok: false, problem: t('common.errors.uploadFailed', { status: response.status }) };
+    return interpretImportResponse(await response.text());
+  },
+  async createFolder(path) {
+    const response = await send('PUT', `/repo/dirs/${toPathId(path)}`);
+    if (response.status === 409) throw new ApiError(409, path, t('common.errors.nameTaken'));
+    if (!response.ok) throw new ApiError(response.status, path, t('common.errors.folderFailed', { status: response.status }));
+  },
+  async getOpeners(signal) {
+    return parseOpeners(await getJson('/mantle/settings', z.unknown(), signal));
+  },
+  async reportPrompt(file, body) {
+    const path = `/repos/${toPathId(file)}/parameter`;
+    const response = await send('POST', path, { body, contentType: 'application/x-www-form-urlencoded', accept: 'text/xml' });
+    if (!response.ok) throw new ApiError(response.status, path, `${response.status} ${response.statusText}`.trim());
+    return response.text();
+  },
+  async getSession(signal) {
+    const [userName, admin] = await Promise.all([
+      getText('/session/userName', signal, 'text/plain'),
+      getText('/mantle/isAdministrator', signal, 'text/plain').catch(() => 'false'),
+    ]);
+    return { userName: userName.trim(), isAdministrator: admin.trim() === 'true' };
+  },
+};

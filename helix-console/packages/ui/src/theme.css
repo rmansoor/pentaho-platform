@@ -1,0 +1,184 @@
+/*
+ * Helix design tokens: the Atlas direction (Helix Look and Feel, option B).
+ *
+ * Components use only the semantic tokens (--hx-bg, --hx-accent, ...), never the palette.
+ * Changing the look means editing this file only.
+ *
+ * Dark values are provisional: Atlas was designed light-first.
+ */
+
+:root {
+  /* Atlas palette */
+  --hx-palette-navy: #1c2150;
+  --hx-palette-cobalt: #3451d1;
+  --hx-palette-cobalt-deep: #2639a3;
+  --hx-palette-cobalt-tint: #e8ecff;
+  --hx-palette-periwinkle: #8ea2ff;
+  --hx-palette-ember: #d9542f;
+  --hx-palette-cloud: #f7f8fc;
+  --hx-palette-night-ink: #1a1d3a;
+
+  /* Surfaces and text */
+  --hx-bg: var(--hx-palette-cloud);
+  --hx-surface: #ffffff;
+  --hx-fg: var(--hx-palette-night-ink);
+  --hx-fg-soft: #3d415c;
+  --hx-fg-muted: #5b6079;
+  --hx-border: #e1e4ef;
+  --hx-border-strong: #d2d7ea;
+  --hx-divider: #eef0f7;
+
+  /* Accent */
+  --hx-accent: var(--hx-palette-cobalt);
+  --hx-accent-hover: var(--hx-palette-cobalt-deep);
+  --hx-accent-soft: var(--hx-palette-cobalt-tint);
+  --hx-accent-ink: #ffffff;
+  --hx-focus: var(--hx-palette-cobalt);
+
+  /* Brand rail */
+  --hx-rail-bg: var(--hx-palette-navy);
+  --hx-rail-fg: #c3c9f2;
+  --hx-rail-fg-strong: #ffffff;
+  --hx-rail-hover-bg: rgb(255 255 255 / 0.08);
+  --hx-rail-active-bg: var(--hx-palette-cobalt);
+  --hx-rail-section: #8c93c8;
+  --hx-rail-divider: #2e3466;
+  --hx-rail-mark: var(--hx-palette-periwinkle);
+
+  /* Status */
+  --hx-success-bg: #e5f4ec;
+  --hx-success-fg: #23704a;
+  --hx-danger-bg: #fdeae3;
+  --hx-danger-fg: #a63a1b;
+  --hx-warning-bg: #fdf3d8;
+  --hx-warning-fg: #7a5300;
+  --hx-highlight: var(--hx-palette-ember);
+
+  /* Shape */
+  --hx-shadow-card: 0 1px 2px rgb(28 33 80 / 0.06), 0 8px 24px rgb(28 33 80 / 0.06);
+  --hx-shadow-overlay: 0 12px 40px rgb(28 33 80 / 0.24);
+
+  /* Shell layout */
+  --hx-rail-w-expanded: 232px;
+  --hx-rail-w-collapsed: 64px;
+  --hx-topbar-h: 64px;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --hx-bg: #0f1230;
+    --hx-surface: #171b3d;
+    --hx-fg: #e6e8f7;
+    --hx-fg-soft: #c9cde8;
+    --hx-fg-muted: #a3a9cc;
+    --hx-border: #2a2f5c;
+    --hx-border-strong: #3a4072;
+    --hx-divider: #232850;
+    --hx-accent: #7c93ff;
+    --hx-accent-hover: #9aadff;
+    --hx-accent-soft: #252c63;
+    --hx-accent-ink: #0f1230;
+    --hx-focus: #9aadff;
+    --hx-rail-bg: #0b0e26;
+    --hx-rail-active-bg: #3451d1;
+    --hx-rail-divider: #232850;
+    --hx-success-bg: #173a2a;
+    --hx-success-fg: #7fd3a6;
+    --hx-danger-bg: #44201a;
+    --hx-danger-fg: #f3a58c;
+    --hx-warning-bg: #3d3115;
+    --hx-warning-fg: #f0c869;
+    --hx-shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --hx-bg: #0f1230;
+  --hx-surface: #171b3d;
+  --hx-fg: #e6e8f7;
+  --hx-fg-soft: #c9cde8;
+  --hx-fg-muted: #a3a9cc;
+  --hx-border: #2a2f5c;
+  --hx-border-strong: #3a4072;
+  --hx-divider: #232850;
+  --hx-accent: #7c93ff;
+  --hx-accent-hover: #9aadff;
+  --hx-accent-soft: #252c63;
+  --hx-accent-ink: #0f1230;
+  --hx-focus: #9aadff;
+  --hx-rail-bg: #0b0e26;
+  --hx-rail-active-bg: #3451d1;
+  --hx-rail-divider: #232850;
+  --hx-success-bg: #173a2a;
+  --hx-success-fg: #7fd3a6;
+  --hx-danger-bg: #44201a;
+  --hx-danger-fg: #f3a58c;
+  --hx-warning-bg: #3d3115;
+  --hx-warning-fg: #f0c869;
+  --hx-shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+  color-scheme: dark;
+}
+
+/* Tailwind 4 theme: exposes the tokens as utilities (bg-surface, text-fg-muted, rounded-card, ...). */
+@theme inline {
+  --color-bg: var(--hx-bg);
+  --color-surface: var(--hx-surface);
+  --color-fg: var(--hx-fg);
+  --color-fg-soft: var(--hx-fg-soft);
+  --color-fg-muted: var(--hx-fg-muted);
+  --color-border: var(--hx-border);
+  --color-border-strong: var(--hx-border-strong);
+  --color-divider: var(--hx-divider);
+  --color-accent: var(--hx-accent);
+  --color-accent-hover: var(--hx-accent-hover);
+  --color-accent-soft: var(--hx-accent-soft);
+  --color-accent-ink: var(--hx-accent-ink);
+  --color-focus: var(--hx-focus);
+  --color-rail: var(--hx-rail-bg);
+  --color-rail-fg: var(--hx-rail-fg);
+  --color-rail-fg-strong: var(--hx-rail-fg-strong);
+  --color-rail-hover: var(--hx-rail-hover-bg);
+  --color-rail-active: var(--hx-rail-active-bg);
+  --color-rail-section: var(--hx-rail-section);
+  --color-rail-divider: var(--hx-rail-divider);
+  --color-rail-mark: var(--hx-rail-mark);
+  --color-success-bg: var(--hx-success-bg);
+  --color-success-fg: var(--hx-success-fg);
+  --color-danger-bg: var(--hx-danger-bg);
+  --color-danger-fg: var(--hx-danger-fg);
+  --color-warning-bg: var(--hx-warning-bg);
+  --color-warning-fg: var(--hx-warning-fg);
+  --color-highlight: var(--hx-highlight);
+
+  --font-sans: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+  --radius-control: 10px;
+  --radius-card: 14px;
+
+  --shadow-card: var(--hx-shadow-card);
+  --shadow-overlay: var(--hx-shadow-overlay);
+
+  --spacing-rail-expanded: var(--hx-rail-w-expanded);
+  --spacing-rail-collapsed: var(--hx-rail-w-collapsed);
+  --spacing-topbar: var(--hx-topbar-h);
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--hx-bg);
+    color: var(--hx-fg);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--hx-focus);
+    outline-offset: 2px;
+  }
+}
