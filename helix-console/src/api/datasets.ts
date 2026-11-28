@@ -84,6 +84,16 @@ export interface Model {
   measures: Measure[];
 }
 
+/** A join between two tables of a TABLES source; published sources join every table to one fact table (a star). */
+export interface Relationship {
+  fromTable: string;
+  fromColumn: string;
+  toTable: string;
+  toColumn: string;
+  joinType?: 'INNER' | 'LEFT_OUTER';
+  cardinality?: 'MANY_TO_ONE' | 'ONE_TO_ONE' | 'ONE_TO_MANY';
+}
+
 /** A dataset definition. Fields this console doesn't edit (security, refresh…) are kept as they are. */
 export interface Definition {
   schemaVersion?: number;
@@ -94,6 +104,7 @@ export interface Definition {
   source?: Source;
   columns?: Column[];
   model?: Model;
+  relationships?: Relationship[];
   /** The names reports use, fixed when the dataset is first published; set by the server. */
   legacy?: { domainId?: string; modelId?: string; catalogName?: string };
   [other: string]: unknown;
@@ -290,7 +301,8 @@ export interface DatasetSource {
   create(definition: Definition): Promise<Stored>;
   update(id: string, definition: Definition, version: string): Promise<Stored>;
   remove(id: string, version: string): Promise<void>;
-  sample(id: string, limit?: number): Promise<Sample>;
+  /** The first rows of the source; for a TABLES source with several tables, of `table` (the first by default). */
+  sample(id: string, limit?: number, table?: string): Promise<Sample>;
   /** Loads a FILE dataset's file into its staging table; the dataset's version changes. */
   stage(id: string, version: string): Promise<{ table: StagedTable; version: string }>;
   /** Starts loading a FILE dataset's file in the background. */
@@ -341,8 +353,8 @@ export const httpDatasetSource: DatasetSource = {
     const response = await send('DELETE', `${BASE}/${enc(id)}`, { accept: 'application/json', headers: { 'If-Match': ifMatch(version) } });
     if (!response.ok) await read(response, z.unknown());
   },
-  async sample(id, limit = 100) {
-    const response = await send('POST', `${BASE}/${enc(id)}/sample?limit=${limit}`, { accept: 'application/json' });
+  async sample(id, limit = 100, table) {
+    const response = await send('POST', `${BASE}/${enc(id)}/sample?limit=${limit}${table ? `&table=${enc(table)}` : ''}`, { accept: 'application/json' });
     return read(response, sampleSchema);
   },
   async stage(id, version) {

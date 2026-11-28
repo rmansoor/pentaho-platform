@@ -69,13 +69,10 @@ describe('Datasets', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Type of units' }), 'Decimal');
     await user.click(screen.getByRole('button', { name: 'Next' }));
 
-    // The model starts from the suggestion: every kept column a dimension, the numbers also summed.
-    expect(screen.getByRole('textbox', { name: 'Name of dimension 1' })).toHaveValue('region');
-    expect(screen.getByRole('textbox', { name: 'Name of dimension 3' })).toHaveValue('Revenue (EUR)');
+    // The model starts from the suggestion: numbers summed, the rest dimensions.
+    expect(screen.getAllByRole('textbox', { name: /^Name of dimension/ }).map((e) => (e as HTMLInputElement).value)).toEqual(['region']);
     expect(screen.getByRole('textbox', { name: 'Name of measure 1' })).toHaveValue('units');
     expect(screen.getByRole('textbox', { name: 'Name of measure 2' })).toHaveValue('Revenue (EUR)');
-    await user.click(screen.getByRole('button', { name: 'Remove dimension units' }));
-    await user.click(screen.getByRole('button', { name: 'Remove dimension Revenue (EUR)' }));
     await user.clear(screen.getByRole('textbox', { name: 'Name of dimension 1' }));
     await user.type(screen.getByRole('textbox', { name: 'Name of dimension 1' }), 'Region');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Total of units' }), 'Average');
@@ -133,7 +130,8 @@ describe('Datasets', () => {
     expect(datasets.calls).toEqual(['create big-orders', 'sample big-orders', 'update big-orders']);
     const saved = datasets.stored.get('big-orders')!.definition;
     expect(saved.source).toEqual({ type: 'SQL', connection: 'SampleData', sql: 'SELECT * FROM ORDERS' });
-    expect(saved.model?.measures.map((m) => m.column)).toEqual(['ORDERNUMBER', 'AMOUNT']);
+    // Order and customer numbers identify rows: dimensions, not totals.
+    expect(saved.model?.measures.map((m) => m.column)).toEqual(['AMOUNT']);
   });
 
   it('says what to fix in the model before going on', async () => {
@@ -148,19 +146,19 @@ describe('Datasets', () => {
     await user.click(screen.getByRole('button', { name: 'Next' }));
 
     await user.clear(screen.getByRole('textbox', { name: 'Name of dimension 1' }));
-    await user.clear(screen.getByRole('textbox', { name: 'Name of dimension 3' }));
-    await user.type(screen.getByRole('textbox', { name: 'Name of dimension 3' }), 'orderdate');
+    await user.clear(screen.getByRole('textbox', { name: 'Name of measure 1' }));
+    await user.type(screen.getByRole('textbox', { name: 'Name of measure 1' }), 'status');
     await user.click(screen.getByRole('button', { name: 'Add measure' }));
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Column of 3' }), 'STATUS');
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Total of 3' }), 'Sum');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Column of 2' }), 'STATUS');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Total of 2' }), 'Sum');
     await user.click(screen.getByRole('button', { name: 'Next' }));
 
     expect(screen.getByText('Fix the marked fields to continue.')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Name of dimension 1' })).toHaveAccessibleDescription('Give it a name');
     expect(screen.getByRole('textbox', { name: 'Name of dimension 2' })).not.toHaveAccessibleDescription();
-    expect(screen.getByRole('textbox', { name: 'Name of dimension 3' })).toHaveAccessibleDescription('Another one has this name');
-    expect(screen.getByRole('textbox', { name: 'Name of measure 3' })).toHaveAccessibleDescription('Give it a name');
-    expect(screen.getByRole('combobox', { name: 'Column of 3' })).toHaveAccessibleDescription('Only numbers can be summed or averaged');
+    expect(screen.getByRole('textbox', { name: 'Name of measure 1' })).toHaveAccessibleDescription('Another one has this name');
+    expect(screen.getByRole('textbox', { name: 'Name of measure 2' })).toHaveAccessibleDescription('Give it a name');
+    expect(screen.getByRole('combobox', { name: 'Column of 2' })).toHaveAccessibleDescription('Only numbers can be summed or averaged');
 
     await user.click(screen.getByRole('button', { name: 'Start from the suggestion' }));
     await user.click(screen.getByRole('button', { name: 'Next' }));
@@ -212,6 +210,42 @@ describe('Datasets', () => {
     const typed = await screen.findByRole('textbox', { name: 'Tables' });
     expect(typed).toHaveValue('ORDERS, ORDERDETAILS');
     expect(screen.getByText(/Couldn't list this connection's tables: .*connection "AgileBI" is down\. Type their names instead\./)).toBeInTheDocument();
+  });
+
+  it('joins several tables as a star, then models and publishes them', async () => {
+    const user = userEvent.setup();
+    const { datasets } = await open('/datasets/new');
+    await user.type(await screen.findByLabelText('Name'), 'Orders by customer');
+    await user.click(screen.getByRole('radio', { name: 'Database tables' }));
+    await user.selectOptions(await screen.findByLabelText('Connection'), 'SampleData');
+    const group = await screen.findByRole('group', { name: 'Tables' });
+    await user.click(within(group).getByRole('checkbox', { name: 'ORDERS' }));
+    await user.click(within(group).getByRole('checkbox', { name: 'CUSTOMERS' }));
+    await user.click(screen.getByRole('button', { name: 'Preview data' }));
+    await screen.findByRole('region', { name: 'First rows' });
+
+    // The join is guessed from the column both tables have.
+    const joins = screen.getByRole('region', { name: 'Joins' });
+    expect(within(joins).getByRole('combobox', { name: 'ORDERS column joined to CUSTOMERS' })).toHaveValue('CUSTOMERNUMBER');
+    expect(within(joins).getByRole('combobox', { name: 'CUSTOMERS column' })).toHaveValue('CUSTOMERNUMBER');
+    await user.selectOptions(within(joins).getByRole('combobox', { name: 'CUSTOMERS column' }), '');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(within(joins).getByRole('combobox', { name: 'CUSTOMERS column' })).toHaveAccessibleDescription('Choose a column');
+    await user.selectOptions(within(joins).getByRole('combobox', { name: 'CUSTOMERS column' }), 'CUSTOMERNUMBER');
+    await user.click(within(joins).getByRole('checkbox', { name: 'Keep ORDERS rows without a match in CUSTOMERS' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    // Measures come from the fact table only.
+    expect(screen.getAllByRole('textbox', { name: /^Name of measure/ }).map((e) => (e as HTMLInputElement).value)).toEqual(['AMOUNT']);
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: 'Save and publish' }));
+    expect(await screen.findByText('Published as "Orders by customer"')).toBeInTheDocument();
+
+    const saved = datasets.stored.get('orders-by-customer')!.definition;
+    expect(saved.relationships).toEqual([
+      { fromTable: 'ORDERS', fromColumn: 'CUSTOMERNUMBER', toTable: 'CUSTOMERS', toColumn: 'CUSTOMERNUMBER', joinType: 'LEFT_OUTER', cardinality: 'MANY_TO_ONE' },
+    ]);
+    expect(datasets.calls).toContain('publish orders-by-customer');
   });
 
   it('shows a background load\'s progress, and can stop it', async () => {

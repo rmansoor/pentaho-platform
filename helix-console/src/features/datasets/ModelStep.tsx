@@ -14,12 +14,15 @@ const controlClass = 'h-8 rounded-control border border-border bg-surface px-2 t
 export function ModelStep({
   model,
   rows,
+  fact,
   onChange,
   problems,
   checked,
 }: {
   model: ModelForm;
   rows: ColumnRow[];
+  /** With several tables: the fact table, where measures come from. */
+  fact?: string;
   onChange: (model: ModelForm) => void;
   problems: ModelProblems;
   checked: boolean;
@@ -35,7 +38,7 @@ export function ModelStep({
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start gap-3">
         <p className="m-0 flex-1 text-fg-soft">{t('datasets.editor.model.intro')}</p>
-        <Button size="sm" onClick={() => onChange(suggestModel(rows))}>
+        <Button size="sm" onClick={() => onChange(suggestModel(rows, fact))}>
           <Sparkles size={14} aria-hidden="true" />
           {t('datasets.editor.model.suggest')}
         </Button>
@@ -196,7 +199,7 @@ export function ModelStep({
           <Button
             size="sm"
             onClick={() => {
-              const first = kept.find((r) => isNumeric(r.type));
+              const first = kept.find((r) => isNumeric(r.type) && (!fact || r.table === fact));
               onChange({ ...model, measures: [...model.measures, { name: '', column: first?.name ?? '', aggregation: first ? 'SUM' : 'COUNT', format: '' }] });
             }}
           >

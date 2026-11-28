@@ -4,12 +4,18 @@ import {
   columnsFrom,
   definitionFrom,
   emptyForm,
+  factTable,
   formFrom,
+  joinProblems,
+  joinRowsFrom,
+  joinsWithFact,
   keepKeptColumns,
   modelFormFrom,
   modelFrom,
   modelProblems,
   problems,
+  relationshipsFrom,
+  suggestJoins,
   suggestModel,
   type ColumnRow,
 } from './dataset-form';
@@ -95,13 +101,16 @@ describe('dataset form', () => {
     const row = (name: string, type: ColumnRow['type'], keep = true, label = ''): ColumnRow => ({ name, sourceName: name, type, label, keep });
     const rows = [row('region', 'STRING'), row('units', 'INTEGER'), row('revenue', 'DECIMAL', true, 'Revenue'), row('note', 'STRING', false)];
 
-    it('suggests what the server’s modeler does: kept columns as dimensions, numbers also summed', () => {
+    it('makes numbers that identify rows dimensions, not totals', () => {
+      const ids = [row('ORDERNUMBER', 'INTEGER'), row('YEAR_ID', 'INTEGER'), row('custid', 'INTEGER'), row('QUANTITYORDERED', 'INTEGER'), row('PRICE', 'DECIMAL')];
+      const m = suggestModel(ids);
+      expect(m.measures.map((x) => x.column)).toEqual(['QUANTITYORDERED', 'PRICE']);
+      expect(m.dimensions.map((x) => x.levels[0])).toEqual(['ORDERNUMBER', 'YEAR_ID', 'custid']);
+    });
+
+    it('suggests numbers as summed measures and everything else as a dimension', () => {
       expect(suggestModel(rows)).toEqual({
-        dimensions: [
-          { name: 'region', levels: ['region'], time: false },
-          { name: 'units', levels: ['units'], time: false },
-          { name: 'Revenue', levels: ['revenue'], time: false },
-        ],
+        dimensions: [{ name: 'region', levels: ['region'], time: false }],
         measures: [
           { name: 'units', column: 'units', aggregation: 'SUM', format: '' },
           { name: 'Revenue', column: 'revenue', aggregation: 'SUM', format: '' },
@@ -155,6 +164,7 @@ describe('dataset form', () => {
               { name: 'Count', column: 'region', aggregation: 'COUNT', format: '' },
               { name: 'Sum', column: 'region', aggregation: 'SUM', format: '' },
               { name: 'count', column: '', aggregation: 'SUM', format: '' },
+              { name: 'REGION', column: 'units', aggregation: 'SUM', format: '' },
             ],
           },
           rows,
@@ -166,6 +176,8 @@ describe('dataset form', () => {
         'measures.1.column': 'datasets.editor.problems.numericAggregation',
         'measures.2.name': 'datasets.editor.problems.duplicateName',
         'measures.2.column': 'datasets.editor.problems.measureColumn',
+        // A measure can't take a dimension's name either.
+        'measures.3.name': 'datasets.editor.problems.duplicateName',
       });
     });
 
@@ -174,6 +186,102 @@ describe('dataset form', () => {
       expect(definitionFrom(emptyForm(), undefined, [], model).model).toEqual(model);
       expect(definitionFrom(emptyForm(), { name: 'A', model }).model).toEqual(model);
       expect(definitionFrom(emptyForm(), { name: 'A' })).not.toHaveProperty('model');
+    });
+  });
+
+  describe('joins between several tables', () => {
+    const star: Sample = {
+      columns: [
+        { name: 'ORDERNUMBER', type: 'INTEGER', table: 'ORDERS' },
+        { name: 'CUSTOMERNUMBER', type: 'INTEGER', table: 'ORDERS' },
+        { name: 'STATUS', type: 'STRING', table: 'ORDERS' },
+        { name: 'CUSTOMERNUMBER', type: 'INTEGER', table: 'CUSTOMERS' },
+        { name: 'STATUS', type: 'STRING', table: 'CUSTOMERS' },
+        { name: 'PRODUCTLINE', type: 'STRING', table: 'PRODUCTS' },
+      ],
+      rows: [],
+      truncated: false,
+    };
+    const tables = ['ORDERS', 'CUSTOMERS', 'PRODUCTS'];
+
+    it('guesses each join from a column both tables have, preferring a key', () => {
+      expect(suggestJoins(tables, star)).toEqual([
+        { fromTable: 'ORDERS', fromColumn: 'CUSTOMERNUMBER', toTable: 'CUSTOMERS', toColumn: 'CUSTOMERNUMBER', outer: false },
+        { fromTable: 'ORDERS', fromColumn: '', toTable: 'PRODUCTS', toColumn: '', outer: false },
+      ]);
+    });
+
+    it('reads stored joins from the many side and fills in the tables they miss', () => {
+      const joins = joinRowsFrom(
+        [{ fromTable: 'CUSTOMERS', fromColumn: 'CUSTOMERNUMBER', toTable: 'ORDERS', toColumn: 'CUSTNO', joinType: 'LEFT_OUTER', cardinality: 'ONE_TO_MANY' }],
+        tables,
+        star,
+      );
+      expect(factTable(joins)).toBe('ORDERS');
+      expect(joins).toEqual([
+        { fromTable: 'ORDERS', fromColumn: 'CUSTNO', toTable: 'CUSTOMERS', toColumn: 'CUSTOMERNUMBER', outer: true },
+        { fromTable: 'ORDERS', fromColumn: '', toTable: 'PRODUCTS', toColumn: '', outer: false },
+      ]);
+      expect(relationshipsFrom(joins)[0]).toEqual({
+        fromTable: 'ORDERS',
+        fromColumn: 'CUSTNO',
+        toTable: 'CUSTOMERS',
+        toColumn: 'CUSTOMERNUMBER',
+        joinType: 'LEFT_OUTER',
+        cardinality: 'MANY_TO_ONE',
+      });
+    });
+
+    it('starts again from the new fact table when it changes', () => {
+      const joins = joinsWithFact('CUSTOMERS', tables, star, suggestJoins(tables, star));
+      expect(joins.map((j) => `${j.fromTable}.${j.fromColumn} = ${j.toTable}.${j.toColumn}`)).toEqual([
+        'CUSTOMERS.CUSTOMERNUMBER = ORDERS.CUSTOMERNUMBER',
+        'CUSTOMERS. = PRODUCTS.', // no column in common: left to choose
+      ]);
+    });
+
+    it('wants a column on each side, and every table joined to the fact table once', () => {
+      const joins = suggestJoins(tables, star);
+      expect(joinProblems(joins, tables)).toEqual({
+        'joins.1.fromColumn': 'datasets.editor.problems.joinColumn',
+        'joins.1.toColumn': 'datasets.editor.problems.joinColumn',
+      });
+      expect(joinProblems(joins.slice(0, 1), tables)).toEqual({ joins: 'datasets.editor.problems.joinMissing' });
+      expect(joinProblems([joins[0]!, { ...joins[0]!, fromTable: 'CUSTOMERS', toTable: 'PRODUCTS' }], tables)).toMatchObject({
+        'joins.1.fromTable': 'datasets.editor.problems.joinFact',
+      });
+    });
+
+    it('takes measures from the fact table, and each dimension from one table', () => {
+      const rows: ColumnRow[] = [
+        { name: 'units', table: 'ORDERS', sourceName: 'QTY', type: 'INTEGER', label: '', keep: true },
+        { name: 'customerNo', table: 'CUSTOMERS', sourceName: 'CUSTOMERNUMBER', type: 'INTEGER', label: '', keep: true },
+        { name: 'country', table: 'CUSTOMERS', sourceName: 'COUNTRY', type: 'STRING', label: '', keep: true },
+        { name: 'status', table: 'ORDERS', sourceName: 'STATUS', type: 'STRING', label: '', keep: true },
+      ];
+      const model = suggestModel(rows, 'ORDERS');
+      expect(model.measures.map((m) => m.column)).toEqual(['units']);
+      expect(model.dimensions.map((d) => d.levels[0])).toEqual(['customerNo', 'country', 'status']);
+      expect(
+        modelProblems(
+          {
+            dimensions: [{ name: 'Mixed', levels: ['country', 'status'], time: false }],
+            measures: [{ name: 'Customers', column: 'customerNo', aggregation: 'SUM', format: '' }],
+          },
+          rows,
+          'ORDERS',
+        ),
+      ).toEqual({
+        'dimensions.0.levels': 'datasets.editor.problems.levelsOneTable',
+        'measures.0.column': 'datasets.editor.problems.measureFact',
+      });
+    });
+
+    it('stores joins only for several tables', () => {
+      const joins = relationshipsFrom(suggestJoins(tables, star));
+      const several = { ...emptyForm(), name: 'S', sourceType: 'TABLES' as const, connection: 'c', tables: 'ORDERS, CUSTOMERS' };
+      expect(definitionFrom(several, undefined, [], undefined, joins).relationships).toEqual(joins);
+      expect(definitionFrom({ ...several, tables: 'ORDERS' }, undefined, [], undefined, joins).relationships).toEqual([]);
     });
   });
 });

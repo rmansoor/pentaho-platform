@@ -1,5 +1,5 @@
 import type { MessageKey } from '../../i18n';
-import type { Aggregation, Column, ColumnType, Definition, Model, Sample, SourceType } from '../../api/datasets';
+import type { Aggregation, Column, ColumnType, Definition, Model, Relationship, Sample, SourceType } from '../../api/datasets';
 
 /** The separators offered for CSV files; '' lets the server detect it. */
 export const DELIMITERS = [
@@ -98,7 +98,7 @@ export function problems(form: DatasetForm, hasNewFile: boolean): FormProblems {
  * The definition to store: `base`'s fields this console doesn't edit (model, security, refresh…)
  * kept, the source rebuilt from the form. A file keeps its staging table while it stays the same file.
  */
-export function definitionFrom(form: DatasetForm, base?: Definition, columns?: Column[], model?: Model): Definition {
+export function definitionFrom(form: DatasetForm, base?: Definition, columns?: Column[], model?: Model, relationships?: Relationship[]): Definition {
   const old = base?.source;
   let source: Definition['source'];
   if (form.sourceType === 'FILE') {
@@ -131,6 +131,8 @@ export function definitionFrom(form: DatasetForm, base?: Definition, columns?: C
     source,
     columns: columns ?? base?.columns ?? [],
     ...(model ?? base?.model ? { model: model ?? base?.model } : {}),
+    // Joins only mean something between several tables.
+    relationships: form.sourceType === 'TABLES' && tableList(form.tables).length > 1 ? (relationships ?? base?.relationships ?? []) : [],
   };
 }
 
@@ -138,10 +140,15 @@ export function definitionFrom(form: DatasetForm, base?: Definition, columns?: C
 export function columnRowsFrom(sample: Sample, existing: Column[] = []): ColumnRow[] {
   const known = new Map(existing.map((c) => [`${c.table ?? ''}\u0000${c.sourceName ?? c.name}`, c]));
   const keepAll = existing.length === 0;
+  // Names are unique in a dataset: a column name a later table repeats gets that table's name in front.
+  const taken = new Set(existing.map((c) => c.name));
   return sample.columns.map((c) => {
     const before = known.get(`${c.table ?? ''}\u0000${c.name}`);
+    let name = before?.name ?? c.name;
+    if (!before && taken.has(name) && c.table) name = `${c.table.slice(c.table.lastIndexOf('.') + 1)}_${c.name}`;
+    taken.add(name);
     return {
-      name: before?.name ?? c.name,
+      name,
       ...(c.table ? { table: c.table } : {}),
       sourceName: c.name,
       type: before?.type ?? c.type,
@@ -190,18 +197,25 @@ export const isNumeric = (type: ColumnType) => type === 'INTEGER' || type === 'D
 /** A column as people see it: its label, else its name. */
 export const columnLabel = (r: ColumnRow) => r.label.trim() || r.name;
 
-/** What the server's modeler suggests, as the Data Source Wizard did: every kept column a dimension, numeric ones also summed. */
-export function suggestModel(rows: ColumnRow[]): ModelForm {
+/**
+ * A first model: numbers are summed measures, everything else (and numbers that identify, such as
+ * ORDERNUMBER or YEAR_ID) a dimension, each column one or the other, since dimensions and measures
+ * share names. With several tables, measures come from the fact table only.
+ */
+export function suggestModel(rows: ColumnRow[], fact?: string): ModelForm {
   const kept = rows.filter((r) => r.keep);
+  // Numbers that identify rather than count (ORDERNUMBER, CUSTOMER_ID, YEAR_ID…) are for slicing by, not adding up.
+  const identifies = (r: ColumnRow) => /(^|_)id$|[a-z]id$|number$|code$|key$|(^|_)no$/i.test(r.sourceName || r.name);
+  const measure = (r: ColumnRow) => isNumeric(r.type) && !identifies(r) && (!fact || r.table === fact);
   return {
-    dimensions: kept.map((r) => ({ name: columnLabel(r), levels: [r.name], time: false })),
-    measures: kept.filter((r) => isNumeric(r.type)).map((r) => ({ name: columnLabel(r), column: r.name, aggregation: 'SUM', format: '' })),
+    dimensions: kept.filter((r) => !measure(r)).map((r) => ({ name: columnLabel(r), levels: [r.name], time: false })),
+    measures: kept.filter(measure).map((r) => ({ name: columnLabel(r), column: r.name, aggregation: 'SUM', format: '' })),
   };
 }
 
 /** The stored model, for editing; the suggestion when there is none yet. */
-export function modelFormFrom(model: Model | undefined, rows: ColumnRow[]): ModelForm {
-  if (!model || (model.dimensions.length === 0 && model.measures.length === 0)) return suggestModel(rows);
+export function modelFormFrom(model: Model | undefined, rows: ColumnRow[], fact?: string): ModelForm {
+  if (!model || (model.dimensions.length === 0 && model.measures.length === 0)) return suggestModel(rows, fact);
   return keepKeptColumns(
     {
       dimensions: model.dimensions.map((d) => ({ name: d.name, levels: [...d.levels], time: !!d.time })),
@@ -230,23 +244,31 @@ export type ModelProblems = Partial<Record<string, MessageKey>>;
  * What must be fixed before saving, by field: `dimensions.0.name`, `dimensions.0.levels`,
  * `measures.1.column`… Names are required and unique among dimensions and among measures.
  */
-export function modelProblems(model: ModelForm, rows: ColumnRow[]): ModelProblems {
+export function modelProblems(model: ModelForm, rows: ColumnRow[], fact?: string): ModelProblems {
   const p: ModelProblems = {};
   const types = new Map(rows.map((r) => [r.name, r.type]));
-  const seen = (names: string[], i: number) => names.slice(0, i).some((n) => n.toLowerCase() === names[i]!.toLowerCase());
+  const tables = new Map(rows.map((r) => [r.name, r.table]));
+  // Dimensions and measures share one set of names, as the server checks.
+  const all = [...model.dimensions.map((d) => d.name.trim()), ...model.measures.map((m) => m.name.trim())];
+  const seenAt = (i: number) => all.slice(0, i).some((n) => n.toLowerCase() === all[i]!.toLowerCase());
   const dims = model.dimensions.map((d) => d.name.trim());
   model.dimensions.forEach((d, i) => {
     if (!dims[i]) p[`dimensions.${i}.name`] = 'datasets.editor.problems.modelName';
-    else if (seen(dims, i)) p[`dimensions.${i}.name`] = 'datasets.editor.problems.duplicateName';
+    else if (seenAt(i)) p[`dimensions.${i}.name`] = 'datasets.editor.problems.duplicateName';
     if (!d.levels.some(Boolean)) p[`dimensions.${i}.levels`] = 'datasets.editor.problems.levels';
+    else if (fact && new Set(d.levels.filter(Boolean).map((l) => tables.get(l))).size > 1) {
+      p[`dimensions.${i}.levels`] = 'datasets.editor.problems.levelsOneTable';
+    }
   });
   const measures = model.measures.map((m) => m.name.trim());
   model.measures.forEach((m, i) => {
     if (!measures[i]) p[`measures.${i}.name`] = 'datasets.editor.problems.modelName';
-    else if (seen(measures, i)) p[`measures.${i}.name`] = 'datasets.editor.problems.duplicateName';
+    else if (seenAt(dims.length + i)) p[`measures.${i}.name`] = 'datasets.editor.problems.duplicateName';
     if (!m.column) p[`measures.${i}.column`] = 'datasets.editor.problems.measureColumn';
     else if ((m.aggregation === 'SUM' || m.aggregation === 'AVERAGE') && !isNumeric(types.get(m.column) ?? 'STRING')) {
       p[`measures.${i}.column`] = 'datasets.editor.problems.numericAggregation';
+    } else if (fact && tables.get(m.column) !== fact) {
+      p[`measures.${i}.column`] = 'datasets.editor.problems.measureFact';
     }
   });
   return p;
@@ -264,3 +286,87 @@ export function modelFrom(form: ModelForm): Model {
     })),
   };
 }
+
+// ------------------------------------------------------------------------------------------------
+// Joins between several tables: a star, every other table joined to the fact table.
+
+export interface JoinRow {
+  fromTable: string;
+  fromColumn: string;
+  toTable: string;
+  toColumn: string;
+  /** Keep fact rows that have no match (a left outer join). */
+  outer: boolean;
+}
+
+/** The columns of each table, from the sample. */
+export const tableColumns = (sample: Sample, table: string) => sample.columns.filter((c) => c.table === table).map((c) => c.name);
+
+/**
+ * A first guess: the first table is the fact table, joined to each other table on a column both have
+ * (preferring ones that look like keys: …ID, …NUMBER, …CODE, …KEY).
+ */
+export function suggestJoins(tables: string[], sample: Sample): JoinRow[] {
+  const [fact, ...others] = tables;
+  if (!fact) return [];
+  const factColumns = tableColumns(sample, fact);
+  const keyish = (c: string) => /(id|number|code|key|no)$/i.test(c);
+  return others.map((t) => {
+    const shared = tableColumns(sample, t).filter((c) => factColumns.includes(c));
+    const column = shared.find(keyish) ?? shared[0] ?? '';
+    return { fromTable: fact, fromColumn: column, toTable: t, toColumn: column, outer: false };
+  });
+}
+
+/**
+ * One join per table other than the fact table: the stored ones (read from the many side) where they
+ * start at the fact table, else the guess. The fact table is the stored one, else the first table.
+ */
+export function joinRowsFrom(relationships: Relationship[] | undefined, tables: string[], sample: Sample): JoinRow[] {
+  const stored: JoinRow[] = (relationships ?? []).map((r) =>
+    r.cardinality === 'ONE_TO_MANY'
+      ? { fromTable: r.toTable, fromColumn: r.toColumn, toTable: r.fromTable, toColumn: r.fromColumn, outer: r.joinType === 'LEFT_OUTER' }
+      : { fromTable: r.fromTable, fromColumn: r.fromColumn, toTable: r.toTable, toColumn: r.toColumn, outer: r.joinType === 'LEFT_OUTER' },
+  );
+  const fact = stored[0] && tables.includes(stored[0].fromTable) ? stored[0].fromTable : tables[0];
+  return fact ? joinsWithFact(fact, tables, sample, stored) : [];
+}
+
+/** The joins with `fact` as the fact table: kept where they already start there, guessed for the rest. */
+export function joinsWithFact(fact: string, tables: string[], sample: Sample, current: JoinRow[] = []): JoinRow[] {
+  return suggestJoins([fact, ...tables.filter((t) => t !== fact)], sample).map(
+    (guess) => current.find((j) => j.fromTable === fact && j.toTable === guess.toTable) ?? guess,
+  );
+}
+
+/** The fact table: where the joins start. */
+export const factTable = (joins: JoinRow[]) => joins[0]?.fromTable || undefined;
+
+export type JoinProblems = Partial<Record<string, MessageKey>>;
+
+/** What stops the joins forming a star: `joins.0.fromColumn`…, or `joins` for a table left out. */
+export function joinProblems(joins: JoinRow[], tables: string[]): JoinProblems {
+  const p: JoinProblems = {};
+  const fact = factTable(joins);
+  const seen = new Set<string>();
+  joins.forEach((j, i) => {
+    if (!j.fromColumn) p[`joins.${i}.fromColumn`] = 'datasets.editor.problems.joinColumn';
+    if (!j.toColumn) p[`joins.${i}.toColumn`] = 'datasets.editor.problems.joinColumn';
+    if (j.fromTable !== fact) p[`joins.${i}.fromTable`] = 'datasets.editor.problems.joinFact';
+    else if (!j.toTable || j.toTable === fact || seen.has(j.toTable)) p[`joins.${i}.toTable`] = 'datasets.editor.problems.joinOnce';
+    seen.add(j.toTable);
+  });
+  if (tables.some((t) => t !== fact && !seen.has(t))) p.joins = 'datasets.editor.problems.joinMissing';
+  return p;
+}
+
+/** The joins as the definition stores them. */
+export const relationshipsFrom = (joins: JoinRow[]): Relationship[] =>
+  joins.map((j) => ({
+    fromTable: j.fromTable,
+    fromColumn: j.fromColumn,
+    toTable: j.toTable,
+    toColumn: j.toColumn,
+    joinType: j.outer ? 'LEFT_OUTER' : 'INNER',
+    cardinality: 'MANY_TO_ONE',
+  }));

@@ -21,6 +21,7 @@ import {
 import { QueryError } from '../files/QueryError';
 import { TablePicker } from './TablePicker';
 import { ModelStep } from './ModelStep';
+import { JoinsEditor } from './JoinsEditor';
 import {
   columnRowsFrom,
   columnsFrom,
@@ -28,14 +29,20 @@ import {
   DELIMITERS,
   emptyForm,
   ENCODINGS,
+  factTable,
   formFrom,
+  joinProblems,
+  joinRowsFrom,
   keepKeptColumns,
   modelFormFrom,
   modelFrom,
   modelProblems,
   problems,
+  relationshipsFrom,
+  tableList,
   type ColumnRow,
   type DatasetForm,
+  type JoinRow,
   type ModelForm,
 } from './dataset-form';
 import { t, type MessageKey } from '../../i18n';
@@ -67,9 +74,12 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [stored, setStored] = useState<Stored | undefined>(initial);
   const [sample, setSample] = useState<Sample | null>(null);
+  const [grids, setGrids] = useState<Array<{ table?: string; sample: Sample }>>([]);
   const [rows, setRows] = useState<ColumnRow[]>([]);
   const [checked, setChecked] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [joins, setJoins] = useState<JoinRow[]>([]);
+  const [joinsChecked, setJoinsChecked] = useState(false);
   const [model, setModel] = useState<ModelForm | null>(null);
   const [modelChecked, setModelChecked] = useState(false);
   const [result, setResult] = useState<{ staged?: StagedTable; published?: Published } | null>(null);
@@ -94,12 +104,27 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
         setFile(null);
       }
       void refreshList();
-      return { next, sample: await api.sample(next.definition.id!) };
+      // The server samples one table at a time: with several, each, then their columns together.
+      const tables = form.sourceType === 'TABLES' ? tableList(form.tables) : [];
+      const id = next.definition.id!;
+      const grids =
+        tables.length > 1
+          ? await Promise.all(tables.map(async (table) => ({ table, sample: await api.sample(id, undefined, table) })))
+          : [{ table: undefined, sample: await api.sample(id) }];
+      const sample: Sample = {
+        columns: grids.flatMap((g) => g.sample.columns.map((c) => (g.table ? { ...c, table: c.table ?? g.table } : c))),
+        rows: grids.length === 1 ? grids[0]!.sample.rows : [],
+        truncated: grids.some((g) => g.sample.truncated),
+      };
+      return { next, sample, grids };
     },
     onMutate: () => setError(null),
-    onSuccess: ({ next, sample }) => {
+    onSuccess: ({ next, sample, grids }) => {
       setSample(sample);
+      setGrids(grids);
       setRows(columnRowsFrom(sample, next.definition.columns));
+      const tables = form.sourceType === 'TABLES' ? tableList(form.tables) : [];
+      setJoins(tables.length > 1 ? joinRowsFrom(next.definition.relationships, tables, sample) : []);
       setStep(1);
     },
     onError: setError,
@@ -108,7 +133,7 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
   const save = useMutation({
     mutationFn: async ({ publish }: { publish: boolean }): Promise<{ staged?: StagedTable; published?: Published } | 'cancelled'> => {
       const id = stored!.definition.id!;
-      const definition = definitionFrom(form, stored!.definition, columnsFrom(rows), model ? modelFrom(model) : undefined);
+      const definition = definitionFrom(form, stored!.definition, columnsFrom(rows), model ? modelFrom(model) : undefined, relationshipsFrom(joins));
       let next = await api.update(id, definition, stored!.version);
       setStored(next);
       let staged: StagedTable | undefined;
@@ -158,9 +183,14 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
     if (Object.keys(found).length === 0) preview.mutate();
   };
   const kept = rows.filter((r) => r.keep).length;
-  const foundInModel = model ? modelProblems(model, rows) : {};
+  const multiTable = joins.length > 0;
+  const fact = multiTable ? factTable(joins) : undefined;
+  const foundInJoins = multiTable ? joinProblems(joins, tableList(form.tables)) : {};
+  const foundInModel = model ? modelProblems(model, rows, fact) : {};
   const toModel = () => {
-    setModel((m) => (m ? keepKeptColumns(m, rows) : modelFormFrom(stored?.definition.model, rows)));
+    setJoinsChecked(true);
+    if (Object.keys(foundInJoins).length > 0) return;
+    setModel((m) => (m ? keepKeptColumns(m, rows) : modelFormFrom(stored?.definition.model, rows, fact)));
     setStep(2);
   };
   const toFinish = () => {
@@ -293,7 +323,14 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
         <Card className="flex flex-col gap-4 p-[18px]">
           <p className="m-0 text-fg-soft">{t('datasets.editor.columnsIntro')}</p>
           <ColumnsTable rows={rows} onChange={setRows} />
-          <SampleGrid sample={sample} />
+          {multiTable && (
+            <JoinsEditor tables={tableList(form.tables)} sample={sample} joins={joins} onChange={setJoins} problems={foundInJoins} checked={joinsChecked} />
+          )}
+          <section aria-label={t('datasets.editor.sampleTitle')} className="flex flex-col gap-3">
+            {grids.map((g) => (
+              <SampleGrid key={g.table ?? ''} sample={g.sample} table={g.table} />
+            ))}
+          </section>
           <div className="flex flex-wrap items-center gap-3 border-t border-divider pt-4">
             <Button size="sm" onClick={() => setStep(0)}>
               {t('datasets.editor.previous')}
@@ -308,7 +345,7 @@ function Editor({ initial, onDone }: { initial?: Stored; onDone: () => void }) {
 
       {step === 2 && model && (
         <Card className="flex flex-col gap-4 p-[18px]">
-          <ModelStep model={model} rows={rows} onChange={setModel} problems={foundInModel} checked={modelChecked} />
+          <ModelStep model={model} rows={rows} fact={fact} onChange={setModel} problems={foundInModel} checked={modelChecked} />
           <div className="flex flex-wrap items-center gap-3 border-t border-divider pt-4">
             <Button size="sm" onClick={() => setStep(1)}>
               {t('datasets.editor.previous')}
@@ -527,10 +564,10 @@ function ColumnsTable({ rows, onChange }: { rows: ColumnRow[]; onChange: (rows: 
   );
 }
 
-function SampleGrid({ sample }: { sample: Sample }) {
+function SampleGrid({ sample, table }: { sample: Sample; table?: string }) {
   return (
-    <section aria-label={t('datasets.editor.sampleTitle')} className="flex flex-col gap-2">
-      <h2 className="m-0 text-[14px] font-bold">{t('datasets.editor.sampleTitle')}</h2>
+    <div className="flex flex-col gap-2">
+      <h2 className="m-0 text-[14px] font-bold">{table ? t('datasets.editor.sampleTitleOf', { table }) : t('datasets.editor.sampleTitle')}</h2>
       {sample.rows.length === 0 ? (
         <p className="m-0 text-fg-muted">{t('datasets.editor.noRows')}</p>
       ) : (
@@ -563,7 +600,7 @@ function SampleGrid({ sample }: { sample: Sample }) {
         </div>
       )}
       {(sample.truncated || sample.rows.length > PREVIEW_ROWS) && <p className="m-0 text-[12.5px] text-fg-muted">{t('datasets.editor.sampleMore')}</p>}
-    </section>
+    </div>
   );
 }
 

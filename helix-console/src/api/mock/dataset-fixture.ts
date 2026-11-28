@@ -7,13 +7,27 @@ const ORDERS: Sample = {
     { name: 'ORDERDATE', type: 'DATE', sourceType: 'DATE', nullable: true, table: 'ORDERS' },
     { name: 'STATUS', type: 'STRING', sourceType: 'VARCHAR', nullable: true, table: 'ORDERS' },
     { name: 'AMOUNT', type: 'DECIMAL', sourceType: 'DECIMAL', nullable: true, table: 'ORDERS' },
+    { name: 'CUSTOMERNUMBER', type: 'INTEGER', sourceType: 'INTEGER', nullable: false, table: 'ORDERS' },
   ],
   rows: [
-    [10100, '2026-01-06', 'Shipped', 10223.83],
-    [10101, '2026-01-09', 'Shipped', 10549.01],
-    [10102, '2026-01-10', 'On Hold', 5494.78],
+    [10100, '2026-01-06', 'Shipped', 10223.83, 363],
+    [10101, '2026-01-09', 'Shipped', 10549.01, 128],
+    [10102, '2026-01-10', 'On Hold', 5494.78, 181],
   ],
   truncated: true,
+};
+
+/** Further tables a TABLES source can join (ORDERS is the sample above, which has CUSTOMERNUMBER too). */
+const OTHER_TABLES: Record<string, Sample['columns']> = {
+  CUSTOMERS: [
+    { name: 'CUSTOMERNUMBER', type: 'INTEGER', sourceType: 'INTEGER', nullable: false, table: 'CUSTOMERS' },
+    { name: 'CUSTOMERNAME', type: 'STRING', sourceType: 'VARCHAR', nullable: true, table: 'CUSTOMERS' },
+    { name: 'COUNTRY', type: 'STRING', sourceType: 'VARCHAR', nullable: true, table: 'CUSTOMERS' },
+  ],
+  PRODUCTS: [
+    { name: 'PRODUCTCODE', type: 'STRING', sourceType: 'VARCHAR', nullable: false, table: 'PRODUCTS' },
+    { name: 'PRODUCTLINE', type: 'STRING', sourceType: 'VARCHAR', nullable: true, table: 'PRODUCTS' },
+  ],
 };
 
 const FILE_SAMPLE: Sample = {
@@ -135,16 +149,20 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
       source.calls.push(`delete ${id}`);
       stored.delete(id);
     },
-    async sample(id) {
+    async sample(id, _limit, table) {
       await wait();
       const d = find(id).definition;
-      source.calls.push(`sample ${id}`);
+      source.calls.push(table ? `sample ${id} ${table}` : `sample ${id}`);
       if (source.failNextSample) {
         const e = source.failNextSample;
         source.failNextSample = undefined;
         throw e;
       }
-      return structuredClone(d.source?.type === 'FILE' ? FILE_SAMPLE : ORDERS);
+      if (d.source?.type === 'FILE') return structuredClone(FILE_SAMPLE);
+      // Like the server: one table at a time, the first unless `table` says which.
+      const which = table ?? d.source?.tables?.[0];
+      const other = which ? OTHER_TABLES[which] : undefined;
+      return other ? { columns: structuredClone(other), rows: [], truncated: false } : structuredClone(ORDERS);
     },
     async stage(id, version) {
       await wait();
