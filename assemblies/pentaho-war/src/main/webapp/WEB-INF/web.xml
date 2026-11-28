@@ -123,6 +123,12 @@
     <filter-class>org.pentaho.platform.web.http.filters.PentahoWebContextFilter</filter-class>
   </filter>
 
+  <!-- [helix] The console's pages: addresses under /console/ that aren't files get its index.html -->
+  <filter>
+    <filter-name>Console Page Filter</filter-name>
+    <filter-class>org.pentaho.platform.web.http.filters.ConsolePageFilter</filter-class>
+  </filter>
+
   <!-- insert additional filters -->
 
   <filter-mapping>
@@ -172,6 +178,11 @@
   <filter-mapping>
     <filter-name>Pentaho Web Context Filter</filter-name>
     <url-pattern>/*</url-pattern>
+  </filter-mapping>
+
+  <filter-mapping>
+    <filter-name>Console Page Filter</filter-name>
+    <url-pattern>/console/*</url-pattern>
   </filter-mapping>
   <!-- insert additional filter-mappings -->
 
