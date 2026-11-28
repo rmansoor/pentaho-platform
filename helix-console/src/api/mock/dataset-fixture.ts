@@ -1,4 +1,4 @@
-import { DatasetError, type Definition, type DatasetSource, type DatasetSummary, type LoadJob, type Sample, type StagingState, type Stored } from '../datasets';
+import { DatasetError, type Definition, type DatasetSource, type DatasetSummary, type LoadJob, type Sample, type Sharing, type StagingState, type Stored } from '../datasets';
 
 /** Rows the fixture's sources return when sampled. */
 const ORDERS: Sample = {
@@ -53,6 +53,7 @@ const SAMPLE_DATASETS: Definition[] = [
     owner: 'admin',
     source: { type: 'TABLES', connection: 'SampleData', tables: ['ORDERS'] },
     columns: [{ name: 'ORDERNUMBER', table: 'ORDERS', type: 'INTEGER' }],
+    legacy: { domainId: 'orders.xmi', modelId: 'MODEL_1', catalogName: 'Orders' },
   },
   {
     schemaVersion: 1,
@@ -79,6 +80,10 @@ export type FixtureDatasetSource = DatasetSource & {
   failNextSample?: DatasetError;
   /** How many times a background load reports progress before it finishes (default 0). */
   loadSteps: number;
+  /** Who each dataset is shared with, by id. */
+  shares: Map<string, Sharing>;
+  /** The Data Source Wizard's domain ids (published datasets' among them). */
+  wizard: string[];
 };
 
 export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASETS, { delayMs = 0 } = {}): FixtureDatasetSource {
@@ -107,6 +112,8 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
     calls: [],
     stored,
     loadSteps: 0,
+    shares: new Map(),
+    wizard: ['orders.xmi', 'Inventory.xmi'],
     async list() {
       await wait();
       return [...stored.values()]
@@ -119,6 +126,9 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
             sourceType: s.definition.source?.type,
             version: s.version,
             updated: s.updated,
+            ...(s.definition.legacy?.domainId
+              ? { published: { domainId: s.definition.legacy.domainId, catalogName: s.definition.legacy.catalogName ?? s.definition.name } }
+              : {}),
           }),
         )
         .sort((a, b) => a.name.localeCompare(b.name));
@@ -250,6 +260,26 @@ export function createFixtureDatasetSource(initial: Definition[] = SAMPLE_DATASE
         next = put(d).version;
       }
       return { version: next, published: { domainId: d.legacy.domainId!, modelId: d.legacy.modelId!, catalogName: d.legacy.catalogName!, analysis, warnings } };
+    },
+    async sharing(id) {
+      await wait();
+      find(id);
+      const sharing = source.shares.get(id) ?? { restricted: false, entries: [] };
+      return { sharing: structuredClone(sharing), version: `acl-${JSON.stringify(sharing).length}` };
+    },
+    async setSharing(id, sharing, version) {
+      await wait();
+      const current = await source.sharing(id);
+      if (current.version !== version) throw new DatasetError(412, 'stale-version', 'The sharing changed since it was read');
+      if (!sharing.restricted && sharing.entries.length) {
+        throw new DatasetError(422, 'validation-failed', 'The sharing is not valid: entries: must be empty unless restricted is true', 'entries');
+      }
+      source.calls.push(`share ${id}`);
+      source.shares.set(id, structuredClone(sharing));
+      return source.sharing(id);
+    },
+    async wizardSources() {
+      return [...source.wizard];
     },
     async staging() {
       return structuredClone(staging);

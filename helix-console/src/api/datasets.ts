@@ -137,6 +137,21 @@ export interface DatasetSummary {
   sourceType?: SourceType;
   version: string;
   updated: string;
+  /** Once published: the names reports find it by. */
+  published?: { domainId: string; catalogName: string };
+}
+
+/** Who a dataset is shared with: everyone who can use datasets, or (restricted) only the entries. */
+export interface Sharing {
+  restricted: boolean;
+  entries: SharingEntry[];
+}
+
+export interface SharingEntry {
+  recipient: string;
+  type: 'USER' | 'ROLE';
+  /** READ sees and uses it; WRITE also changes it. */
+  access: 'READ' | 'WRITE';
 }
 
 export interface SourceColumn {
@@ -225,6 +240,11 @@ const summarySchema = z.object({
   sourceType: z.enum(['FILE', 'SQL', 'TABLES']).optional(),
   version: z.string(),
   updated: z.string(),
+  published: z.object({ domainId: z.string(), catalogName: z.string() }).optional(),
+});
+const sharingSchema = z.object({
+  restricted: z.boolean(),
+  entries: z.array(z.object({ recipient: z.string(), type: z.enum(['USER', 'ROLE']), access: z.enum(['READ', 'WRITE']) })),
 });
 const listSchema = z.object({ datasets: z.array(summarySchema) });
 const definitionSchema = z.looseObject({ name: z.string() }) as unknown as z.ZodType<Definition>;
@@ -318,6 +338,15 @@ export interface DatasetSource {
    * The version changes on the first publish, when the names reports use are fixed.
    */
   publish(id: string, version: string): Promise<{ version: string; published: Published }>;
+  /** Who the dataset is shared with; the version is the sharing's own. */
+  sharing(id: string, signal?: AbortSignal): Promise<{ sharing: Sharing; version: string }>;
+  /** Owner or administrator: replace who the dataset is shared with. */
+  setSharing(id: string, sharing: Sharing, version: string): Promise<{ sharing: Sharing; version: string }>;
+  /**
+   * The Data Source Wizard's sources (metadata domain ids), published datasets' among them: the ones no
+   * dataset published are still to be upgraded.
+   */
+  wizardSources(signal?: AbortSignal): Promise<string[]>;
   /** Database connection names, for SQL and TABLES sources. */
   connections(signal?: AbortSignal): Promise<string[]>;
   /** The tables and views on a connection, for a TABLES source. */
@@ -384,6 +413,23 @@ export const httpDatasetSource: DatasetSource = {
     const response = await send('POST', `${BASE}/${enc(id)}/publish`, { accept: 'application/json', headers: { 'If-Match': ifMatch(version) } });
     return { published: await read(response, publishedSchema), version: versionOf(response) };
   },
+  async sharing(id, signal) {
+    const response = await getResponse(`${BASE}/${enc(id)}/acl`, signal);
+    return { sharing: await read(response, sharingSchema), version: versionOf(response) };
+  },
+  async setSharing(id, sharing, version) {
+    const response = await send('PUT', `${BASE}/${enc(id)}/acl`, {
+      body: JSON.stringify(sharing),
+      contentType: 'application/json',
+      accept: 'application/json',
+      headers: { 'If-Match': ifMatch(version) },
+    });
+    return { sharing: await read(response, sharingSchema), version: versionOf(response) };
+  },
+  async wizardSources(signal) {
+    const body = await getJson(`${PLUGIN_ROOT}/data-access/api/datasource/dsw/ids`, z.object({ Item: z.union([z.string(), z.array(z.string())]).optional() }), signal);
+    return body.Item === undefined ? [] : Array.isArray(body.Item) ? body.Item : [body.Item];
+  },
   async connections(signal) {
     const items = z.object({
       Item: z
@@ -421,6 +467,8 @@ export const datasetKeys = {
   connections: ['datasets', 'connections'] as const,
   tables: (connection: string) => ['datasets', 'tables', connection] as const,
   staging: ['datasets', 'staging'] as const,
+  sharing: (id: string) => ['datasets', 'sharing', id] as const,
+  wizardSources: ['datasets', 'wizard-sources'] as const,
 };
 
 export function useDatasetSource() {
@@ -430,6 +478,20 @@ export function useDatasetSource() {
 export function useDatasets() {
   const source = useContext(Context);
   return useQuery({ queryKey: datasetKeys.all, queryFn: ({ signal }) => source.list(signal) });
+}
+
+/** The Data Source Wizard's sources; none when the server can't list them (listing is a convenience here). */
+export function useWizardSources() {
+  const source = useContext(Context);
+  return useQuery({
+    queryKey: datasetKeys.wizardSources,
+    queryFn: ({ signal }) => source.wizardSources(signal).catch(() => [] as string[]),
+  });
+}
+
+export function useSharing(id: string | null) {
+  const source = useContext(Context);
+  return useQuery({ queryKey: datasetKeys.sharing(id ?? ''), queryFn: ({ signal }) => source.sharing(id!, signal), enabled: !!id, staleTime: 0 });
 }
 
 export function useDataset(id: string | undefined) {

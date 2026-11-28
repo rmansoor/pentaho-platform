@@ -29,6 +29,100 @@ describe('Datasets', () => {
     expect(items()).toHaveLength(1);
   });
 
+  it('shows which datasets are published, and filters by source, owner and status', async () => {
+    const user = userEvent.setup();
+    await open('/datasets');
+    await screen.findByRole('list', { name: 'Datasets' });
+    expect(items()[0]).toHaveTextContent('Published');
+    expect(within(items()[0]!).getByText('Published')).toHaveAttribute('title', 'Published as "Orders"');
+    expect(items()[1]).toHaveTextContent('Not published');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'Not published');
+    expect(items().map((i) => i.textContent)).toEqual([expect.stringContaining('Regional sales')]);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'Any status');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Owner' }), 'admin');
+    expect(items()).toHaveLength(1);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Source' }), 'File');
+    expect(screen.getByText('No datasets match.')).toBeInTheDocument();
+  });
+
+  it('lists the wizard\'s sources no dataset has published, marked as not upgraded', async () => {
+    await open('/datasets');
+    const wizard = await screen.findByRole('list', { name: 'From the Data Source Wizard' });
+    // orders.xmi is the published Orders dataset; Inventory is the wizard's own.
+    expect(within(wizard).getAllByRole('listitem').map((i) => i.textContent)).toEqual(['InventoryNot upgraded']);
+  });
+
+  it('shares a dataset with users and roles', async () => {
+    const user = userEvent.setup();
+    const { datasets } = await open('/datasets');
+    await screen.findByRole('list', { name: 'Datasets' });
+    await user.click(screen.getByRole('button', { name: 'Share Regional sales' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Share "Regional sales"' });
+    await user.click(await within(dialog).findByRole('radio', { name: 'Only the users and roles listed' }));
+    expect(within(dialog).getByText('Nobody listed.')).toBeInTheDocument();
+    await user.type(within(dialog).getByRole('combobox', { name: 'Name' }), 'suzy{Enter}');
+    await user.selectOptions(within(dialog).getByRole('combobox', { name: 'User or role' }), 'Role');
+    await user.type(within(dialog).getByRole('combobox', { name: 'Name' }), 'Report Author');
+    await user.selectOptions(within(dialog).getByRole('combobox', { name: 'Access' }), 'Can change');
+    await user.click(within(dialog).getByRole('button', { name: 'Add' }));
+    expect(within(dialog).getAllByRole('listitem').map((i) => i.textContent)).toEqual([
+      expect.stringContaining('suzy User'),
+      expect.stringContaining('Report Author Role'),
+    ]);
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(datasets.calls).toContain('share regional-sales');
+    expect(datasets.shares.get('regional-sales')).toEqual({
+      restricted: true,
+      entries: [
+        { recipient: 'suzy', type: 'USER', access: 'READ' },
+        { recipient: 'Report Author', type: 'ROLE', access: 'WRITE' },
+      ],
+    });
+  });
+
+  it('shares with everyone again, listing nobody', async () => {
+    const user = userEvent.setup();
+    const datasets = createFixtureDatasetSource();
+    datasets.shares.set('orders', { restricted: true, entries: [{ recipient: 'suzy', type: 'USER', access: 'WRITE' }] });
+    await open('/datasets', datasets);
+    await screen.findByRole('list', { name: 'Datasets' });
+    await user.click(screen.getByRole('button', { name: 'Share Orders' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Share "Orders"' });
+    expect(await within(dialog).findByRole('list', { name: 'Shared with' })).toHaveTextContent('suzy');
+
+    await user.click(within(dialog).getByRole('radio', { name: 'Everyone who can use datasets' }));
+    expect(within(dialog).queryByRole('list', { name: 'Shared with' })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(datasets.shares.get('orders')).toEqual({ restricted: false, entries: [] });
+  });
+
+  it('exports a dataset\'s definition as a JSON file', async () => {
+    const user = userEvent.setup();
+    const urls: Blob[] = [];
+    const create = URL.createObjectURL;
+    URL.createObjectURL = (b: Blob | MediaSource) => (urls.push(b as Blob), 'blob:x');
+    URL.revokeObjectURL = () => undefined;
+    const click = HTMLAnchorElement.prototype.click;
+    let downloaded = '';
+    HTMLAnchorElement.prototype.click = function () {
+      downloaded = this.download;
+    };
+    try {
+      await open('/datasets');
+      await screen.findByRole('list', { name: 'Datasets' });
+      await user.click(screen.getByRole('button', { name: 'Export Orders' }));
+      await waitFor(() => expect(downloaded).toBe('orders.dataset.json'));
+      expect(JSON.parse(await urls[0]!.text())).toMatchObject({ id: 'orders', name: 'Orders', source: { type: 'TABLES' } });
+    } finally {
+      URL.createObjectURL = create;
+      HTMLAnchorElement.prototype.click = click;
+    }
+  });
+
   it('deletes with the version it listed', async () => {
     const user = userEvent.setup();
     const { datasets } = await open('/datasets');
